@@ -1,0 +1,73 @@
+# Build outputs
+**/target/
+**/build/
+**/out/
+**/bin/
+
+# Java / Maven
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+*.ear
+
+# Logs
+*.log
+logs/
+**/logs/
+
+# Runtime data / uploads
+/data/
+backend/data/
+uploads/
+backend/uploads/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.env
+application-secret.yml
+application-secrets.yml
+application-secret.properties
+application-secrets.properties
+**/application-secret.yml
+**/application-secrets.yml
+**/application-secret.properties
+**/application-secrets.properties
+
+# Mail / auth secrets
+*mail-password*
+*MAIL_PASSWORD*
+*AUTH_REFRESH_TOKEN_PEPPER*
+*jwt-private*
+*private-key*
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+
+# Claude local settings
+.claude/settings.local.json
+.claude/setting.json
+
+# Serena local index/cache
+.serena/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.temp
+*.swp
+*.swo
+.cache/

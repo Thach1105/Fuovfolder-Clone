@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify your FuOverflow email</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f8;padding:32px 0;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+                <tr>
+                    <td style="padding:28px 32px;background:#2563eb;color:#ffffff;">
+                        <h1 style="margin:0;font-size:24px;line-height:32px;">FuOverflow</h1>
+                        <p style="margin:8px 0 0;font-size:15px;line-height:22px;">Email verification</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:32px;">
+                        <p style="margin:0 0 16px;font-size:16px;line-height:24px;">
+                            Hi <span th:text="${displayName}">FuOverflow user</span>,
+                        </p>
+                        <p style="margin:0 0 20px;font-size:16px;line-height:24px;">
+                            Please verify your email address to activate your FuOverflow account.
+                        </p>
+                        <p style="margin:0 0 28px;">
+                            <a th:href="${verificationLink}" href="http://localhost:8080/api/v1/auth/email/verify?token=demo"
+                               style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px;font-size:16px;">
+                                Verify email
+                            </a>
+                        </p>
+                        <p style="margin:0 0 10px;font-size:14px;line-height:22px;color:#4b5563;">
+                            If the button does not work, copy this token and submit it in the verification screen:
+                        </p>
+                        <p style="margin:0 0 24px;padding:12px;background:#f3f4f6;border-radius:8px;font-family:Consolas,Monaco,monospace;font-size:13px;line-height:20px;word-break:break-all;"
+                           th:text="${verificationToken}">
+                            verification-token
+                        </p>
+                        <p style="margin:0;font-size:14px;line-height:22px;color:#6b7280;">
+                            This token expires in <span th:text="${expiresIn}">24 hours</span>.
+                            If you did not create this account, ignore this email.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:20px 32px;background:#f9fafb;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;line-height:18px;">
+                        This email was sent by FuOverflow. Please do not reply to this automated message.
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd backend && mvn -q -pl app -am test)",
+      "Bash(cd backend && mvn -q -DskipTests package)",
+      "Bash(cd backend && docker compose up -d postgres redis)",
+      "mcp__serena__activate_project"
+    ]
+  },
+  "skillOverrides": {
+    "fuoverflow-project": "on",
+    "fuoverflow-backend": "on",
+    "fuoverflow-auth-security": "on",
+    "fuoverflow-database": "on",
+    "fuoverflow-feature": "on"
+  }
+}
