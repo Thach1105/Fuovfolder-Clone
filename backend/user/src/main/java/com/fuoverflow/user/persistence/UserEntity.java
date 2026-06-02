@@ -38,6 +38,9 @@ public class UserEntity {
     @Column(name = "display_name", nullable = false, length = 120)
     private String displayName;
 
+    @Column(length = 120)
+    private String campus;
+
     @Column(name = "first_name", length = 80)
     private String firstName;
 
@@ -78,7 +81,7 @@ public class UserEntity {
     private int lockVersion;
 
     public static UserEntity pending(UUID id, String email, String normalizedEmail, String username, String usernameNormalized,
-                                     String passwordHash, String displayName, Instant now) {
+                                     String passwordHash, String displayName, String campus, Instant now) {
         UserEntity entity = new UserEntity();
         entity.id = id;
         entity.email = email;
@@ -87,6 +90,7 @@ public class UserEntity {
         entity.usernameNormalized = usernameNormalized;
         entity.passwordHash = passwordHash;
         entity.displayName = displayName;
+        entity.campus = campus;
         entity.status = UserStatus.PENDING_EMAIL_VERIFICATION;
         entity.rolesJson = "[\"USER\"]";
         entity.createdAt = now;
@@ -102,6 +106,7 @@ public class UserEntity {
     public String getNormalizedEmail() { return normalizedEmail; }
     public String getPasswordHash() { return passwordHash; }
     public String getDisplayName() { return displayName; }
+    public String getCampus() { return campus; }
     public String getFirstName() { return firstName; }
     public String getLastName() { return lastName; }
     public String getAvatarUrl() { return avatarUrl; }

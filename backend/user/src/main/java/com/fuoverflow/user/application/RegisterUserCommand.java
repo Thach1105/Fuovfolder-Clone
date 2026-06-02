@@ -4,6 +4,7 @@ public record RegisterUserCommand(
         String email,
         String username,
         String passwordHash,
-        String displayName
+        String displayName,
+        String campus
 ) {
 }

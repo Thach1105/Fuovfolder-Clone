@@ -40,8 +40,9 @@ public class UserRegistrationService {
             throw new ConflictException("USERNAME_TAKEN", "Username is already used");
         }
         Instant now = Instant.now();
+        String campus = command.campus() == null || command.campus().isBlank() ? null : command.campus().trim();
         UserEntity entity = UserEntity.pending(UUID.randomUUID(), command.email().trim(), normalizedEmail,
-                command.username().trim(), normalizedUsername, command.passwordHash(), command.displayName().trim(), now);
+                command.username().trim(), normalizedUsername, command.passwordHash(), command.displayName().trim(), campus, now);
         try {
             return mapper.toAuthUser(repository.save(entity));
         } catch (DataIntegrityViolationException exception) {

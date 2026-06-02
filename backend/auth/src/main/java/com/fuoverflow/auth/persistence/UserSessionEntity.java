@@ -21,7 +21,7 @@ public class UserSessionEntity{
  @Column(name="revoked_at") private Instant revokedAt;
  @Column(name="revoked_reason") private String revokedReason;
  @Column(name="replaced_by_session_id") private UUID replacedBySessionId;
- @Column(name="ip_address", columnDefinition="inet") private String ipAddress;
+ @Column(name="ip_address", columnDefinition="inet") @org.hibernate.annotations.ColumnTransformer(write="?::inet") private String ipAddress;
  @Column(name="user_agent") private String userAgent;
  @JdbcTypeCode(SqlTypes.JSON) @Column(name="metadata_json", columnDefinition="jsonb", nullable=false) private String metadataJson="{}";
  @Version private long version;
