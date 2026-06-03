@@ -8,6 +8,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableAsync;
 
+import org.springframework.cache.annotation.EnableCaching;
+
+@EnableCaching
 @EnableAsync
 @SpringBootApplication(scanBasePackages = "com.fuoverflow")
 @EnableConfigurationProperties(FileStorageProperties.class)

@@ -13,4 +13,7 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity,U
  int revokeAllByUserId(UUID userId,String reason,Instant now);
  @Modifying @Query("update UserSessionEntity s set s.revokedAt=:now, s.revokedReason=:reason where s.refreshTokenFamilyId=:familyId and s.revokedAt is null")
  int revokeFamily(UUID familyId,String reason,Instant now);
+
+    @Modifying @Query("update UserSessionEntity s set s.revokedAt=:now, s.revokedReason=:reason where s.userId=:userId and s.id!=:exceptSessionId and s.revokedAt is null")
+    int revokeAllExceptSession(UUID userId, UUID exceptSessionId, String reason, Instant now);
 }

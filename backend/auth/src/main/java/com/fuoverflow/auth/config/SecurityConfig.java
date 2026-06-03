@@ -27,6 +27,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/email/verify",
                                 "/api/v1/auth/introspect",
+                                "/api/v1/auth/password/forgot",
+                                "/api/v1/auth/password/reset",
                                 "/actuator/health",
                                 "/actuator/health/**"
                         ).permitAll()

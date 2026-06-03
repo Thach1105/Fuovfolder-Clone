@@ -2,6 +2,7 @@ package com.fuoverflow.auth.api;
 
 import com.fuoverflow.auth.api.dto.*;
 import com.fuoverflow.auth.application.AuthService;
+import com.fuoverflow.auth.application.PasswordResetService;
 import com.fuoverflow.auth.application.CookieService;
 import com.fuoverflow.auth.application.EmailVerificationService;
 import com.fuoverflow.auth.domain.ClientContext;
@@ -21,11 +22,14 @@ public class AuthController {
     private final AuthService authService;
     private final EmailVerificationService emailVerificationService;
     private final CookieService cookieService;
+    private final PasswordResetService passwordResetService;
 
-    public AuthController(AuthService authService, EmailVerificationService emailVerificationService, CookieService cookieService) {
+    public AuthController(AuthService authService, EmailVerificationService emailVerificationService, 
+                          CookieService cookieService, PasswordResetService passwordResetService) {
         this.authService = authService;
         this.emailVerificationService = emailVerificationService;
         this.cookieService = cookieService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/register")
@@ -72,6 +76,18 @@ public class AuthController {
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(refreshToken(request));
         cookieService.clearTokenCookies(response);
+    }
+
+    @PostMapping("/password/forgot")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.requestReset(request.email());
+    }
+
+    @PostMapping("/password/reset")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request.token(), request.newPassword());
     }
 
     private ClientContext context(HttpServletRequest request) {

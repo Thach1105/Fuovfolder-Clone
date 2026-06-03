@@ -136,4 +136,10 @@ public class UserEntity {
         this.avatarUrl = avatarUrl;
         this.updatedAt = at;
     }
+
+    public void updatePassword(String newHash, Instant now) {
+        this.passwordHash = newHash;
+        this.passwordChangedAt = now;
+        this.updatedAt = now;
+    }
 }
