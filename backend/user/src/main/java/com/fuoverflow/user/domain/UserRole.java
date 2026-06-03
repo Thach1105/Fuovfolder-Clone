@@ -2,6 +2,6 @@ package com.fuoverflow.user.domain;
 
 public enum UserRole {
     USER,
-    MODERATOR,
+    SUB_ADMIN,
     ADMIN
 }

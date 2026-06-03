@@ -1,5 +1,6 @@
 package com.fuoverflow.user.persistence;
 
+import com.fuoverflow.user.domain.UserRole;
 import com.fuoverflow.user.domain.UserStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -92,11 +93,46 @@ public class UserEntity {
         entity.displayName = displayName;
         entity.campus = campus;
         entity.status = UserStatus.PENDING_EMAIL_VERIFICATION;
-        entity.rolesJson = "[\"USER\"]";
+        entity.rolesJson = rolesJson(UserRole.USER);
         entity.createdAt = now;
         entity.updatedAt = now;
         entity.lockVersion = 0;
         return entity;
+    }
+
+    public static UserEntity seededAdministrator(UUID id, String email, String normalizedEmail, String username,
+                                                 String usernameNormalized, String passwordHash, String displayName,
+                                                 Instant now) {
+        UserEntity entity = new UserEntity();
+        entity.id = id;
+        entity.email = email;
+        entity.normalizedEmail = normalizedEmail;
+        entity.username = username;
+        entity.usernameNormalized = usernameNormalized;
+        entity.passwordHash = passwordHash;
+        entity.displayName = displayName;
+        entity.status = UserStatus.ACTIVE;
+        entity.rolesJson = rolesJson(UserRole.ADMIN);
+        entity.emailVerifiedAt = now;
+        entity.passwordChangedAt = now;
+        entity.createdAt = now;
+        entity.updatedAt = now;
+        entity.lockVersion = 0;
+        return entity;
+    }
+
+    public static String rolesJson(UserRole... roles) {
+        if (roles == null || roles.length == 0) {
+            return "[\"USER\"]";
+        }
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < roles.length; i++) {
+            if (i > 0) {
+                json.append(',');
+            }
+            json.append('"').append(roles[i].name()).append('"');
+        }
+        return json.append(']').toString();
     }
 
     public UUID getId() { return id; }

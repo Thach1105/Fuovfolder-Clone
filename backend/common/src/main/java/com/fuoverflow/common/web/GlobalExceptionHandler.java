@@ -10,21 +10,20 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.Instant;
 import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
-    ResponseEntity<ApiErrorResponse> handleApiException(ApiException exception, HttpServletRequest request) {
+    ResponseEntity<ApiResponse<Void>> handleApiException(ApiException exception, HttpServletRequest request) {
         return ResponseEntity.status(exception.status())
-                .body(error(exception.code(), exception.getMessage(), request, List.of()));
+                .body(error(exception.code(), exception.getMessage(), request, null));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException exception, HttpServletRequest request) {
-        List<ApiErrorResponse.FieldErrorItem> fields = exception.getBindingResult().getFieldErrors().stream()
+    ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException exception, HttpServletRequest request) {
+        List<ApiResponse.ErrorDetail.FieldError> fields = exception.getBindingResult().getFieldErrors().stream()
                 .map(this::toFieldError)
                 .toList();
         return ResponseEntity.badRequest()
@@ -32,22 +31,24 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    ResponseEntity<ApiErrorResponse> handleConstraintViolation(ConstraintViolationException exception, HttpServletRequest request) {
+    ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException exception, HttpServletRequest request) {
         return ResponseEntity.badRequest()
-                .body(error("VALIDATION_ERROR", "Request validation failed", request, List.of()));
+                .body(error("VALIDATION_ERROR", "Request validation failed", request, null));
     }
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception, HttpServletRequest request) {
+    ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception exception, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(error("INTERNAL_ERROR", "Unexpected server error", request, List.of()));
+                .body(error("INTERNAL_ERROR", "Unexpected server error", request, null));
     }
 
-    private ApiErrorResponse.FieldErrorItem toFieldError(FieldError error) {
-        return new ApiErrorResponse.FieldErrorItem(error.getField(), error.getDefaultMessage());
+    private ApiResponse.ErrorDetail.FieldError toFieldError(FieldError error) {
+        return new ApiResponse.ErrorDetail.FieldError(error.getField(), error.getDefaultMessage());
     }
 
-    private ApiErrorResponse error(String code, String message, HttpServletRequest request, List<ApiErrorResponse.FieldErrorItem> fields) {
-        return new ApiErrorResponse(code, message, request.getHeader("X-Request-Id"), Instant.now(), fields);
+    private ApiResponse<Void> error(String code, String message, HttpServletRequest request,
+                                    List<ApiResponse.ErrorDetail.FieldError> fields) {
+        ApiResponse.ErrorDetail detail = new ApiResponse.ErrorDetail(request.getHeader("X-Request-Id"), fields);
+        return ApiResponse.failure(code, message, detail);
     }
 }

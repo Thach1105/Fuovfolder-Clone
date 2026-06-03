@@ -5,6 +5,7 @@ import com.fuoverflow.auth.application.AuthService;
 import com.fuoverflow.auth.application.CookieService;
 import com.fuoverflow.auth.application.EmailVerificationService;
 import com.fuoverflow.auth.domain.ClientContext;
+import com.fuoverflow.common.web.ApiResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,41 +31,41 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public RegisterResponse register(@Valid @RequestBody RegisterRequest request) {
-        return authService.register(request);
+    public ApiResponse<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
+        return ApiResponse.ok(authService.register(request));
     }
 
     @PostMapping("/email/verify")
-    public AuthenticatedUserResponse verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
-        return authService.userResponse(emailVerificationService.verify(request.token()));
+    public ApiResponse<AuthenticatedUserResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        return ApiResponse.ok(authService.userResponse(emailVerificationService.verify(request.token())));
     }
 
     @PostMapping("/login")
-    public AuthTokenResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest,
-                                   HttpServletResponse httpResponse) {
+    public ApiResponse<AuthTokenResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest,
+                                                HttpServletResponse httpResponse) {
         AuthService.AuthTokenBundle bundle = authService.login(request, context(httpRequest));
         cookieService.writeTokenCookies(httpResponse, bundle.tokenPair());
-        return bundle.response();
+        return ApiResponse.ok(bundle.response());
     }
 
     @PostMapping("/refresh")
-    public AuthTokenResponse refresh(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+    public ApiResponse<AuthTokenResponse> refresh(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         AuthService.AuthTokenBundle bundle = authService.refresh(refreshToken(httpRequest), context(httpRequest));
         cookieService.writeTokenCookies(httpResponse, bundle.tokenPair());
-        return bundle.response();
+        return ApiResponse.ok(bundle.response());
     }
 
     @PostMapping("/token/generate")
-    public AuthTokenResponse generate(@RequestParam UUID userId, HttpServletRequest httpRequest,
-                                      HttpServletResponse httpResponse) {
+    public ApiResponse<AuthTokenResponse> generate(@RequestParam UUID userId, HttpServletRequest httpRequest,
+                                                   HttpServletResponse httpResponse) {
         AuthService.AuthTokenBundle bundle = authService.generateForUser(userId, context(httpRequest));
         cookieService.writeTokenCookies(httpResponse, bundle.tokenPair());
-        return bundle.response();
+        return ApiResponse.ok(bundle.response());
     }
 
     @PostMapping("/introspect")
-    public TokenIntrospectionResponse introspect(@Valid @RequestBody TokenIntrospectionRequest request) {
-        return authService.introspect(request);
+    public ApiResponse<TokenIntrospectionResponse> introspect(@Valid @RequestBody TokenIntrospectionRequest request) {
+        return ApiResponse.ok(authService.introspect(request));
     }
 
     @PostMapping("/logout")

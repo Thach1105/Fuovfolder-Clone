@@ -54,6 +54,16 @@ fuoverflow:
     uploads-path: ${FUO_UPLOADS_PATH:/data/fuoverflow/uploads}
     logs-path: ${FUO_LOGS_PATH:/data/fuoverflow/logs}
     temp-path: ${FUO_TEMP_PATH:/data/fuoverflow/tmp}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+  admin:
+    seed:
+      enabled: ${FUO_ADMIN_SEED_ENABLED:false}
+      email: ${FUO_ADMIN_EMAIL:admin@fuoverflow.local}
+      username: ${FUO_ADMIN_USERNAME:fuoverflow-admin}
+      password: ${FUO_ADMIN_PASSWORD:}
+      display-name: ${FUO_ADMIN_DISPLAY_NAME:FuOverflow Administrator}
 
 auth:
   issuer: ${AUTH_ISSUER:fuoverflow}

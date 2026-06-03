@@ -11,7 +11,7 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
+    username: ${MAIL_USERNAME:thach11052002@gmail.com}
     password: ${MAIL_PASSWORD:}
     properties:
       mail:
@@ -22,6 +22,15 @@ spring:
           connectiontimeout: ${MAIL_SMTP_CONNECTION_TIMEOUT:10000}
           timeout: ${MAIL_SMTP_TIMEOUT:10000}
           writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT:5000}
+
+fuoverflow:
+  admin:
+    seed:
+      enabled: ${FUO_ADMIN_SEED_ENABLED:true}
+      email: ${FUO_ADMIN_EMAIL:admin@fuoverflow.local}
+      username: ${FUO_ADMIN_USERNAME:fuoverflow-admin}
+      password: ${FUO_ADMIN_PASSWORD:ChangeMe_Admin123!}
+      display-name: ${FUO_ADMIN_DISPLAY_NAME:FuOverflow Administrator}
 
 auth:
   email-verification:

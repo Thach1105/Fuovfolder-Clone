@@ -1,5 +1,6 @@
 package com.fuoverflow.user.api;
 
+import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.user.api.dto.UpdateUserProfileRequest;
 import com.fuoverflow.user.api.dto.UserProfileResponse;
 import com.fuoverflow.user.application.UserProfileService;
@@ -23,12 +24,12 @@ public class UserProfileController {
     }
 
     @GetMapping("/me")
-    public UserProfileResponse me(Authentication authentication) {
-        return service.getCurrentUser(UUID.fromString(authentication.getName()));
+    public ApiResponse<UserProfileResponse> me(Authentication authentication) {
+        return ApiResponse.ok(service.getCurrentUser(UUID.fromString(authentication.getName())));
     }
 
     @PatchMapping("/me/profile")
-    public UserProfileResponse updateProfile(Authentication authentication, @Valid @RequestBody UpdateUserProfileRequest request) {
-        return service.updateProfile(UUID.fromString(authentication.getName()), request);
+    public ApiResponse<UserProfileResponse> updateProfile(Authentication authentication, @Valid @RequestBody UpdateUserProfileRequest request) {
+        return ApiResponse.ok(service.updateProfile(UUID.fromString(authentication.getName()), request));
     }
 }

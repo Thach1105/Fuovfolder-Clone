@@ -34,7 +34,11 @@ public class CookieAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 Jwt jwt = jwtService.decode(token);
-                List<SimpleGrantedAuthority> authorities = jwt.getClaimAsStringList("roles").stream()
+                List<String> roles = jwt.getClaimAsStringList("roles");
+                if (roles == null) {
+                    roles = List.of();
+                }
+                List<SimpleGrantedAuthority> authorities = roles.stream()
                         .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                         .toList();
                 SecurityContextHolder.getContext().setAuthentication(
@@ -47,6 +51,10 @@ public class CookieAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String accessToken(HttpServletRequest request) {
+        String bearer = bearerToken(request);
+        if (bearer != null) {
+            return bearer;
+        }
         if (request.getCookies() == null) {
             return null;
         }
@@ -55,5 +63,14 @@ public class CookieAuthenticationFilter extends OncePerRequestFilter {
                 .map(Cookie::getValue)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private String bearerToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header == null || !header.startsWith("Bearer ")) {
+            return null;
+        }
+        String token = header.substring(7).trim();
+        return token.isEmpty() ? null : token;
     }
 }

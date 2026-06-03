@@ -1,5 +1,6 @@
 package com.fuoverflow.user.persistence;
 
+import com.fuoverflow.user.api.dto.AdminUserSummaryResponse;
 import com.fuoverflow.user.api.dto.AuthUserView;
 import com.fuoverflow.user.api.dto.UserProfileResponse;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,20 @@ public class UserMapper {
                 entity.getEmailVerifiedAt(),
                 entity.getPasswordChangedAt(),
                 entity.getDeletedAt()
+        );
+    }
+
+    public AdminUserSummaryResponse toAdminSummary(UserEntity entity) {
+        return new AdminUserSummaryResponse(
+                entity.getId(),
+                entity.getEmail(),
+                entity.getUsername(),
+                entity.getDisplayName(),
+                entity.getStatus(),
+                roles(entity.getRolesJson()),
+                entity.getEmailVerifiedAt() != null,
+                entity.getCreatedAt(),
+                entity.getLastLoginAt()
         );
     }
 
