@@ -50,6 +50,11 @@ management:
       application: ${spring.application.name}
 
 fuoverflow:
+  coursera:
+    refund-on-cancel: true
+    credentials:
+      encryption-key: ${COURSERA_CREDENTIALS_ENCRYPTION_KEY:local-dev-coursera-key-change-me-32b!}
+      key-id: default
   storage:
     uploads-path: ${FUO_UPLOADS_PATH:/data/fuoverflow/uploads}
     logs-path: ${FUO_LOGS_PATH:/data/fuoverflow/logs}

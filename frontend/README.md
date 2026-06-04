@@ -47,5 +47,13 @@ Mở http://localhost:3000
 | Login | `POST /api/v1/auth/login` |
 | Logout | `POST /api/v1/auth/logout` |
 | Profile | `GET /api/v1/users/me`, `PATCH /api/v1/users/me/profile` |
+| Coursera | `/coursera`, `/coursera/orders` — catalog, tạo đơn, FUO Point |
+| Admin Coursera | `/admin/coursera/catalog`, `/admin/coursera/orders` |
 
 Auth dùng HttpOnly cookie (`fuoverflow_at`, `fuoverflow_rt`) với `credentials: include`.
+
+### Coursera test flow
+
+1. Admin cấp điểm: `POST /api/v1/admin/users/{userId}/points/adjust` với `{"delta":500000,"reason":"dev"}`.
+2. User mở `/coursera`, chọn khóa, nhập credential Coursera, thanh toán.
+3. Theo dõi tại `/coursera/orders`; admin xử lý tại `/admin/coursera/orders`.

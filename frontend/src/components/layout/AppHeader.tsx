@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasStaffAccess } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
+import { PointsBalanceBadge } from "@/components/layout/PointsBalanceBadge";
 
 const NAV_ITEMS = [
   { href: "/", label: "Diễn đàn" },
@@ -60,6 +61,7 @@ export function AppHeader() {
             <span className="h-8 w-20 animate-pulse rounded-lg bg-slate-100" />
           ) : user ? (
             <>
+              <PointsBalanceBadge />
               {hasStaffAccess(user.roles) && (
                 <Link
                   href="/admin"

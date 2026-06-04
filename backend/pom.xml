@@ -26,6 +26,7 @@
         <module>reaction</module>
         <module>notification</module>
         <module>award</module>
+        <module>coursera</module>
         <module>membership</module>
         <module>course</module>
         <module>material</module>

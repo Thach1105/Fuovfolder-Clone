@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/admin", label: "Tổng quan", exact: true },
   { href: "/admin/users", label: "Người dùng", exact: false },
+  { href: "/admin/coursera/catalog", label: "Coursera — Khóa học", exact: false },
+  { href: "/admin/coursera/orders", label: "Coursera — Đơn", exact: false },
 ];
 
 export function AdminSidebar() {
