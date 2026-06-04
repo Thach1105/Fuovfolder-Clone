@@ -11,6 +11,8 @@ const NAV = [
   { href: "/admin/users", label: "Người dùng", exact: false },
   { href: "/admin/coursera/catalog", label: "Coursera — Khóa học", exact: false },
   { href: "/admin/coursera/orders", label: "Coursera — Đơn", exact: false },
+  { href: "/admin/source/catalog", label: "Suộc — Tài liệu", exact: false },
+  { href: "/admin/source/purchases", label: "Suộc — Đơn mua", exact: false },
 ];
 
 export function AdminSidebar() {

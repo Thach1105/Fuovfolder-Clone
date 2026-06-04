@@ -15,6 +15,7 @@ import java.util.UUID;
 public class PointsWalletService {
     public static final String SOURCE_ADMIN_ADJUST = "admin_adjust";
     public static final String SOURCE_COURSERA_REQUEST = "coursera_request";
+    public static final String SOURCE_SOURCE_PURCHASE = "source_purchase";
     public static final String SOURCE_TOPUP = "topup";
 
     private final PointsLedgerRepository ledgerRepository;

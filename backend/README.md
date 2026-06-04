@@ -92,6 +92,46 @@ psql -f backend/scripts/coursera_explain_checks.sql
 
 Catalog text search (`LIKE %q%`) is not B-tree indexed; add `pg_trgm` only if catalog grows large and search is slow.
 
+## Source (Suộc) module
+
+Module `source` sells exam-material packages priced in FUO Point. Migrations: `V8__source_service.sql`, `V9__source_indexes.sql`, `V10__seed_source_catalog.sql`.
+
+API surface:
+
+| Scope | Endpoint |
+|-------|----------|
+| Public | `GET /api/v1/source/catalog`, `GET /api/v1/source/catalog/featured`, `GET /api/v1/source/catalog/{idOrCode}` |
+| User | `POST /api/v1/source/purchases` (header `Idempotency-Key`), `GET /api/v1/source/purchases?filter=active|expired|all`, `GET /api/v1/source/purchases/stats`, `GET /api/v1/source/purchases/{id}` |
+| Admin (ADMIN, SUB_ADMIN) | `GET/POST/PUT/DELETE /api/v1/admin/source/catalog`, `PUT /api/v1/admin/source/catalog/{id}/related`, `GET /api/v1/admin/source/purchases`, `GET /api/v1/admin/source/overview` |
+| Admin (ADMIN only) | `POST /api/v1/admin/source/purchases/{id}/refund` |
+
+Payment safety and refunds:
+
+- Purchase runs in one transaction: validate eligible user, debit FUO Point via `PointsWalletService.debit(...)`, then persist an `active` purchase with `starts_at`/`ends_at` from the catalog `access_days`.
+- `Idempotency-Key` plus unique index `ux_source_purchases_idempotency (user_id, idempotency_key)` returns the existing purchase instead of charging twice; a race that loses the unique-index check is caught and resolved to the persisted row.
+- With `fuoverflow.source.extend-existing-active=true` (default), buying an item the user already owns returns the existing active purchase without charging again (anti double-charge); set it `false` to reject with `ALREADY_OWNED`.
+- Refund (`fuoverflow.source.refund-enabled=true`) credits the snapshot `unit_price_points`, sets status `refunded`, `ends_at=now()`, and `refund_ledger_id`. It is idempotent (rejects when already refunded) and only applies to `active` purchases.
+- `SourcePurchaseExpiryService` runs every `fuoverflow.source.expiry-scan-interval-ms` (default 60s) to flip elapsed `active` purchases to `expired` so stats and access checks stay correct without per-request `ends_at` scans.
+
+Performance (a few hundred concurrent users):
+
+| Index | Table | Purpose |
+|-------|-------|---------|
+| `ix_source_catalog_active_featured_sort` | `source_catalog_items` | Public featured carousel |
+| `ix_source_catalog_active_created` / `_price` / `_views` | `source_catalog_items` | Sort by newest / price / popular |
+| `ux_source_catalog_code_live` | `source_catalog_items` | Detail lookup by code |
+| `ix_source_purchases_user_status_ends` | `source_purchases` | "My purchases" + stats |
+| `ux_source_purchases_idempotency` | `source_purchases` | Idempotent purchase |
+
+Test flow:
+
+1. Admin tops up a user's FUO Point.
+2. Admin creates catalog items at `/admin/source/catalog`.
+3. User buys at `/suoc/{code}`, views at `/suoc/my-purchases`.
+4. Admin reviews and refunds (ADMIN only) at `/admin/source/purchases`.
+
+Validate: `mvn -q -pl source,app -am test`.
+
 ## Notes
 
 - PostgreSQL schema lives in `app/src/main/resources/db/migration/V1__init_schema.sql`.

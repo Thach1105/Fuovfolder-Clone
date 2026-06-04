@@ -49,6 +49,8 @@ Mở http://localhost:3000
 | Profile | `GET /api/v1/users/me`, `PATCH /api/v1/users/me/profile` |
 | Coursera | `/coursera`, `/coursera/orders` — catalog, tạo đơn, FUO Point |
 | Admin Coursera | `/admin/coursera/catalog`, `/admin/coursera/orders` |
+| Suộc | `/suoc`, `/suoc/[code]`, `/suoc/my-purchases` — catalog, mua, Suộc của tôi |
+| Admin Suộc | `/admin/source/catalog`, `/admin/source/purchases` |
 
 Auth dùng HttpOnly cookie (`fuoverflow_at`, `fuoverflow_rt`) với `credentials: include`.
 
@@ -57,3 +59,11 @@ Auth dùng HttpOnly cookie (`fuoverflow_at`, `fuoverflow_rt`) với `credentials
 1. Admin cấp điểm: `POST /api/v1/admin/users/{userId}/points/adjust` với `{"delta":500000,"reason":"dev"}`.
 2. User mở `/coursera`, chọn khóa, nhập credential Coursera, thanh toán.
 3. Theo dõi tại `/coursera/orders`; admin xử lý tại `/admin/coursera/orders`.
+
+### Suộc test flow
+
+1. Admin cấp điểm cho user (như trên).
+2. Admin tạo tài liệu tại `/admin/source/catalog` (mã môn, giá, thời hạn, % trùng lặp).
+3. User mở `/suoc`, vào chi tiết `/suoc/[code]`, bấm "Mua ngay" (gửi `Idempotency-Key` tự sinh).
+4. User xem tại `/suoc/my-purchases` (tổng / còn hạn / hết hạn).
+5. Admin theo dõi và hoàn tiền tại `/admin/source/purchases` (chỉ ADMIN mới hoàn được).
