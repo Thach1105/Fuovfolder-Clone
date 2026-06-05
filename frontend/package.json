@@ -7,7 +7,7 @@
     "dev:clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next dev --port 3000",
     "build": "next build",
     "build:clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next build",
-    "start": "next start --port 3000",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {

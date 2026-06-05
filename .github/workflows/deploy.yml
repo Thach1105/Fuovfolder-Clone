@@ -48,7 +48,9 @@ jobs:
       - name: Deploy frontend
         run: |
           rsync -a --delete frontend/.next/ "${{ env.DEPLOY_ROOT }}/frontend/.next/"
-          rsync -a frontend/public/ "${{ env.DEPLOY_ROOT }}/frontend/public/"
+          if [ -d frontend/public ]; then
+            rsync -a frontend/public/ "${{ env.DEPLOY_ROOT }}/frontend/public/"
+          fi
           cp frontend/package.json frontend/package-lock.json "${{ env.DEPLOY_ROOT }}/frontend/"
           npm ci --omit=dev --prefix "${{ env.DEPLOY_ROOT }}/frontend"
           if systemctl is-active --quiet fuoverflow-frontend 2>/dev/null; then
