@@ -1,6 +1,6 @@
 "use client";
 
-import type { ThreadTab } from "@/data/mock-threads";
+import type { ThreadTab } from "@/lib/api/forum";
 import { cn } from "@/lib/utils";
 
 const TABS: { id: ThreadTab; label: string }[] = [

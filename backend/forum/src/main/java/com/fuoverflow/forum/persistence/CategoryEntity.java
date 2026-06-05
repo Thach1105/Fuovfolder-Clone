@@ -17,6 +17,9 @@ public class CategoryEntity {
     @Column(name = "forum_id", nullable = false)
     private UUID forumId;
 
+    @Column(name = "parent_id")
+    private UUID parentId;
+
     @Column(nullable = false, length = 120)
     private String slug;
 
@@ -28,6 +31,9 @@ public class CategoryEntity {
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
+
+    @Column(name = "icon_color", length = 32)
+    private String iconColor;
 
     @Column(nullable = false, length = 32)
     private String visibility;
@@ -43,20 +49,24 @@ public class CategoryEntity {
 
     public UUID getId() { return id; }
     public UUID getForumId() { return forumId; }
+    public UUID getParentId() { return parentId; }
     public String getSlug() { return slug; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }
     public int getSortOrder() { return sortOrder; }
+    public String getIconColor() { return iconColor; }
     public String getVisibility() { return visibility; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public Instant getDeletedAt() { return deletedAt; }
 
     public void setForumId(UUID forumId) { this.forumId = forumId; }
+    public void setParentId(UUID parentId) { this.parentId = parentId; }
     public void setSlug(String slug) { this.slug = slug; }
     public void setTitle(String title) { this.title = title; }
     public void setDescription(String description) { this.description = description; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
+    public void setIconColor(String iconColor) { this.iconColor = iconColor; }
     public void setVisibility(String visibility) { this.visibility = visibility; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
     public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }

@@ -41,10 +41,28 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/coursera/catalog", "/api/v1/coursera/catalog/**")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/push/vapid-public-key")
+                        .permitAll()
+                        .requestMatchers(
+                                "/api/v1/users/me/notifications",
+                                "/api/v1/users/me/notifications/**",
+                                "/api/v1/users/me/notification-preferences",
+                                "/api/v1/users/me/push-subscriptions")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/users/me/thread-bookmarks",
+                                "/api/v1/threads/*/bookmark")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/threads/*/bookmark")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/threads/*/bookmark")
+                        .authenticated()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/forums", "/api/v1/forums/**",
                                 "/api/v1/threads", "/api/v1/threads/**")
                         .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/threads", "/api/v1/threads/*/posts")
+                        .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/source/catalog/*/questions")
                         .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/source/catalog", "/api/v1/source/catalog/**")

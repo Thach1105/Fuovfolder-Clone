@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<body style="font-family:Segoe UI,Arial,sans-serif;color:#1e293b;line-height:1.5">
+<p>Xin chào <span th:text="${displayName}">bạn</span>,</p>
+<p th:text="${body}">Có trả lời mới trong chủ đề bạn theo dõi.</p>
+<p>
+  <a th:href="${threadUrl}" style="color:#2563eb">Xem chủ đề trên FuOverflow</a>
+</p>
+<p style="color:#64748b;font-size:12px">Bạn nhận email này vì đã bật thông báo email cho chủ đề đang theo dõi.</p>
+</body>
+</html>

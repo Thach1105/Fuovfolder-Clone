@@ -106,6 +106,17 @@ fuoverflow:
       username: ${FUO_ADMIN_USERNAME:fuoverflow-admin}
       password: ${FUO_ADMIN_PASSWORD:}
       display-name: ${FUO_ADMIN_DISPLAY_NAME:FuOverflow Administrator}
+  notification:
+    email:
+      enabled: ${NOTIFICATION_EMAIL_ENABLED:true}
+      from: ${NOTIFICATION_EMAIL_FROM:${MAIL_FROM:${spring.mail.username:}}}
+      subject: ${NOTIFICATION_EMAIL_SUBJECT:FuOverflow - Trả lời mới trong chủ đề bạn theo dõi}
+      thread-url-base: ${NOTIFICATION_THREAD_URL_BASE:http://localhost:3000/threads}
+    push:
+      enabled: ${NOTIFICATION_PUSH_ENABLED:false}
+      vapid-public-key: ${NOTIFICATION_VAPID_PUBLIC:}
+      vapid-private-key: ${NOTIFICATION_VAPID_PRIVATE:}
+      subject: ${NOTIFICATION_VAPID_SUBJECT:mailto:admin@fuoverflow.local}
 
 auth:
   issuer: ${AUTH_ISSUER:fuoverflow}

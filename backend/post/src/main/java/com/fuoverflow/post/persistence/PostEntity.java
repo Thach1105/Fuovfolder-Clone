@@ -105,4 +105,23 @@ public class PostEntity {
         e.updatedAt = now;
         return e;
     }
+
+    public static PostEntity createUserPost(
+            UUID id, UUID threadId, UUID authorUserId, String authorHandle,
+            String bodyMd, String bodyHtml, Instant now) {
+        PostEntity e = new PostEntity();
+        e.id = id;
+        e.threadId = threadId;
+        e.authorUserId = authorUserId;
+        e.bodyMd = bodyMd;
+        e.bodyHtml = bodyHtml;
+        e.status = "visible";
+        e.editCount = 0;
+        e.editVersion = 1;
+        e.reactionCount = 0;
+        e.importedAuthorHandle = authorHandle;
+        e.createdAt = now;
+        e.updatedAt = now;
+        return e;
+    }
 }

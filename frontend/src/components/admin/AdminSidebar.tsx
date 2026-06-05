@@ -13,6 +13,7 @@ const NAV = [
   { href: "/admin/coursera/orders", label: "Coursera — Đơn", exact: false },
   { href: "/admin/source/catalog", label: "Suộc — Tài liệu", exact: false },
   { href: "/admin/source/purchases", label: "Suộc — Đơn mua", exact: false },
+  { href: "/admin/forum/sync", label: "Diễn đàn — Đồng bộ", exact: false },
 ];
 
 export function AdminSidebar() {

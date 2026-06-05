@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -32,4 +34,13 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
             where deleted_at is null and roles_json @> cast(:roleJson as jsonb)
             """, nativeQuery = true)
     long countByRole(@Param("roleJson") String roleJson);
+
+    @Query("""
+            SELECT u.id AS id, u.email AS email, u.displayName AS displayName
+            FROM UserEntity u
+            WHERE u.id IN :userIds
+              AND u.deletedAt IS NULL
+              AND u.emailVerifiedAt IS NOT NULL
+            """)
+    List<UserEmailProjection> findEmailEligibleByIds(@Param("userIds") Collection<UUID> userIds);
 }

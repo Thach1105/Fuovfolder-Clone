@@ -10,4 +10,9 @@ public interface CategoryRepository extends JpaRepository<CategoryEntity, UUID> 
     Optional<CategoryEntity> findByForumIdAndSlugAndDeletedAtIsNull(UUID forumId, String slug);
 
     List<CategoryEntity> findByForumIdAndDeletedAtIsNullOrderBySortOrderAscTitleAsc(UUID forumId);
+
+    List<CategoryEntity> findByForumIdAndParentIdIsNullAndDeletedAtIsNullOrderBySortOrderAscTitleAsc(UUID forumId);
+
+    List<CategoryEntity> findByForumIdAndParentIdAndDeletedAtIsNullOrderBySortOrderAscTitleAsc(
+            UUID forumId, UUID parentId);
 }

@@ -5,10 +5,11 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasStaffAccess } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
+import { ForumNavDropdown } from "@/components/layout/ForumNavDropdown";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { PointsBalanceBadge } from "@/components/layout/PointsBalanceBadge";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Diễn đàn" },
   { href: "/membership", label: "Membership" },
   { href: "/coursera", label: "Coursera" },
   { href: "/suoc", label: "Suộc" },
@@ -32,6 +33,7 @@ export function AppHeader() {
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
+          <ForumNavDropdown />
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
@@ -61,6 +63,7 @@ export function AppHeader() {
             <span className="h-8 w-20 animate-pulse rounded-lg bg-slate-100" />
           ) : user ? (
             <>
+              <NotificationBell />
               <PointsBalanceBadge />
               {hasStaffAccess(user.roles) && (
                 <Link

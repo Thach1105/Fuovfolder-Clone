@@ -51,6 +51,8 @@ Mở http://localhost:3000
 | Admin Coursera | `/admin/coursera/catalog`, `/admin/coursera/orders` |
 | Suộc | `/suoc`, `/suoc/[code]`, `/suoc/my-purchases` — catalog, mua, Suộc của tôi |
 | Admin Suộc | `/admin/source/catalog`, `/admin/source/purchases` |
+| Diễn đàn | `/`, `/forums`, `/forums/[slug]`, `/threads/[id]`, `/whats-new` — danh sách forum, chủ đề, bài viết |
+| Admin Diễn đàn | `/admin/forum/sync` — trigger crawl và xem lịch sử đồng bộ |
 
 Auth dùng HttpOnly cookie (`fuoverflow_at`, `fuoverflow_rt`) với `credentials: include`.
 

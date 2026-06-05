@@ -33,6 +33,21 @@ public class ThreadEntity {
     @Column(nullable = false, length = 32)
     private String status;
 
+    @Column(name = "thread_type", nullable = false, length = 32)
+    private String threadType;
+
+    @Column(length = 64)
+    private String campus;
+
+    @Column(length = 32)
+    private String semester;
+
+    @Column(name = "material_type", length = 64)
+    private String materialType;
+
+    @Column(length = 500)
+    private String tags;
+
     @Column(name = "pinned_at")
     private Instant pinnedAt;
 
@@ -80,6 +95,11 @@ public class ThreadEntity {
     public String getTitle() { return title; }
     public String getSlug() { return slug; }
     public String getStatus() { return status; }
+    public String getThreadType() { return threadType; }
+    public String getCampus() { return campus; }
+    public String getSemester() { return semester; }
+    public String getMaterialType() { return materialType; }
+    public String getTags() { return tags; }
     public Instant getPinnedAt() { return pinnedAt; }
     public Instant getLockedAt() { return lockedAt; }
     public UUID getLastPostId() { return lastPostId; }
@@ -100,6 +120,11 @@ public class ThreadEntity {
     public void setTitle(String title) { this.title = title; }
     public void setSlug(String slug) { this.slug = slug; }
     public void setStatus(String status) { this.status = status; }
+    public void setThreadType(String threadType) { this.threadType = threadType; }
+    public void setCampus(String campus) { this.campus = campus; }
+    public void setSemester(String semester) { this.semester = semester; }
+    public void setMaterialType(String materialType) { this.materialType = materialType; }
+    public void setTags(String tags) { this.tags = tags; }
     public void setPinnedAt(Instant pinnedAt) { this.pinnedAt = pinnedAt; }
     public void setLockedAt(Instant lockedAt) { this.lockedAt = lockedAt; }
     public void setLastPostId(UUID lastPostId) { this.lastPostId = lastPostId; }
@@ -123,7 +148,36 @@ public class ThreadEntity {
         e.title = title;
         e.slug = slug;
         e.status = "open";
+        e.threadType = "discussion";
         e.lastPostAt = lastPostAt != null ? lastPostAt : now;
+        e.replyCount = 0;
+        e.viewCount = 0L;
+        e.reactionCount = 0;
+        e.lockVersion = 0;
+        e.createdAt = now;
+        e.updatedAt = now;
+        return e;
+    }
+
+    public static ThreadEntity createUserThread(
+            UUID id, UUID forumId, UUID categoryId, UUID authorUserId,
+            String title, String slug, String threadType, String authorHandle,
+            String campus, String semester, String materialType, String tags, Instant now) {
+        ThreadEntity e = new ThreadEntity();
+        e.id = id;
+        e.forumId = forumId;
+        e.categoryId = categoryId;
+        e.authorUserId = authorUserId;
+        e.title = title;
+        e.slug = slug;
+        e.status = "open";
+        e.threadType = threadType;
+        e.importedAuthorHandle = authorHandle;
+        e.campus = campus;
+        e.semester = semester;
+        e.materialType = materialType;
+        e.tags = tags;
+        e.lastPostAt = now;
         e.replyCount = 0;
         e.viewCount = 0L;
         e.reactionCount = 0;

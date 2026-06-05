@@ -31,6 +31,13 @@ fuoverflow:
       username: ${FUO_ADMIN_USERNAME:fuoverflow-admin}
       password: ${FUO_ADMIN_PASSWORD:ChangeMe_Admin123!}
       display-name: ${FUO_ADMIN_DISPLAY_NAME:FuOverflow Administrator}
+  notification:
+    email:
+      enabled: ${NOTIFICATION_EMAIL_ENABLED:true}
+      from: ${MAIL_FROM:${spring.mail.username:}}
+      thread-url-base: ${NOTIFICATION_THREAD_URL_BASE:http://localhost:3000/threads}
+    push:
+      enabled: ${NOTIFICATION_PUSH_ENABLED:false}
 
 auth:
   email-verification:

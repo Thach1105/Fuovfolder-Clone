@@ -2,6 +2,7 @@ package com.fuoverflow.forum.api;
 
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.forum.api.dto.CategoryResponse;
+import com.fuoverflow.forum.api.dto.CategoryTreeNodeResponse;
 import com.fuoverflow.forum.api.dto.ForumResponse;
 import com.fuoverflow.forum.application.ForumQueryService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,8 +26,25 @@ public class ForumController {
         return ApiResponse.ok(forumQueryService.listForums());
     }
 
+    @GetMapping("/{forumSlug}")
+    public ApiResponse<ForumResponse> get(@PathVariable String forumSlug) {
+        return ApiResponse.ok(forumQueryService.getForum(forumSlug));
+    }
+
     @GetMapping("/{forumSlug}/categories")
     public ApiResponse<List<CategoryResponse>> categories(@PathVariable String forumSlug) {
         return ApiResponse.ok(forumQueryService.listCategories(forumSlug));
+    }
+
+    @GetMapping("/{forumSlug}/categories/tree")
+    public ApiResponse<List<CategoryTreeNodeResponse>> categoryTree(@PathVariable String forumSlug) {
+        return ApiResponse.ok(forumQueryService.listCategoryTree(forumSlug));
+    }
+
+    @GetMapping("/{forumSlug}/categories/{categorySlug}")
+    public ApiResponse<CategoryResponse> category(
+            @PathVariable String forumSlug,
+            @PathVariable String categorySlug) {
+        return ApiResponse.ok(forumQueryService.getCategory(forumSlug, categorySlug));
     }
 }
