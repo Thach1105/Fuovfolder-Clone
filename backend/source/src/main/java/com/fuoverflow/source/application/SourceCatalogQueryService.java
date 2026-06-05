@@ -41,7 +41,7 @@ public class SourceCatalogQueryService {
     public CatalogPageResponse browse(String q, Boolean featured, String sort, int page, int size) {
         int safeSize = size > 0 ? Math.min(size, MAX_PAGE_SIZE) : properties.defaultPageSizeOrDefault();
         int safePage = Math.max(page, 0);
-        String query = q != null && !q.isBlank() ? q.trim() : null;
+        String query = q != null && !q.isBlank() ? q.trim() : "";
         boolean featuredOnly = Boolean.TRUE.equals(featured);
         Pageable pageable = PageRequest.of(safePage, safeSize, resolveSort(sort));
         Page<SourceCatalogItemEntity> result = catalogRepository.browseActive(query, featuredOnly, pageable);

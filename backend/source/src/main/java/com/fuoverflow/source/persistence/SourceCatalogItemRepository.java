@@ -25,8 +25,7 @@ public interface SourceCatalogItemRepository extends JpaRepository<SourceCatalog
             where c.deletedAt is null
               and c.active = true
               and (:featuredOnly = false or c.featured = true)
-              and (:q is null
-                   or lower(c.code) like lower(concat('%', :q, '%'))
+              and (lower(c.code) like lower(concat('%', :q, '%'))
                    or lower(c.title) like lower(concat('%', :q, '%')))
             """)
     Page<SourceCatalogItemEntity> browseActive(
