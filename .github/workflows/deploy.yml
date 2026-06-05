@@ -1,0 +1,79 @@
+name: Deploy-FuOverflow
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DEPLOY_ROOT: /opt/fuoverflow
+  BACKEND_PORT: "18080"
+  FRONTEND_PORT: "19080"
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure deploy directories
+        run: |
+          mkdir -p "${{ env.DEPLOY_ROOT }}/backend"
+          mkdir -p "${{ env.DEPLOY_ROOT }}/frontend"
+
+      - name: Build backend
+        working-directory: backend
+        run: mvn -B clean package -DskipTests
+
+      - name: Deploy backend
+        run: |
+          cp backend/app/target/fuoverflow-app-*.jar "${{ env.DEPLOY_ROOT }}/backend/app.jar"
+          if systemctl is-active --quiet fuoverflow-backend 2>/dev/null; then
+            sudo systemctl restart fuoverflow-backend
+          else
+            echo "JAR deployed. Configure systemd service 'fuoverflow-backend' to start the app."
+          fi
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL: ${{ secrets.NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy frontend
+        run: |
+          rsync -a --delete frontend/.next/ "${{ env.DEPLOY_ROOT }}/frontend/.next/"
+          rsync -a frontend/public/ "${{ env.DEPLOY_ROOT }}/frontend/public/"
+          cp frontend/package.json frontend/package-lock.json "${{ env.DEPLOY_ROOT }}/frontend/"
+          npm ci --omit=dev --prefix "${{ env.DEPLOY_ROOT }}/frontend"
+          if systemctl is-active --quiet fuoverflow-frontend 2>/dev/null; then
+            sudo systemctl restart fuoverflow-frontend
+          else
+            echo "Frontend deployed. Configure systemd service 'fuoverflow-frontend' to start the app."
+          fi
+
+      - name: Health check
+        if: success()
+        run: |
+          backend_up=false
+          frontend_up=false
+          systemctl is-active --quiet fuoverflow-backend 2>/dev/null && backend_up=true
+          systemctl is-active --quiet fuoverflow-frontend 2>/dev/null && frontend_up=true
+
+          if [ "$backend_up" = true ]; then
+            sleep 15
+            curl -fsS "http://localhost:${{ env.BACKEND_PORT }}/actuator/health"
+          else
+            echo "Skip backend health check — service not running yet."
+          fi
+
+          if [ "$frontend_up" = true ]; then
+            curl -fsS -o /dev/null -w "%{http_code}" "http://localhost:${{ env.FRONTEND_PORT }}" | grep -qE '^200|307|308$'
+          else
+            echo "Skip frontend health check — service not running yet."
+          fi
