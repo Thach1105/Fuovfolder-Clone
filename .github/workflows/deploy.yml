@@ -31,9 +31,13 @@ jobs:
         run: |
           cp backend/app/target/fuoverflow-app-*.jar "${{ env.DEPLOY_ROOT }}/backend/app.jar"
           if systemctl is-active --quiet fuoverflow-backend 2>/dev/null; then
-            sudo systemctl restart fuoverflow-backend
+            if sudo -n systemctl restart fuoverflow-backend 2>/dev/null; then
+              echo "Backend restarted."
+            else
+              echo "::warning::Could not restart fuoverflow-backend (grant passwordless sudo to runner user)."
+            fi
           else
-            echo "JAR deployed. Configure systemd service 'fuoverflow-backend' to start the app."
+            echo "JAR deployed. Configure and start systemd service 'fuoverflow-backend'."
           fi
 
       - name: Build frontend
@@ -54,9 +58,13 @@ jobs:
           cp frontend/package.json frontend/package-lock.json "${{ env.DEPLOY_ROOT }}/frontend/"
           npm ci --omit=dev --prefix "${{ env.DEPLOY_ROOT }}/frontend"
           if systemctl is-active --quiet fuoverflow-frontend 2>/dev/null; then
-            sudo systemctl restart fuoverflow-frontend
+            if sudo -n systemctl restart fuoverflow-frontend 2>/dev/null; then
+              echo "Frontend restarted."
+            else
+              echo "::warning::Could not restart fuoverflow-frontend (grant passwordless sudo to runner user)."
+            fi
           else
-            echo "Frontend deployed. Configure systemd service 'fuoverflow-frontend' to start the app."
+            echo "Frontend deployed. Configure and start systemd service 'fuoverflow-frontend'."
           fi
 
       - name: Health check
