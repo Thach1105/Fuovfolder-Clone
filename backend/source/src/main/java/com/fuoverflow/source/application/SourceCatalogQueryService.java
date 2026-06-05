@@ -7,6 +7,8 @@ import com.fuoverflow.source.api.dto.CatalogPageResponse;
 import com.fuoverflow.source.config.SourceProperties;
 import com.fuoverflow.source.persistence.SourceCatalogItemEntity;
 import com.fuoverflow.source.persistence.SourceCatalogItemRepository;
+import com.fuoverflow.source.persistence.SourcePurchaseEntity;
+import com.fuoverflow.source.persistence.SourcePurchaseRepository;
 import com.fuoverflow.source.persistence.SourceRelatedItemEntity;
 import com.fuoverflow.source.persistence.SourceRelatedItemRepository;
 import org.springframework.data.domain.Page;
@@ -16,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,14 +29,17 @@ public class SourceCatalogQueryService {
 
     private final SourceCatalogItemRepository catalogRepository;
     private final SourceRelatedItemRepository relatedRepository;
+    private final SourcePurchaseRepository purchaseRepository;
     private final SourceProperties properties;
 
     public SourceCatalogQueryService(
             SourceCatalogItemRepository catalogRepository,
             SourceRelatedItemRepository relatedRepository,
+            SourcePurchaseRepository purchaseRepository,
             SourceProperties properties) {
         this.catalogRepository = catalogRepository;
         this.relatedRepository = relatedRepository;
+        this.purchaseRepository = purchaseRepository;
         this.properties = properties;
     }
 
@@ -62,10 +68,23 @@ public class SourceCatalogQueryService {
     }
 
     @Transactional
-    public CatalogItemDetailResponse getDetail(String idOrCode) {
+    public CatalogItemDetailResponse getDetail(String idOrCode, UUID userId) {
         SourceCatalogItemEntity item = resolveActive(idOrCode);
         catalogRepository.incrementViewCount(item.getId());
-        return SourceCatalogMapper.toDetail(item, loadRelated(item.getId()));
+        Instant activeAccessEndsAt = resolveActiveAccessEndsAt(userId, item.getId());
+        return SourceCatalogMapper.toDetail(item, loadRelated(item.getId()), activeAccessEndsAt);
+    }
+
+    private Instant resolveActiveAccessEndsAt(UUID userId, UUID catalogItemId) {
+        if (userId == null) {
+            return null;
+        }
+        Instant now = Instant.now();
+        return purchaseRepository
+                .findFirstByUserIdAndCatalogItemIdAndStatusAndEndsAtAfterOrderByEndsAtDesc(
+                        userId, catalogItemId, "active", now)
+                .map(SourcePurchaseEntity::getEndsAt)
+                .orElse(null);
     }
 
     private List<CatalogItemResponse> loadRelated(UUID catalogItemId) {

@@ -18,7 +18,11 @@ export interface SourceCatalogDetail extends SourceCatalogItem {
   description: string | null;
   categorySlug: string | null;
   related: SourceCatalogItem[];
+  hasActiveAccess: boolean;
+  activeAccessEndsAt: string | null;
 }
+
+const PURCHASE_IDEMPOTENCY_PREFIX = "source-purchase-idempotency:";
 
 export interface SourceCatalogPage {
   items: SourceCatalogItem[];
@@ -162,14 +166,32 @@ export function getSourceDetail(idOrCode: string) {
   return apiFetch<SourceCatalogDetail>(`/api/v1/source/catalog/${encodeURIComponent(idOrCode)}`);
 }
 
-export function purchaseSource(catalogItemId: string, idempotencyKey?: string) {
-  const headers: Record<string, string> = {};
-  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
-  return apiFetch<SourcePurchase>("/api/v1/source/purchases", {
+function resolvePurchaseIdempotencyKey(catalogItemId: string, idempotencyKey?: string): string {
+  if (idempotencyKey) return idempotencyKey;
+  if (typeof sessionStorage === "undefined") return crypto.randomUUID();
+  const storageKey = `${PURCHASE_IDEMPOTENCY_PREFIX}${catalogItemId}`;
+  const stored = sessionStorage.getItem(storageKey);
+  if (stored) return stored;
+  const fresh = crypto.randomUUID();
+  sessionStorage.setItem(storageKey, fresh);
+  return fresh;
+}
+
+export function clearSourcePurchaseIdempotency(catalogItemId: string) {
+  if (typeof sessionStorage === "undefined") return;
+  sessionStorage.removeItem(`${PURCHASE_IDEMPOTENCY_PREFIX}${catalogItemId}`);
+}
+
+export async function purchaseSource(catalogItemId: string, idempotencyKey?: string) {
+  const key = resolvePurchaseIdempotencyKey(catalogItemId, idempotencyKey);
+  const headers: Record<string, string> = { "Idempotency-Key": key };
+  const result = await apiFetch<SourcePurchase>("/api/v1/source/purchases", {
     method: "POST",
     headers,
     body: JSON.stringify({ catalogItemId }),
   });
+  clearSourcePurchaseIdempotency(catalogItemId);
+  return result;
 }
 
 export function listMyPurchases(filter: "active" | "expired" | "all" = "all", page = 0, size = 50) {

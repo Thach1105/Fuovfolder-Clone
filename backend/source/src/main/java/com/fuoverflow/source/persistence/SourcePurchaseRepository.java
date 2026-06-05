@@ -65,6 +65,9 @@ public interface SourcePurchaseRepository
     boolean existsByUserIdAndCatalogItemIdAndStatusAndEndsAtAfter(
             UUID userId, UUID catalogItemId, String status, Instant now);
 
+    Optional<SourcePurchaseEntity> findFirstByUserIdAndCatalogItemIdAndStatusAndEndsAtAfterOrderByEndsAtDesc(
+            UUID userId, UUID catalogItemId, String status, Instant now);
+
     @Query("""
             select coalesce(sum(p.unitPricePoints), 0) from SourcePurchaseEntity p
             where p.paymentLedgerId is not null

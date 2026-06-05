@@ -76,10 +76,9 @@ public class SourcePurchaseService {
                 .findFirstByUserIdAndCatalogItemIdAndStatusOrderByEndsAtDesc(userId, catalogItemId, "active")
                 .filter(p -> p.getEndsAt().isAfter(now));
         if (activeExisting.isPresent()) {
-            if (properties.extendExistingActiveOrDefault()) {
-                return toResponse(activeExisting.get());
-            }
-            throw new ConflictException("ALREADY_OWNED", "You already own an active copy of this material");
+            throw new ConflictException(
+                    "ACTIVE_ACCESS_REMAINS",
+                    "Source này vẫn còn thời gian sử dụng");
         }
 
         UUID purchaseId = UUID.randomUUID();

@@ -5,15 +5,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "fuoverflow.source")
 public record SourceProperties(
         Boolean refundEnabled,
-        Boolean extendExistingActive,
         Integer defaultPageSize
 ) {
     public boolean refundEnabledOrDefault() {
         return refundEnabled == null || refundEnabled;
-    }
-
-    public boolean extendExistingActiveOrDefault() {
-        return extendExistingActive == null || extendExistingActive;
     }
 
     public int defaultPageSizeOrDefault() {

@@ -36,7 +36,7 @@ export default function SuocDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [code]);
+  }, [code, user?.id]);
 
   useEffect(() => {
     load();
@@ -60,8 +60,7 @@ export default function SuocDetailPage() {
     setSuccess(null);
     setPurchasing(true);
     try {
-      const idempotencyKey = crypto.randomUUID();
-      await purchaseSource(detail.id, idempotencyKey);
+      await purchaseSource(detail.id);
       setSuccess("Mua thành công! Tài liệu đã được thêm vào Suộc của bạn.");
       getPointsBalance().then((r) => setBalance(r.balance)).catch(() => {});
     } catch (err) {
@@ -90,6 +89,16 @@ export default function SuocDetailPage() {
   if (!detail) {
     return null;
   }
+
+  const ownedActive = Boolean(user && detail.hasActiveAccess);
+  const accessEndsLabel =
+    detail.activeAccessEndsAt != null
+      ? new Date(detail.activeAccessEndsAt).toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+      : null;
 
   return (
     <div className="space-y-4">
@@ -153,6 +162,16 @@ export default function SuocDetailPage() {
             {success ? (
               <div className="space-y-2 text-center">
                 <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{success}</p>
+                <Link href="/suoc/my-purchases" className="btn-primary block w-full text-center">
+                  Xem Suộc của tôi
+                </Link>
+              </div>
+            ) : ownedActive ? (
+              <div className="space-y-2 text-center">
+                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                  Bạn đang sở hữu tài liệu này
+                  {accessEndsLabel ? ` (hết hạn ${accessEndsLabel})` : ""}.
+                </p>
                 <Link href="/suoc/my-purchases" className="btn-primary block w-full text-center">
                   Xem Suộc của tôi
                 </Link>

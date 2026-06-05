@@ -5,6 +5,7 @@ import com.fuoverflow.source.api.dto.CatalogItemDetailResponse;
 import com.fuoverflow.source.api.dto.CatalogItemResponse;
 import com.fuoverflow.source.api.dto.CatalogPageResponse;
 import com.fuoverflow.source.application.SourceCatalogQueryService;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/source/catalog")
@@ -39,7 +41,12 @@ public class SourceCatalogController {
     }
 
     @GetMapping("/{idOrCode}")
-    public ApiResponse<CatalogItemDetailResponse> get(@PathVariable String idOrCode) {
-        return ApiResponse.ok(queryService.getDetail(idOrCode));
+    public ApiResponse<CatalogItemDetailResponse> get(
+            @PathVariable String idOrCode,
+            Authentication authentication) {
+        UUID userId = authentication != null && authentication.isAuthenticated()
+                ? UUID.fromString(authentication.getName())
+                : null;
+        return ApiResponse.ok(queryService.getDetail(idOrCode, userId));
     }
 }

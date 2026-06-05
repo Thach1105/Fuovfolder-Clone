@@ -57,7 +57,6 @@ fuoverflow:
       key-id: default
   source:
     refund-enabled: ${SOURCE_REFUND_ENABLED:true}
-    extend-existing-active: ${SOURCE_EXTEND_EXISTING_ACTIVE:true}
     default-page-size: ${SOURCE_DEFAULT_PAGE_SIZE:24}
     expiry-scan-interval-ms: ${SOURCE_EXPIRY_SCAN_INTERVAL_MS:60000}
   storage:

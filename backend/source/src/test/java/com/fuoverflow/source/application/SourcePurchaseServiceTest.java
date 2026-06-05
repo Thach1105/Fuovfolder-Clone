@@ -59,7 +59,7 @@ class SourcePurchaseServiceTest {
                 catalogRepository,
                 userRepository,
                 walletService,
-                new SourceProperties(true, true, 24));
+                new SourceProperties(true, 24));
         userId = UUID.randomUUID();
         catalogId = UUID.randomUUID();
     }
@@ -122,7 +122,7 @@ class SourcePurchaseServiceTest {
     }
 
     @Test
-    void purchase_returnsActiveWithoutChargingWhenExtendEnabled() {
+    void purchase_rejectsWhenActiveAccessRemains() {
         stubActiveUser();
         when(catalogRepository.findByIdAndDeletedAtIsNull(catalogId)).thenReturn(Optional.of(catalog(90000, 60)));
         SourcePurchaseEntity active = SourcePurchaseEntity.createActive(
@@ -131,8 +131,10 @@ class SourcePurchaseServiceTest {
         when(purchaseRepository.findFirstByUserIdAndCatalogItemIdAndStatusOrderByEndsAtDesc(userId, catalogId, "active"))
                 .thenReturn(Optional.of(active));
 
-        service.purchase(userId, catalogId, null);
+        ConflictException ex = assertThrows(ConflictException.class, () -> service.purchase(userId, catalogId, null));
 
+        assertEquals("ACTIVE_ACCESS_REMAINS", ex.code());
+        assertEquals("Source này vẫn còn thời gian sử dụng", ex.getMessage());
         verify(walletService, never()).debit(any(), anyInt(), anyString(), anyString(), any());
         verify(purchaseRepository, never()).saveAndFlush(any());
     }

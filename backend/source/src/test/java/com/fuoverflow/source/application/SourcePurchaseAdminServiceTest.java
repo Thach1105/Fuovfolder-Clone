@@ -54,7 +54,7 @@ class SourcePurchaseAdminServiceTest {
                 catalogRepository,
                 userRepository,
                 walletService,
-                new SourceProperties(true, true, 24));
+                new SourceProperties(true, 24));
         actorId = UUID.randomUUID();
     }
 

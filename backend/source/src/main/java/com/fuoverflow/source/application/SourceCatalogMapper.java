@@ -5,6 +5,7 @@ import com.fuoverflow.source.api.dto.CatalogItemDetailResponse;
 import com.fuoverflow.source.api.dto.CatalogItemResponse;
 import com.fuoverflow.source.persistence.SourceCatalogItemEntity;
 
+import java.time.Instant;
 import java.util.List;
 
 public final class SourceCatalogMapper {
@@ -26,7 +27,10 @@ public final class SourceCatalogMapper {
                 e.isFeatured());
     }
 
-    public static CatalogItemDetailResponse toDetail(SourceCatalogItemEntity e, List<CatalogItemResponse> related) {
+    public static CatalogItemDetailResponse toDetail(
+            SourceCatalogItemEntity e,
+            List<CatalogItemResponse> related,
+            Instant activeAccessEndsAt) {
         return new CatalogItemDetailResponse(
                 e.getId(),
                 e.getCode(),
@@ -41,7 +45,9 @@ public final class SourceCatalogMapper {
                 e.getCardColor(),
                 e.getCategorySlug(),
                 e.isFeatured(),
-                related);
+                related,
+                activeAccessEndsAt != null,
+                activeAccessEndsAt);
     }
 
     public static AdminCatalogItemResponse toAdmin(SourceCatalogItemEntity e) {

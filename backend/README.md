@@ -21,7 +21,28 @@ docker compose up -d postgres redis
 mvn clean package
 ```
 
-## Run
+## Run (script)
+
+Same steps as manual workflow: `mvn clean` → `mvn install package` → `cd app` → `mvn spring-boot:run`.
+
+Windows (PowerShell):
+
+```powershell
+.\run.ps1
+.\run.ps1 -SkipDocker      # DB/Redis already running
+.\run.ps1 -SkipTests       # mvn install package -DskipTests
+.\run.ps1 -SkipClean       # skip mvn clean
+```
+
+Git Bash / Linux / macOS:
+
+```bash
+chmod +x run.sh
+./run.sh
+./run.sh --skip-docker --skip-tests
+```
+
+## Run (manual)
 
 ```bash
 mvn -pl app spring-boot:run -Dspring-boot.run.profiles=local
@@ -109,7 +130,7 @@ Payment safety and refunds:
 
 - Purchase runs in one transaction: validate eligible user, debit FUO Point via `PointsWalletService.debit(...)`, then persist an `active` purchase with `starts_at`/`ends_at` from the catalog `access_days`.
 - `Idempotency-Key` plus unique index `ux_source_purchases_idempotency (user_id, idempotency_key)` returns the existing purchase instead of charging twice; a race that loses the unique-index check is caught and resolved to the persisted row.
-- With `fuoverflow.source.extend-existing-active=true` (default), buying an item the user already owns returns the existing active purchase without charging again (anti double-charge); set it `false` to reject with `ALREADY_OWNED`.
+- Buying an item the user still has active access to returns **409** `ACTIVE_ACCESS_REMAINS` with message *Source này vẫn còn thời gian sử dụng*; after access expires, purchase works normally.
 - Refund (`fuoverflow.source.refund-enabled=true`) credits the snapshot `unit_price_points`, sets status `refunded`, `ends_at=now()`, and `refund_ledger_id`. It is idempotent (rejects when already refunded) and only applies to `active` purchases.
 - `SourcePurchaseExpiryService` runs every `fuoverflow.source.expiry-scan-interval-ms` (default 60s) to flip elapsed `active` purchases to `expired` so stats and access checks stay correct without per-request `ends_at` scans.
 

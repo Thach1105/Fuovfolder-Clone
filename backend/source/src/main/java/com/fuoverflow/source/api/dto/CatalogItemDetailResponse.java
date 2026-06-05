@@ -1,5 +1,6 @@
 package com.fuoverflow.source.api.dto;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,6 +18,8 @@ public record CatalogItemDetailResponse(
         String cardColor,
         String categorySlug,
         boolean featured,
-        List<CatalogItemResponse> related
+        List<CatalogItemResponse> related,
+        boolean hasActiveAccess,
+        Instant activeAccessEndsAt
 ) {
 }
