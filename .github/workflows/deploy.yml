@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
 
 env:
-  DEPLOY_ROOT: /opt/fuoverflow
+  ENV_FILE: /opt/fuoverflow/.env
+  COMPOSE_FILE: deploy/docker-compose.yml
   BACKEND_PORT: "18080"
   FRONTEND_PORT: "19080"
 
@@ -18,85 +19,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Ensure deploy directories
+      - name: Verify production env file
         run: |
-          mkdir -p "${{ env.DEPLOY_ROOT }}/backend"
-          mkdir -p "${{ env.DEPLOY_ROOT }}/frontend"
-          mkdir -p "${{ env.DEPLOY_ROOT }}/deploy/systemd"
+          if [ ! -f "${{ env.ENV_FILE }}" ]; then
+            echo "::error::Missing ${{ env.ENV_FILE }}. Copy .env.example and configure secrets on the server."
+            exit 1
+          fi
 
-      - name: Sync systemd unit files
+      - name: Stop legacy systemd services
         run: |
-          rsync -a deploy/systemd/ "${{ env.DEPLOY_ROOT }}/deploy/systemd/"
-
-      - name: Build backend
-        working-directory: backend
-        run: mvn -B clean package -DskipTests
-
-      - name: Deploy backend
-        run: |
-          cp backend/app/target/fuoverflow-app-*.jar "${{ env.DEPLOY_ROOT }}/backend/app.jar"
-          if systemctl is-active --quiet fuoverflow-backend 2>/dev/null; then
-            if sudo -n systemctl restart fuoverflow-backend 2>/dev/null; then
-              echo "Backend restarted."
-            else
-              echo "::warning::Could not restart fuoverflow-backend (grant passwordless sudo to runner user)."
+          for svc in fuoverflow-backend fuoverflow-frontend; do
+            if systemctl is-active --quiet "$svc" 2>/dev/null; then
+              if sudo -n systemctl stop "$svc" 2>/dev/null; then
+                echo "Stopped systemd service $svc."
+              else
+                echo "::warning::Could not stop $svc (grant passwordless sudo or stop manually)."
+              fi
             fi
-          else
-            echo "JAR deployed. Configure and start systemd service 'fuoverflow-backend'."
-          fi
+          done
 
-      - name: Build frontend
-        working-directory: frontend
-        env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL: ${{ secrets.NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL }}
+      - name: Build and start Docker stack
         run: |
-          npm ci
-          npm run build
-
-      - name: Deploy frontend
-        run: |
-          rsync -a --delete frontend/.next/ "${{ env.DEPLOY_ROOT }}/frontend/.next/"
-          if [ -d frontend/public ]; then
-            rsync -a frontend/public/ "${{ env.DEPLOY_ROOT }}/frontend/public/"
-          fi
-          cp frontend/package.json frontend/package-lock.json "${{ env.DEPLOY_ROOT }}/frontend/"
-          npm ci --omit=dev --prefix "${{ env.DEPLOY_ROOT }}/frontend"
-          if systemctl is-active --quiet fuoverflow-frontend 2>/dev/null; then
-            if sudo -n systemctl restart fuoverflow-frontend 2>/dev/null; then
-              echo "Frontend restarted."
-            else
-              echo "::warning::Could not restart fuoverflow-frontend (grant passwordless sudo to runner user)."
-            fi
-          else
-            echo "Frontend deployed. Configure and start systemd service 'fuoverflow-frontend'."
-          fi
+          docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}" build
+          docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}" up -d --remove-orphans
 
       - name: Health check
         if: success()
         run: |
-          backend_up=false
-          frontend_up=false
-          systemctl is-active --quiet fuoverflow-backend 2>/dev/null && backend_up=true
-          systemctl is-active --quiet fuoverflow-frontend 2>/dev/null && frontend_up=true
-
-          if [ "$backend_up" = true ]; then
-            sleep 15
-            if curl -fsS "http://localhost:${{ env.BACKEND_PORT }}/actuator/health"; then
-              echo "Backend health OK."
-            else
-              echo "::warning::Backend service is active but port ${{ env.BACKEND_PORT }} is not responding. Run: sudo journalctl -u fuoverflow-backend -n 80 --no-pager"
-            fi
+          sleep 10
+          if curl -fsS "http://localhost:${{ env.BACKEND_PORT }}/actuator/health"; then
+            echo "Backend health OK."
           else
-            echo "Skip backend health check — service not running yet."
+            echo "::warning::Backend not responding on port ${{ env.BACKEND_PORT }}. Run: docker compose -f ${{ env.COMPOSE_FILE }} --env-file ${{ env.ENV_FILE }} logs backend --tail 80"
           fi
-
-          if [ "$frontend_up" = true ]; then
-            if curl -fsS -o /dev/null -w "%{http_code}" "http://localhost:${{ env.FRONTEND_PORT }}" | grep -qE '^200|307|308$'; then
-              echo "Frontend health OK."
-            else
-              echo "::warning::Frontend service is active but port ${{ env.FRONTEND_PORT }} is not responding."
-            fi
+          http_code="$(curl -fsS -o /dev/null -w '%{http_code}' "http://localhost:${{ env.FRONTEND_PORT }}" || echo 000)"
+          if echo "$http_code" | grep -qE '^200|307|308$'; then
+            echo "Frontend health OK."
           else
-            echo "Skip frontend health check — service not running yet."
+            echo "::warning::Frontend not responding on port ${{ env.FRONTEND_PORT }} (HTTP $http_code). Run: docker compose -f ${{ env.COMPOSE_FILE }} --env-file ${{ env.ENV_FILE }} logs frontend --tail 80"
           fi

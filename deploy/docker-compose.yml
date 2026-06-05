@@ -1,0 +1,123 @@
+name: fuoverflow
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fuoverflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fuoverflow}
+      POSTGRES_USER: ${DB_USERNAME:-fuoverflow}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    ports:
+      - "${POSTGRES_PUBLISH_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-fuoverflow} -d ${POSTGRES_DB:-fuoverflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: fuoverflow-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PUBLISH_PORT:-6379}:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: fuoverflow-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_S3_ACCESS_KEY:-fuoverflow}
+      MINIO_ROOT_PASSWORD: ${STORAGE_S3_SECRET_KEY:?STORAGE_S3_SECRET_KEY is required}
+    ports:
+      - "${MINIO_API_PUBLISH_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PUBLISH_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: fuoverflow-minio-init
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD}; do sleep 1; done;
+      mc mb --ignore-existing local/$${MINIO_BUCKET};
+      mc anonymous set download local/$${MINIO_BUCKET};
+      exit 0;
+      "
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_S3_ACCESS_KEY:-fuoverflow}
+      MINIO_ROOT_PASSWORD: ${STORAGE_S3_SECRET_KEY}
+      MINIO_BUCKET: ${STORAGE_S3_BUCKET:-fuoverflow-media}
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: fuoverflow-backend:latest
+    container_name: fuoverflow-backend
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-/opt/fuoverflow/.env}
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SERVER_PORT: "8080"
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-fuoverflow}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      STORAGE_S3_ENDPOINT: http://minio:9000
+    ports:
+      - "${BACKEND_PUBLISH_PORT:-18080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
+        NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL: ${NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL:?NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL is required}
+    image: fuoverflow-frontend:latest
+    container_name: fuoverflow-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    ports:
+      - "${FRONTEND_PUBLISH_PORT:-19080}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
