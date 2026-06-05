@@ -77,13 +77,21 @@ jobs:
 
           if [ "$backend_up" = true ]; then
             sleep 15
-            curl -fsS "http://localhost:${{ env.BACKEND_PORT }}/actuator/health"
+            if curl -fsS "http://localhost:${{ env.BACKEND_PORT }}/actuator/health"; then
+              echo "Backend health OK."
+            else
+              echo "::warning::Backend service is active but port ${{ env.BACKEND_PORT }} is not responding. Run: sudo journalctl -u fuoverflow-backend -n 80 --no-pager"
+            fi
           else
             echo "Skip backend health check — service not running yet."
           fi
 
           if [ "$frontend_up" = true ]; then
-            curl -fsS -o /dev/null -w "%{http_code}" "http://localhost:${{ env.FRONTEND_PORT }}" | grep -qE '^200|307|308$'
+            if curl -fsS -o /dev/null -w "%{http_code}" "http://localhost:${{ env.FRONTEND_PORT }}" | grep -qE '^200|307|308$'; then
+              echo "Frontend health OK."
+            else
+              echo "::warning::Frontend service is active but port ${{ env.FRONTEND_PORT }} is not responding."
+            fi
           else
             echo "Skip frontend health check — service not running yet."
           fi
