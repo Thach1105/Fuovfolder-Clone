@@ -22,13 +22,14 @@ function VerifyEmailContent() {
       return;
     }
 
+    const verifyToken = token;
     let cancelled = false;
 
     async function verify() {
       setState("verifying");
       setError(null);
       try {
-        const user = await authApi.verifyEmail(token);
+        const user = await authApi.verifyEmail(verifyToken);
         if (cancelled) {
           return;
         }
