@@ -22,6 +22,11 @@ jobs:
         run: |
           mkdir -p "${{ env.DEPLOY_ROOT }}/backend"
           mkdir -p "${{ env.DEPLOY_ROOT }}/frontend"
+          mkdir -p "${{ env.DEPLOY_ROOT }}/deploy/systemd"
+
+      - name: Sync systemd unit files
+        run: |
+          rsync -a deploy/systemd/ "${{ env.DEPLOY_ROOT }}/deploy/systemd/"
 
       - name: Build backend
         working-directory: backend
