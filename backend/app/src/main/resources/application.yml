@@ -63,6 +63,26 @@ fuoverflow:
     refund-enabled: ${SOURCE_REFUND_ENABLED:true}
     default-page-size: ${SOURCE_DEFAULT_PAGE_SIZE:24}
     expiry-scan-interval-ms: ${SOURCE_EXPIRY_SCAN_INTERVAL_MS:60000}
+  forum:
+    crawler:
+      base-url: ${FORUM_CRAWL_BASE_URL:https://fuoverflow.com}
+      user-agent: ${FORUM_CRAWL_USER_AGENT:Mozilla/5.0 (compatible; FuOverflowSyncBot/1.0; +https://fuoverflow.com)}
+      request-delay-ms: ${FORUM_CRAWL_REQUEST_DELAY_MS:1500}
+      timeout-ms: ${FORUM_CRAWL_TIMEOUT_MS:20000}
+      max-retries: ${FORUM_CRAWL_MAX_RETRIES:2}
+      auth-cookie: ${FORUM_CRAWL_AUTH_COOKIE:}
+      forum-slugs: ${FORUM_CRAWL_FORUM_SLUGS:hoi-dap}
+      max-thread-pages-per-forum: ${FORUM_CRAWL_MAX_THREAD_PAGES:1}
+      max-post-pages-per-thread: ${FORUM_CRAWL_MAX_POST_PAGES:1}
+      max-threads-per-forum: ${FORUM_CRAWL_MAX_THREADS:30}
+    sync:
+      enabled: ${FORUM_SYNC_ENABLED:false}
+      interval-ms: ${FORUM_SYNC_INTERVAL_MS:3600000}
+      mode: ${FORUM_SYNC_MODE:public}
+      scope: ${FORUM_SYNC_SCOPE:incremental}
+  worker:
+    outbox:
+      poll-interval-ms: ${WORKER_OUTBOX_POLL_INTERVAL_MS:30000}
   storage:
     provider: ${STORAGE_PROVIDER:s3}
     uploads-path: ${FUO_UPLOADS_PATH:/data/fuoverflow/uploads}

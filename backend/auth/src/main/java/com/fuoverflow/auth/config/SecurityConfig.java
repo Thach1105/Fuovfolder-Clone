@@ -41,6 +41,10 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/coursera/catalog", "/api/v1/coursera/catalog/**")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/forums", "/api/v1/forums/**",
+                                "/api/v1/threads", "/api/v1/threads/**")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/source/catalog/*/questions")
                         .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/source/catalog", "/api/v1/source/catalog/**")
