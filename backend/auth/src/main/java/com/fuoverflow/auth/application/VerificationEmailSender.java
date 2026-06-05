@@ -58,14 +58,14 @@ public class VerificationEmailSender {
         Context context = new Context(Locale.ENGLISH);
         context.setVariable("displayName", StringUtils.hasText(displayName) ? displayName : "FuOverflow user");
         context.setVariable("verificationLink", verificationLink(verificationUrlBase, token));
-        context.setVariable("verificationToken", token);
         context.setVariable("expiresIn", "24 hours");
         return templateEngine.process(TEMPLATE, context);
     }
 
     private String verificationLink(String verificationUrlBase, String token) {
         if (!StringUtils.hasText(verificationUrlBase)) {
-            return token;
+            throw new IllegalStateException(
+                    "Email verification URL is not configured. Set AUTH_EMAIL_VERIFICATION_URL_BASE to the frontend verify page.");
         }
         String separator = verificationUrlBase.contains("?") ? "&" : "?";
         return verificationUrlBase + separator + "token=" + token;

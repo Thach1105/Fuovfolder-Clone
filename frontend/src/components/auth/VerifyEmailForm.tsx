@@ -1,75 +1,125 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import * as authApi from "@/lib/api/auth";
 
+type VerifyState = "idle" | "verifying" | "success" | "error";
+
 function VerifyEmailContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const initialToken = searchParams.get("token") ?? "";
+  const token = searchParams.get("token");
+  const sent = searchParams.get("sent") === "1";
 
-  const [token, setToken] = useState(initialToken);
+  const [state, setState] = useState<VerifyState>(token ? "verifying" : "idle");
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    setSubmitting(true);
-    try {
-      const user = await authApi.verifyEmail(token);
-      setSuccess(`Xác minh thành công cho ${user.displayName}. Bạn có thể đăng nhập.`);
-      setTimeout(() => router.push("/login"), 1500);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Xác minh thất bại. Kiểm tra lại token.");
-      }
-    } finally {
-      setSubmitting(false);
+  useEffect(() => {
+    if (!token) {
+      return;
     }
+
+    let cancelled = false;
+
+    async function verify() {
+      setState("verifying");
+      setError(null);
+      try {
+        const user = await authApi.verifyEmail(token);
+        if (cancelled) {
+          return;
+        }
+        setDisplayName(user.displayName);
+        setState("success");
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        if (err instanceof ApiError) {
+          setError(err.message);
+        } else {
+          setError("Xác minh thất bại. Liên kết có thể đã hết hạn hoặc không hợp lệ.");
+        }
+        setState("error");
+      }
+    }
+
+    verify();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  if (state === "verifying") {
+    return (
+      <div className="space-y-3 text-center">
+        <p className="text-sm text-slate-600">Đang xác minh email của bạn...</p>
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-fuo-600 border-t-transparent" />
+      </div>
+    );
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
+  if (state === "success") {
+    return (
+      <div className="space-y-5 text-center">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          Email đã được xác minh thành công
+          {displayName ? ` cho ${displayName}` : ""}. Bạn có thể đăng nhập ngay.
+        </div>
+        <Link href="/login" className="btn-primary inline-block w-full">
+          Đăng nhập
+        </Link>
+      </div>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <div className="space-y-4">
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </div>
-      )}
-      {success && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {success}
-        </div>
-      )}
-
-      <p className="text-sm text-slate-600">
-        Nhập mã xác minh email. Trong môi trường dev, token được trả về sau khi đăng ký.
-      </p>
-
-      <div>
-        <label htmlFor="token" className="mb-1 block text-sm font-medium text-slate-700">
-          Verification token
-        </label>
-        <input
-          id="token"
-          type="text"
-          required
-          className="input-field font-mono text-xs"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-        />
+        <p className="text-center text-sm text-slate-500">
+          Liên kết xác minh không hợp lệ hoặc đã hết hạn. Vui lòng đăng ký lại hoặc liên hệ hỗ trợ.
+        </p>
+        <Link href="/login" className="btn-primary inline-block w-full text-center">
+          Về trang đăng nhập
+        </Link>
       </div>
+    );
+  }
 
-      <button type="submit" disabled={submitting} className="btn-primary w-full">
-        {submitting ? "Đang xác minh..." : "Xác minh email"}
-      </button>
-    </form>
+  if (sent) {
+    return (
+      <div className="space-y-4 text-center">
+        <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+          Chúng tôi đã gửi email xác minh đến hộp thư của bạn. Nhấn vào liên kết trong email để kích hoạt tài
+          khoản.
+        </div>
+        <p className="text-sm text-slate-500">
+          Không thấy email? Kiểm tra thư mục spam hoặc đợi vài phút rồi thử lại.
+        </p>
+        <Link href="/login" className="font-medium text-fuo-600 hover:underline">
+          Về trang đăng nhập
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 text-center">
+      <p className="text-sm text-slate-600">
+        Mở liên kết xác minh trong email để kích hoạt tài khoản. Trang này sẽ tự động xác minh khi bạn nhấn vào
+        liên kết.
+      </p>
+      <Link href="/login" className="font-medium text-fuo-600 hover:underline">
+        Về trang đăng nhập
+      </Link>
+    </div>
   );
 }
 

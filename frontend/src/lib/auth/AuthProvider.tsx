@@ -18,7 +18,7 @@ interface AuthContextValue {
   user: UserProfileResponse | null;
   loading: boolean;
   login: (data: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<string>;
+  register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -55,8 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(async (data: RegisterRequest) => {
-    const response = await authApi.register(data);
-    return response.verificationToken;
+    await authApi.register(data);
   }, []);
 
   const logout = useCallback(async () => {

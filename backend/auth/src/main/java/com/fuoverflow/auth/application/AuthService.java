@@ -47,7 +47,7 @@ public class AuthService {
         String verificationToken = emailVerification.create(user.id());
         verificationEmailSender.send(user.email(), user.displayName(), verificationToken);
         return new RegisterResponse(user.id(), user.email(), user.username(), user.displayName(),
-                user.status(), user.emailVerified(), verificationToken);
+                user.status(), user.emailVerified());
     }
 
     @Transactional

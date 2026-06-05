@@ -28,14 +28,14 @@ export function RegisterForm() {
     setError(null);
     setSubmitting(true);
     try {
-      const token = await register({
+      await register({
         email: form.email,
         username: form.username,
         password: form.password,
         displayName: form.displayName,
         campus: form.campus || undefined,
       });
-      router.push(`/verify-email?token=${encodeURIComponent(token)}`);
+      router.push("/verify-email?sent=1");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);

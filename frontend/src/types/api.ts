@@ -49,7 +49,6 @@ export interface RegisterResponse {
   displayName: string;
   status: string;
   emailVerified: boolean;
-  verificationToken: string;
 }
 
 export interface LoginRequest {
