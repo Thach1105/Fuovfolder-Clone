@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { API_BASE, apiFetch } from "@/lib/api/client";
 
 export interface SourceCatalogItem {
   id: string;
@@ -118,6 +118,59 @@ export interface SourceOverview {
   refundedPoints: number;
 }
 
+export interface AdminQuestionOption {
+  id: string;
+  optionText: string | null;
+  optionImageUrl: string | null;
+  isCorrect: boolean;
+  sortOrder: number;
+}
+
+export interface AdminQuestion {
+  id: string;
+  catalogItemId: string;
+  questionText: string | null;
+  questionImageUrl: string | null;
+  explanation: string | null;
+  multipleCorrect: boolean;
+  sortOrder: number;
+  options: AdminQuestionOption[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicQuestionOption {
+  id: string;
+  optionText: string | null;
+  optionImageUrl: string | null;
+  isCorrect: boolean;
+}
+
+export interface PublicQuestion {
+  id: string;
+  questionText: string | null;
+  questionImageUrl: string | null;
+  explanation: string | null;
+  multipleCorrect: boolean;
+  sortOrder: number;
+  options: PublicQuestionOption[];
+}
+
+export interface QuestionOptionBody {
+  optionText?: string;
+  optionImageUrl?: string;
+  isCorrect?: boolean;
+  sortOrder?: number;
+}
+
+export interface QuestionBody {
+  questionText?: string;
+  questionImageUrl?: string;
+  explanation?: string;
+  sortOrder?: number;
+  options: QuestionOptionBody[];
+}
+
 export interface AdminSourceCatalogBody {
   code: string;
   title: string;
@@ -227,6 +280,72 @@ export function updateSourceCatalogItem(id: string, body: Partial<AdminSourceCat
 
 export function deleteSourceCatalogItem(id: string) {
   return apiFetch<void>(`/api/v1/admin/source/catalog/${id}`, { method: "DELETE" });
+}
+
+export function sourceMediaUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith("http")) return url;
+  return `${API_BASE}${url}`;
+}
+
+export function listAdminQuestions(catalogItemId: string) {
+  return apiFetch<AdminQuestion[]>(`/api/v1/admin/source/catalog/${catalogItemId}/questions`);
+}
+
+export function createQuestion(catalogItemId: string, body: QuestionBody) {
+  return apiFetch<AdminQuestion>(`/api/v1/admin/source/catalog/${catalogItemId}/questions`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateQuestion(catalogItemId: string, questionId: string, body: QuestionBody) {
+  return apiFetch<AdminQuestion>(
+    `/api/v1/admin/source/catalog/${catalogItemId}/questions/${questionId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function deleteQuestion(catalogItemId: string, questionId: string) {
+  return apiFetch<void>(
+    `/api/v1/admin/source/catalog/${catalogItemId}/questions/${questionId}`,
+    { method: "DELETE" },
+  );
+}
+
+export function reorderQuestions(catalogItemId: string, questionIds: string[]) {
+  return apiFetch<void>(`/api/v1/admin/source/catalog/${catalogItemId}/questions/reorder`, {
+    method: "PUT",
+    body: JSON.stringify({ questionIds }),
+  });
+}
+
+export async function uploadSourceMedia(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/api/v1/admin/source/media`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(text || "Upload failed");
+  }
+  const parsed = JSON.parse(text) as { data?: { url: string }; success?: boolean };
+  if (!parsed.data?.url) {
+    throw new Error("Upload failed");
+  }
+  return parsed.data.url;
+}
+
+export function getSourceQuestions(idOrCode: string) {
+  return apiFetch<PublicQuestion[]>(
+    `/api/v1/source/catalog/${encodeURIComponent(idOrCode)}/questions`,
+  );
 }
 
 export function listAdminSourcePurchases(opts?: {

@@ -6,10 +6,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ApiError } from "@/lib/api/client";
 import { getPointsBalance } from "@/lib/api/points";
+import { SourceQuestionRunner } from "@/components/source/SourceQuestionRunner";
 import {
+  type PublicQuestion,
   type SourceCatalogDetail,
   formatPoints,
   getSourceDetail,
+  getSourceQuestions,
   purchaseSource,
 } from "@/lib/api/source";
 
@@ -25,6 +28,8 @@ export default function SuocDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<PublicQuestion[]>([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,6 +54,18 @@ export default function SuocDetailPage() {
     }
     getPointsBalance().then((r) => setBalance(r.balance)).catch(() => setBalance(null));
   }, [user]);
+
+  useEffect(() => {
+    if (!detail?.hasActiveAccess || !user) {
+      setQuestions([]);
+      return;
+    }
+    setQuestionsLoading(true);
+    getSourceQuestions(code)
+      .then(setQuestions)
+      .catch(() => setQuestions([]))
+      .finally(() => setQuestionsLoading(false));
+  }, [detail?.hasActiveAccess, user, code]);
 
   async function handlePurchase() {
     if (!user) {
@@ -151,6 +168,14 @@ export default function SuocDetailPage() {
             <div className="card p-5 text-sm text-slate-700">
               <p className="whitespace-pre-line">{detail.description}</p>
             </div>
+          )}
+
+          {ownedActive && (
+            questionsLoading ? (
+              <p className="text-sm text-slate-500">Đang tải câu hỏi...</p>
+            ) : (
+              <SourceQuestionRunner questions={questions} />
+            )
           )}
         </div>
 

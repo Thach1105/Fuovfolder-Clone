@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -18,7 +19,6 @@ const EMPTY_FORM = {
   description: "",
   pricePoints: "",
   accessDays: "60",
-  questionCount: "0",
   duplicationRatePercent: "0",
   passRatePercent: "0",
   cardColor: "",
@@ -37,6 +37,7 @@ export default function AdminSourceCatalogPage() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,7 +65,6 @@ export default function AdminSourceCatalogPage() {
       description: item.description ?? "",
       pricePoints: String(item.pricePoints),
       accessDays: String(item.accessDays),
-      questionCount: String(item.questionCount),
       duplicationRatePercent: String(item.duplicationRateBp / 100),
       passRatePercent: String(item.passRateBp / 100),
       cardColor: item.cardColor ?? "",
@@ -84,7 +84,6 @@ export default function AdminSourceCatalogPage() {
       description: form.description.trim() || undefined,
       pricePoints: parseInt(form.pricePoints, 10),
       accessDays: parseInt(form.accessDays, 10) || 60,
-      questionCount: parseInt(form.questionCount, 10) || 0,
       duplicationRateBp: Math.round((parseFloat(form.duplicationRatePercent) || 0) * 100),
       passRateBp: Math.round((parseFloat(form.passRatePercent) || 0) * 100),
       cardColor: form.cardColor.trim() || undefined,
@@ -112,8 +111,32 @@ export default function AdminSourceCatalogPage() {
     await load();
   }
 
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(
+      (item) =>
+        item.code.toLowerCase().includes(q) ||
+        item.title.toLowerCase().includes(q) ||
+        (item.categorySlug ?? "").toLowerCase().includes(q),
+    );
+  }, [items, search]);
+
   return (
     <AdminShell title="Suộc — Danh mục tài liệu" description="Quản lý mã môn, giá FUO Point và thời hạn">
+      <div className="mb-4">
+        <input
+          className={`${inputClass} max-w-md`}
+          placeholder="Tìm theo mã, tên hoặc danh mục..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        {search.trim() && (
+          <p className="mt-1 text-xs text-slate-500">
+            {filteredItems.length} / {items.length} tài liệu
+          </p>
+        )}
+      </div>
       <div className="grid gap-8 lg:grid-cols-2">
         <form onSubmit={handleSubmit} className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/50 p-5">
           <h2 className="text-sm font-semibold text-white">
@@ -161,16 +184,15 @@ export default function AdminSourceCatalogPage() {
                 onChange={(e) => setForm({ ...form, accessDays: e.target.value })}
               />
             </label>
-            <label className="text-xs text-slate-400">
-              Số câu hỏi
-              <input
-                className={`${inputClass} mt-1`}
-                type="number"
-                min={0}
-                value={form.questionCount}
-                onChange={(e) => setForm({ ...form, questionCount: e.target.value })}
-              />
-            </label>
+            {editingId && (
+              <p className="text-xs text-slate-400">
+                Số câu hỏi:{" "}
+                <span className="text-white">
+                  {items.find((i) => i.id === editingId)?.questionCount ?? 0}
+                </span>{" "}
+                (tự đồng bộ từ ngân hàng câu hỏi)
+              </p>
+            )}
             <label className="text-xs text-slate-400">
               % Trùng lặp
               <input
@@ -264,6 +286,7 @@ export default function AdminSourceCatalogPage() {
               <thead className="bg-slate-900 text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-3 py-2">Mã</th>
+                  <th className="px-3 py-2">Câu hỏi</th>
                   <th className="px-3 py-2">Giá</th>
                   <th className="px-3 py-2">Hạn</th>
                   <th className="px-3 py-2">Trạng thái</th>
@@ -271,12 +294,13 @@ export default function AdminSourceCatalogPage() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
+                {filteredItems.map((item) => (
                   <tr key={item.id} className="border-t border-slate-800">
                     <td className="px-3 py-2">
                       <span className="font-mono text-amber-400">{item.code}</span>
                       <p className="max-w-[200px] truncate text-xs text-slate-500">{item.title}</p>
                     </td>
+                    <td className="px-3 py-2 text-slate-400">{item.questionCount}</td>
                     <td className="px-3 py-2">{formatPoints(item.pricePoints)}</td>
                     <td className="px-3 py-2 text-slate-400">{item.accessDays}d</td>
                     <td className="px-3 py-2 text-xs">
@@ -284,6 +308,12 @@ export default function AdminSourceCatalogPage() {
                       {item.featured && " · ★"}
                     </td>
                     <td className="space-x-2 px-3 py-2 text-right">
+                      <Link
+                        href={`/admin/source/catalog/${item.id}/questions`}
+                        className="text-emerald-400 hover:underline"
+                      >
+                        Câu hỏi
+                      </Link>
                       <button type="button" className="text-amber-400 hover:underline" onClick={() => startEdit(item)}>
                         Sửa
                       </button>

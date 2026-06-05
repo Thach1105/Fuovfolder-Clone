@@ -37,8 +37,12 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/actuator/health/**"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/uploads/**")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/coursera/catalog", "/api/v1/coursera/catalog/**")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/source/catalog/*/questions")
+                        .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/source/catalog", "/api/v1/source/catalog/**")
                         .permitAll()
                         .requestMatchers("/api/v1/auth/token/generate").hasAnyRole("ADMIN", "SUB_ADMIN")

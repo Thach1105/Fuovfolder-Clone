@@ -57,7 +57,7 @@ public class SourceCatalogAdminService {
                 request.description(),
                 request.pricePoints(),
                 request.accessDays() != null ? request.accessDays() : DEFAULT_ACCESS_DAYS,
-                request.questionCount() != null ? request.questionCount() : 0,
+                0,
                 request.duplicationRateBp() != null ? request.duplicationRateBp() : 0,
                 request.passRateBp() != null ? request.passRateBp() : 0,
                 request.cardColor(),
@@ -91,9 +91,7 @@ public class SourceCatalogAdminService {
         if (request.accessDays() != null) {
             entity.setAccessDays(request.accessDays());
         }
-        if (request.questionCount() != null) {
-            entity.setQuestionCount(request.questionCount());
-        }
+        // question_count is synced automatically from the question bank.
         if (request.duplicationRateBp() != null) {
             entity.setDuplicationRateBp(request.duplicationRateBp());
         }

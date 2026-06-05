@@ -4,7 +4,9 @@ import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.source.api.dto.CatalogItemDetailResponse;
 import com.fuoverflow.source.api.dto.CatalogItemResponse;
 import com.fuoverflow.source.api.dto.CatalogPageResponse;
+import com.fuoverflow.source.api.dto.PublicQuestionResponse;
 import com.fuoverflow.source.application.SourceCatalogQueryService;
+import com.fuoverflow.source.application.SourceQuestionQueryService;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,9 +21,13 @@ import java.util.UUID;
 @RequestMapping("/api/v1/source/catalog")
 public class SourceCatalogController {
     private final SourceCatalogQueryService queryService;
+    private final SourceQuestionQueryService questionQueryService;
 
-    public SourceCatalogController(SourceCatalogQueryService queryService) {
+    public SourceCatalogController(
+            SourceCatalogQueryService queryService,
+            SourceQuestionQueryService questionQueryService) {
         this.queryService = queryService;
+        this.questionQueryService = questionQueryService;
     }
 
     @GetMapping
@@ -48,5 +54,13 @@ public class SourceCatalogController {
                 ? UUID.fromString(authentication.getName())
                 : null;
         return ApiResponse.ok(queryService.getDetail(idOrCode, userId));
+    }
+
+    @GetMapping("/{idOrCode}/questions")
+    public ApiResponse<List<PublicQuestionResponse>> listQuestions(
+            @PathVariable String idOrCode,
+            Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
+        return ApiResponse.ok(questionQueryService.listForUser(idOrCode, userId));
     }
 }
