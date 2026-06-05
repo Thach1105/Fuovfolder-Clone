@@ -282,10 +282,14 @@ export function deleteSourceCatalogItem(id: string) {
   return apiFetch<void>(`/api/v1/admin/source/catalog/${id}`, { method: "DELETE" });
 }
 
-export function sourceMediaUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  if (url.startsWith("http")) return url;
-  return `${API_BASE}${url}`;
+const STORAGE_PUBLIC_BASE =
+  process.env.NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL ?? "http://localhost:9000/fuoverflow-media";
+
+export function sourceMediaUrl(urlOrKey: string | null | undefined): string | null {
+  if (!urlOrKey) return null;
+  if (urlOrKey.startsWith("http://") || urlOrKey.startsWith("https://")) return urlOrKey;
+  if (urlOrKey.startsWith("/uploads/")) return `${API_BASE}${urlOrKey}`;
+  return `${STORAGE_PUBLIC_BASE.replace(/\/$/, "")}/${urlOrKey.replace(/^\//, "")}`;
 }
 
 export function listAdminQuestions(catalogItemId: string) {
@@ -323,7 +327,12 @@ export function reorderQuestions(catalogItemId: string, questionIds: string[]) {
   });
 }
 
-export async function uploadSourceMedia(file: File): Promise<string> {
+export interface SourceMediaUploadResult {
+  objectKey: string;
+  publicUrl: string;
+}
+
+export async function uploadSourceMedia(file: File): Promise<SourceMediaUploadResult> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await fetch(`${API_BASE}/api/v1/admin/source/media`, {
@@ -335,11 +344,14 @@ export async function uploadSourceMedia(file: File): Promise<string> {
   if (!res.ok) {
     throw new Error(text || "Upload failed");
   }
-  const parsed = JSON.parse(text) as { data?: { url: string }; success?: boolean };
-  if (!parsed.data?.url) {
+  const parsed = JSON.parse(text) as {
+    data?: SourceMediaUploadResult;
+    success?: boolean;
+  };
+  if (!parsed.data?.objectKey || !parsed.data?.publicUrl) {
     throw new Error("Upload failed");
   }
-  return parsed.data.url;
+  return parsed.data;
 }
 
 export function getSourceQuestions(idOrCode: string) {

@@ -18,16 +18,19 @@ public class SourceQuestionQueryService {
     private final SourceQuestionOptionRepository optionRepository;
     private final SourceCatalogItemRepository catalogRepository;
     private final SourceAccessGuard accessGuard;
+    private final SourceMediaUrlResolver urlResolver;
 
     public SourceQuestionQueryService(
             SourceQuestionRepository questionRepository,
             SourceQuestionOptionRepository optionRepository,
             SourceCatalogItemRepository catalogRepository,
-            SourceAccessGuard accessGuard) {
+            SourceAccessGuard accessGuard,
+            SourceMediaUrlResolver urlResolver) {
         this.questionRepository = questionRepository;
         this.optionRepository = optionRepository;
         this.catalogRepository = catalogRepository;
         this.accessGuard = accessGuard;
+        this.urlResolver = urlResolver;
     }
 
     @Transactional(readOnly = true)
@@ -35,9 +38,9 @@ public class SourceQuestionQueryService {
         SourceCatalogItemEntity item = resolveActive(idOrCode);
         accessGuard.requireActiveAccess(userId, item.getId());
         return questionRepository.findByCatalogItemIdAndDeletedAtIsNullOrderBySortOrderAsc(item.getId()).stream()
-                .map(q -> SourceQuestionMapper.toPublic(
+                .map(q -> urlResolver.resolvePublic(SourceQuestionMapper.toPublic(
                         q,
-                        optionRepository.findByQuestionIdOrderBySortOrderAsc(q.getId())))
+                        optionRepository.findByQuestionIdOrderBySortOrderAsc(q.getId()))))
                 .toList();
     }
 

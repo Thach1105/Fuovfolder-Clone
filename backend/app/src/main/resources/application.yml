@@ -64,9 +64,18 @@ fuoverflow:
     default-page-size: ${SOURCE_DEFAULT_PAGE_SIZE:24}
     expiry-scan-interval-ms: ${SOURCE_EXPIRY_SCAN_INTERVAL_MS:60000}
   storage:
+    provider: ${STORAGE_PROVIDER:s3}
     uploads-path: ${FUO_UPLOADS_PATH:/data/fuoverflow/uploads}
     logs-path: ${FUO_LOGS_PATH:/data/fuoverflow/logs}
     temp-path: ${FUO_TEMP_PATH:/data/fuoverflow/tmp}
+    s3:
+      endpoint: ${STORAGE_S3_ENDPOINT:http://localhost:9000}
+      region: ${STORAGE_S3_REGION:us-east-1}
+      bucket: ${STORAGE_S3_BUCKET:fuoverflow-media}
+      access-key: ${STORAGE_S3_ACCESS_KEY:fuoverflow}
+      secret-key: ${STORAGE_S3_SECRET_KEY:fuoverflow_minio_dev}
+      public-base-url: ${STORAGE_S3_PUBLIC_BASE_URL:http://localhost:9000}
+      path-style-access: ${STORAGE_S3_PATH_STYLE:true}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
     allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}

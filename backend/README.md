@@ -12,8 +12,12 @@ Base Java Spring Boot monolith backend scaffold.
 ## Local services
 
 ```bash
-docker compose up -d postgres redis
+docker compose up -d postgres redis minio minio-init
 ```
+
+Object storage (MinIO, S3-compatible) serves uploaded media. Default local settings are in `application.yml` under `fuoverflow.storage.s3`. MinIO console: http://localhost:9001 (user `fuoverflow` / `fuoverflow_minio_dev`).
+
+To use local disk instead of MinIO, set `STORAGE_PROVIDER=local`.
 
 ## Build
 

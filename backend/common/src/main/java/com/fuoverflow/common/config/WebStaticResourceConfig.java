@@ -1,5 +1,6 @@
 package com.fuoverflow.common.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -7,10 +8,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.nio.file.Path;
 
 @Configuration
+@ConditionalOnProperty(name = "fuoverflow.storage.provider", havingValue = "local")
 public class WebStaticResourceConfig implements WebMvcConfigurer {
-    private final FileStorageProperties properties;
+    private final ObjectStorageProperties properties;
 
-    public WebStaticResourceConfig(FileStorageProperties properties) {
+    public WebStaticResourceConfig(ObjectStorageProperties properties) {
         this.properties = properties;
     }
 

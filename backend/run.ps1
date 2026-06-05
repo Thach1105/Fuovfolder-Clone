@@ -51,10 +51,10 @@ Write-Host "==> FuOverflow backend ($BackendRoot)" -ForegroundColor Cyan
 
 if (-not $SkipDocker) {
     Require-Command "docker"
-    Write-Host "==> docker compose up -d postgres redis" -ForegroundColor Cyan
+    Write-Host "==> docker compose up -d postgres redis minio minio-init" -ForegroundColor Cyan
     Push-Location $BackendRoot
     try {
-        & docker compose up -d postgres redis
+        & docker compose up -d postgres redis minio minio-init
         if ($LASTEXITCODE -ne 0) {
             throw "docker compose failed with exit code $LASTEXITCODE"
         }

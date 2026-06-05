@@ -42,6 +42,7 @@ export default function AdminSourceQuestionsPage() {
   const [questionImageUrl, setQuestionImageUrl] = useState<string | null>(null);
   const [explanation, setExplanation] = useState("");
   const [options, setOptions] = useState<QuestionOptionBody[]>([EMPTY_OPTION(), EMPTY_OPTION()]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -133,6 +134,15 @@ export default function AdminSourceQuestionsPage() {
     await deleteQuestion(catalogItemId, questionId);
     if (editingId === questionId) resetForm();
     await load();
+  }
+
+  function toggleExpanded(questionId: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(questionId)) next.delete(questionId);
+      else next.add(questionId);
+      return next;
+    });
   }
 
   async function moveQuestion(questionId: string, direction: -1 | 1) {
@@ -253,25 +263,37 @@ export default function AdminSourceQuestionsPage() {
           ) : (
             <ul className="divide-y divide-slate-800">
               {questions.map((q, index) => {
-                const preview = q.questionText ?? "(Ảnh)";
-                const thumb = sourceMediaUrl(q.questionImageUrl);
+                const preview = q.questionText?.trim() || "(Ảnh)";
                 const correctCount = q.options.filter((o) => o.isCorrect).length;
+                const expanded = expandedIds.has(q.id);
+                const questionImage = sourceMediaUrl(q.questionImageUrl);
                 return (
-                  <li key={q.id} className="space-y-2 p-4 text-sm text-slate-300">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
+                  <li key={q.id} className="text-sm text-slate-300">
+                    <div className="flex items-start gap-2 p-4">
+                      <button
+                        type="button"
+                        className="mt-0.5 shrink-0 text-slate-500 hover:text-slate-300"
+                        aria-expanded={expanded}
+                        aria-label={expanded ? "Thu gọn câu hỏi" : "Mở chi tiết câu hỏi"}
+                        onClick={() => toggleExpanded(q.id)}
+                      >
+                        <span className="inline-block w-4 text-center text-xs">
+                          {expanded ? "▼" : "▶"}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 text-left"
+                        onClick={() => toggleExpanded(q.id)}
+                      >
                         <p className="font-medium text-white">
                           {index + 1}. {preview}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="mt-0.5 text-xs text-slate-500">
                           {q.options.length} đáp án · {correctCount} đúng
                           {q.multipleCorrect ? " · chọn nhiều" : ""}
                         </p>
-                        {thumb && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={thumb} alt="" className="mt-2 max-h-20 rounded border border-slate-700" />
-                        )}
-                      </div>
+                      </button>
                       <div className="flex shrink-0 flex-col gap-1 text-xs">
                         <button type="button" className="text-amber-400 hover:underline" onClick={() => startEdit(q)}>
                           Sửa
@@ -297,6 +319,72 @@ export default function AdminSourceQuestionsPage() {
                         </button>
                       </div>
                     </div>
+
+                    {expanded && (
+                      <div className="space-y-4 border-t border-slate-800 bg-slate-950/40 px-4 py-4 pl-10">
+                        {q.questionText && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase text-slate-500">Nội dung</p>
+                            <p className="mt-1 whitespace-pre-line text-slate-200">{q.questionText}</p>
+                          </div>
+                        )}
+                        {questionImage && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase text-slate-500">Ảnh câu hỏi</p>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={questionImage}
+                              alt=""
+                              className="mt-2 max-h-48 rounded-lg border border-slate-700"
+                            />
+                          </div>
+                        )}
+                        {q.explanation && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase text-slate-500">Giải thích</p>
+                            <p className="mt-1 whitespace-pre-line text-slate-400">{q.explanation}</p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-xs font-semibold uppercase text-slate-500">Đáp án</p>
+                          <ul className="mt-2 space-y-2">
+                            {q.options.map((option, optionIndex) => {
+                              const optionImage = sourceMediaUrl(option.optionImageUrl);
+                              return (
+                                <li
+                                  key={option.id}
+                                  className={`rounded-lg border px-3 py-2 ${
+                                    option.isCorrect
+                                      ? "border-emerald-700/60 bg-emerald-950/30"
+                                      : "border-slate-800 bg-slate-900/50"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <span className="text-slate-500">#{optionIndex + 1}</span>
+                                    {option.isCorrect && (
+                                      <span className="rounded bg-emerald-800/60 px-1.5 py-0.5 font-medium text-emerald-300">
+                                        Đúng
+                                      </span>
+                                    )}
+                                  </div>
+                                  {option.optionText && (
+                                    <p className="mt-1 text-slate-200">{option.optionText}</p>
+                                  )}
+                                  {optionImage && (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={optionImage}
+                                      alt=""
+                                      className="mt-2 max-h-28 rounded border border-slate-700"
+                                    />
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
                   </li>
                 );
               })}

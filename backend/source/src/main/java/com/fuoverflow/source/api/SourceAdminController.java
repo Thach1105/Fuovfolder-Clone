@@ -141,7 +141,8 @@ public class SourceAdminController {
 
     @PostMapping(value = "/media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<MediaUploadResponse> uploadMedia(@RequestPart("file") MultipartFile file) {
-        return ApiResponse.ok(new MediaUploadResponse(mediaService.uploadQuestionImage(file)));
+        var stored = mediaService.uploadQuestionImage(file);
+        return ApiResponse.ok(new MediaUploadResponse(stored.objectKey(), stored.publicUrl()));
     }
 
     @GetMapping("/purchases")

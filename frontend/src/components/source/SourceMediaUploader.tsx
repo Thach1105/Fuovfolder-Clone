@@ -19,8 +19,8 @@ export function SourceMediaUploader({ value, onChange, label = "Ảnh" }: Props)
     setError(null);
     setUploading(true);
     try {
-      const url = await uploadSourceMedia(file);
-      onChange(url);
+      const uploaded = await uploadSourceMedia(file);
+      onChange(uploaded.objectKey);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload thất bại");
     } finally {

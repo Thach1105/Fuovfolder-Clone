@@ -43,8 +43,8 @@ echo "==> FuOverflow backend ($SCRIPT_DIR)"
 
 if [[ "$SKIP_DOCKER" == false ]]; then
   command -v docker >/dev/null 2>&1 || { echo "docker not found on PATH" >&2; exit 1; }
-  echo "==> docker compose up -d postgres redis"
-  (cd "$SCRIPT_DIR" && docker compose up -d postgres redis)
+  echo "==> docker compose up -d postgres redis minio minio-init"
+  (cd "$SCRIPT_DIR" && docker compose up -d postgres redis minio minio-init)
 else
   echo "==> Skipping docker compose (--skip-docker)"
 fi

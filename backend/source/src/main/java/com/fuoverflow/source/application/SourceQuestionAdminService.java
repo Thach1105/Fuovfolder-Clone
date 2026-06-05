@@ -29,30 +29,33 @@ public class SourceQuestionAdminService {
     private final SourceQuestionOptionRepository optionRepository;
     private final SourceCatalogItemRepository catalogRepository;
     private final SourceMediaService mediaService;
+    private final SourceMediaUrlResolver urlResolver;
 
     public SourceQuestionAdminService(
             SourceQuestionRepository questionRepository,
             SourceQuestionOptionRepository optionRepository,
             SourceCatalogItemRepository catalogRepository,
-            SourceMediaService mediaService) {
+            SourceMediaService mediaService,
+            SourceMediaUrlResolver urlResolver) {
         this.questionRepository = questionRepository;
         this.optionRepository = optionRepository;
         this.catalogRepository = catalogRepository;
         this.mediaService = mediaService;
+        this.urlResolver = urlResolver;
     }
 
     @Transactional(readOnly = true)
     public List<AdminQuestionResponse> list(UUID catalogItemId) {
         requireCatalogItem(catalogItemId);
         return questionRepository.findByCatalogItemIdAndDeletedAtIsNullOrderBySortOrderAsc(catalogItemId).stream()
-                .map(q -> SourceQuestionMapper.toAdmin(q, optionRepository.findByQuestionIdOrderBySortOrderAsc(q.getId())))
+                .map(this::toAdminResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public AdminQuestionResponse get(UUID catalogItemId, UUID questionId) {
         SourceQuestionEntity question = requireQuestion(catalogItemId, questionId);
-        return SourceQuestionMapper.toAdmin(question, optionRepository.findByQuestionIdOrderBySortOrderAsc(question.getId()));
+        return toAdminResponse(question);
     }
 
     @Transactional
@@ -73,7 +76,7 @@ public class SourceQuestionAdminService {
                 questionId,
                 catalogItemId,
                 validated.questionText(),
-                blankToNull(request.questionImageUrl()),
+                validated.questionImageUrl(),
                 blankToNull(request.explanation()),
                 validated.multipleCorrect(),
                 sortOrder,
@@ -98,13 +101,13 @@ public class SourceQuestionAdminService {
 
         cleanupReplacedImages(
                 question.getQuestionImageUrl(),
-                blankToNull(request.questionImageUrl()),
+                urlResolver.normalizeForStorage(request.questionImageUrl()),
                 existingOptions,
                 validated.options());
 
         Instant now = Instant.now();
         question.setQuestionText(validated.questionText());
-        question.setQuestionImageUrl(blankToNull(request.questionImageUrl()));
+        question.setQuestionImageUrl(validated.questionImageUrl());
         question.setExplanation(blankToNull(request.explanation()));
         question.setMultipleCorrect(validated.multipleCorrect());
         if (request.sortOrder() != null) {
@@ -125,9 +128,9 @@ public class SourceQuestionAdminService {
         List<SourceQuestionOptionEntity> options =
                 optionRepository.findByQuestionIdOrderBySortOrderAsc(questionId);
 
-        mediaService.deleteManagedUrl(question.getQuestionImageUrl());
+        mediaService.deleteStoredReference(question.getQuestionImageUrl());
         for (SourceQuestionOptionEntity option : options) {
-            mediaService.deleteManagedUrl(option.getOptionImageUrl());
+            mediaService.deleteStoredReference(option.getOptionImageUrl());
         }
 
         Instant now = Instant.now();
@@ -204,7 +207,7 @@ public class SourceQuestionAdminService {
             String questionImageUrl,
             List<QuestionOptionRequest> options) {
         String normalizedText = blankToNull(questionText);
-        String normalizedImage = blankToNull(questionImageUrl);
+        String normalizedImage = urlResolver.normalizeForStorage(questionImageUrl);
         if (normalizedText == null && normalizedImage == null) {
             throw new BadRequestException("QUESTION_EMPTY", "Question must have text or an image");
         }
@@ -217,7 +220,7 @@ public class SourceQuestionAdminService {
         int order = 0;
         for (QuestionOptionRequest option : options) {
             String optionText = blankToNull(option.optionText());
-            String optionImage = blankToNull(option.optionImageUrl());
+            String optionImage = urlResolver.normalizeForStorage(option.optionImageUrl());
             if (optionText == null && optionImage == null) {
                 throw new BadRequestException("OPTION_EMPTY", "Each option must have text or an image");
             }
@@ -244,7 +247,7 @@ public class SourceQuestionAdminService {
             List<SourceQuestionOptionEntity> oldOptions,
             List<ValidatedOption> newOptions) {
         if (oldQuestionImage != null && !oldQuestionImage.equals(newQuestionImage)) {
-            mediaService.deleteManagedUrl(oldQuestionImage);
+            mediaService.deleteStoredReference(oldQuestionImage);
         }
         Set<String> retainedOptionImages = new HashSet<>();
         for (ValidatedOption option : newOptions) {
@@ -255,9 +258,15 @@ public class SourceQuestionAdminService {
         for (SourceQuestionOptionEntity oldOption : oldOptions) {
             String imageUrl = oldOption.getOptionImageUrl();
             if (imageUrl != null && !retainedOptionImages.contains(imageUrl)) {
-                mediaService.deleteManagedUrl(imageUrl);
+                mediaService.deleteStoredReference(imageUrl);
             }
         }
+    }
+
+    private AdminQuestionResponse toAdminResponse(SourceQuestionEntity question) {
+        return urlResolver.resolveAdmin(SourceQuestionMapper.toAdmin(
+                question,
+                optionRepository.findByQuestionIdOrderBySortOrderAsc(question.getId())));
     }
 
     private static String blankToNull(String value) {

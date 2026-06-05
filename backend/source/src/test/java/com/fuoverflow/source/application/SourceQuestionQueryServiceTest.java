@@ -29,6 +29,8 @@ class SourceQuestionQueryServiceTest {
     private SourceCatalogItemRepository catalogRepository;
     @Mock
     private SourceAccessGuard accessGuard;
+    @Mock
+    private SourceMediaUrlResolver urlResolver;
 
     private SourceQuestionQueryService queryService;
     private UUID userId;
@@ -40,7 +42,8 @@ class SourceQuestionQueryServiceTest {
                 questionRepository,
                 optionRepository,
                 catalogRepository,
-                accessGuard);
+                accessGuard,
+                urlResolver);
         userId = UUID.randomUUID();
         catalogId = UUID.randomUUID();
     }

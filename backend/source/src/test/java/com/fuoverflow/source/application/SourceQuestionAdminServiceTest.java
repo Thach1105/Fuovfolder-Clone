@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,6 +39,8 @@ class SourceQuestionAdminServiceTest {
     private SourceCatalogItemRepository catalogRepository;
     @Mock
     private SourceMediaService mediaService;
+    @Mock
+    private SourceMediaUrlResolver urlResolver;
 
     private SourceQuestionAdminService adminService;
     private UUID catalogId;
@@ -48,8 +51,11 @@ class SourceQuestionAdminServiceTest {
                 questionRepository,
                 optionRepository,
                 catalogRepository,
-                mediaService);
+                mediaService,
+                urlResolver);
         catalogId = UUID.randomUUID();
+        lenient().when(urlResolver.normalizeForStorage(any())).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(urlResolver.resolveAdmin(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
     @Test

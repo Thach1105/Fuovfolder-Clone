@@ -1,6 +1,6 @@
 package com.fuoverflow.app;
 
-import com.fuoverflow.common.config.FileStorageProperties;
+import com.fuoverflow.common.config.ObjectStorageProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 
 @EnableAsync
 @SpringBootApplication(scanBasePackages = "com.fuoverflow")
-@EnableConfigurationProperties(FileStorageProperties.class)
+@EnableConfigurationProperties(ObjectStorageProperties.class)
 @EnableJpaRepositories(basePackages = "com.fuoverflow")
 @EntityScan(basePackages = "com.fuoverflow")
 public class FuOverflowApplication {
