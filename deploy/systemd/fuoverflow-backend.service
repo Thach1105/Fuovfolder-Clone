@@ -1,0 +1,14 @@
+[Unit]
+Description=FuOverflow Backend
+After=network.target docker.service
+
+[Service]
+User=patrick
+WorkingDirectory=/opt/fuoverflow
+EnvironmentFile=/opt/fuoverflow/.env
+ExecStart=/usr/bin/java -jar /opt/fuoverflow/backend/app.jar
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
