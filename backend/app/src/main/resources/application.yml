@@ -63,6 +63,8 @@ fuoverflow:
     refund-enabled: ${SOURCE_REFUND_ENABLED:true}
     default-page-size: ${SOURCE_DEFAULT_PAGE_SIZE:24}
     expiry-scan-interval-ms: ${SOURCE_EXPIRY_SCAN_INTERVAL_MS:60000}
+  membership:
+    expiry-scan-interval-ms: ${MEMBERSHIP_EXPIRY_SCAN_INTERVAL_MS:60000}
   forum:
     crawler:
       base-url: ${FORUM_CRAWL_BASE_URL:https://fuoverflow.com}

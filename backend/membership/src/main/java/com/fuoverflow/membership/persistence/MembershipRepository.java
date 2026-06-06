@@ -18,5 +18,14 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, UU
             """)
     List<MembershipEntity> findActiveByUserId(@Param("userId") UUID userId, @Param("now") Instant now);
 
+    @Query("""
+            SELECT m FROM MembershipEntity m
+            WHERE m.status = 'active'
+              AND m.currentPeriodEnd IS NOT NULL
+              AND m.currentPeriodEnd <= :now
+            ORDER BY m.currentPeriodEnd ASC
+            """)
+    List<MembershipEntity> findExpiredActive(@Param("now") Instant now);
+
     Optional<MembershipEntity> findTopByUserIdAndStatusOrderByCurrentPeriodEndDesc(UUID userId, String status);
 }
