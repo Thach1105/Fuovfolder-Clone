@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: fuoverflow-deploy
+  cancel-in-progress: true
+
 env:
   ENV_FILE: /opt/fuoverflow/.env
   COMPOSE_FILE: deploy/docker-compose.yml
@@ -25,6 +29,14 @@ jobs:
             echo "::error::Missing ${{ env.ENV_FILE }}. Copy .env.example and configure secrets on the server."
             exit 1
           fi
+          set -a
+          # shellcheck disable=SC1090
+          . "${{ env.ENV_FILE }}"
+          set +a
+          if [ "${BACKEND_PUBLISH_PORT:-18080}" != "${{ env.BACKEND_PORT }}" ] || [ "${FRONTEND_PUBLISH_PORT:-19080}" != "${{ env.FRONTEND_PORT }}" ]; then
+            echo "::error::Expected BACKEND_PUBLISH_PORT=${{ env.BACKEND_PORT }} and FRONTEND_PUBLISH_PORT=${{ env.FRONTEND_PORT }} in ${{ env.ENV_FILE }}."
+            exit 1
+          fi
 
       - name: Stop legacy systemd services
         run: |
@@ -36,25 +48,46 @@ jobs:
                 echo "::warning::Could not stop $svc (grant passwordless sudo or stop manually)."
               fi
             fi
+            if sudo -n systemctl disable "$svc" 2>/dev/null; then
+              echo "Disabled systemd service $svc."
+            fi
           done
 
-      - name: Build and start Docker stack
+      - name: Prepare persistent data directories
         run: |
-          docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}" build
-          docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}" up -d --remove-orphans
+          sudo mkdir -p /opt/fuoverflow/data/{uploads,logs,tmp}
+          if sudo -n true 2>/dev/null; then
+            sudo chown -R "$(whoami):$(whoami)" /opt/fuoverflow/data
+          fi
+
+      - name: Build and start Docker stack
+        working-directory: ${{ github.workspace }}
+        run: |
+          compose=(docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}")
+          "${compose[@]}" build --pull backend frontend
+          "${compose[@]}" up -d --remove-orphans --force-recreate
 
       - name: Health check
-        if: success()
         run: |
-          sleep 10
-          if curl -fsS "http://localhost:${{ env.BACKEND_PORT }}/actuator/health"; then
-            echo "Backend health OK."
-          else
-            echo "::warning::Backend not responding on port ${{ env.BACKEND_PORT }}. Run: docker compose -f ${{ env.COMPOSE_FILE }} --env-file ${{ env.ENV_FILE }} logs backend --tail 80"
-          fi
-          http_code="$(curl -fsS -o /dev/null -w '%{http_code}' "http://localhost:${{ env.FRONTEND_PORT }}" || echo 000)"
-          if echo "$http_code" | grep -qE '^200|307|308$'; then
-            echo "Frontend health OK."
-          else
-            echo "::warning::Frontend not responding on port ${{ env.FRONTEND_PORT }} (HTTP $http_code). Run: docker compose -f ${{ env.COMPOSE_FILE }} --env-file ${{ env.ENV_FILE }} logs frontend --tail 80"
-          fi
+          backend_ok=0
+          frontend_ok=0
+          for attempt in $(seq 1 24); do
+            if [ "$backend_ok" -eq 0 ] && curl -fsS "http://localhost:${{ env.BACKEND_PORT }}/actuator/health" >/dev/null; then
+              backend_ok=1
+              echo "Backend health OK on port ${{ env.BACKEND_PORT }}."
+            fi
+            http_code="$(curl -fsS -o /dev/null -w '%{http_code}' "http://localhost:${{ env.FRONTEND_PORT }}" 2>/dev/null || echo 000)"
+            if [ "$frontend_ok" -eq 0 ] && echo "$http_code" | grep -qE '^200|307|308$'; then
+              frontend_ok=1
+              echo "Frontend health OK on port ${{ env.FRONTEND_PORT }} (HTTP $http_code)."
+            fi
+            if [ "$backend_ok" -eq 1 ] && [ "$frontend_ok" -eq 1 ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Deploy health check failed after 120s."
+          docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}" ps
+          docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}" logs backend --tail 80 || true
+          docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}" logs frontend --tail 80 || true
+          exit 1

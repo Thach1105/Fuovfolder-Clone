@@ -1,3 +1,5 @@
+# Manual deploy from a full git checkout at repository root.
+# CI/CD uses deploy/docker-compose.yml (self-hosted runner workspace + /opt/fuoverflow/.env).
 name: fuoverflow
 
 services:
@@ -68,7 +70,7 @@ services:
 
   backend:
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile
     image: fuoverflow-backend:latest
     container_name: fuoverflow-backend
@@ -107,7 +109,7 @@ services:
 
   frontend:
     build:
-      context: ../frontend
+      context: ./frontend
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
