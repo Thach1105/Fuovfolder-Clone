@@ -1,6 +1,8 @@
 package com.fuoverflow.auth.application;
 
 import com.fuoverflow.auth.config.AuthProperties;
+import com.fuoverflow.auth.support.EmailVerificationLinks;
+import com.fuoverflow.common.config.CorsProperties;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.mail.MailException;
@@ -22,11 +24,17 @@ public class VerificationEmailSender {
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
     private final AuthProperties properties;
+    private final CorsProperties corsProperties;
 
-    public VerificationEmailSender(JavaMailSender mailSender, TemplateEngine templateEngine, AuthProperties properties) {
+    public VerificationEmailSender(
+            JavaMailSender mailSender,
+            TemplateEngine templateEngine,
+            AuthProperties properties,
+            CorsProperties corsProperties) {
         this.mailSender = mailSender;
         this.templateEngine = templateEngine;
         this.properties = properties;
+        this.corsProperties = corsProperties;
     }
 
     @Async
@@ -57,17 +65,9 @@ public class VerificationEmailSender {
     private String renderHtml(String displayName, String token, String verificationUrlBase) {
         Context context = new Context(Locale.ENGLISH);
         context.setVariable("displayName", StringUtils.hasText(displayName) ? displayName : "FuOverflow user");
-        context.setVariable("verificationLink", verificationLink(verificationUrlBase, token));
+        context.setVariable("verificationLink", EmailVerificationLinks.buildLink(
+                verificationUrlBase, corsProperties.allowedOrigins(), token));
         context.setVariable("expiresIn", "24 hours");
         return templateEngine.process(TEMPLATE, context);
-    }
-
-    private String verificationLink(String verificationUrlBase, String token) {
-        if (!StringUtils.hasText(verificationUrlBase)) {
-            throw new IllegalStateException(
-                    "Email verification URL is not configured. Set AUTH_EMAIL_VERIFICATION_URL_BASE to the frontend verify page.");
-        }
-        String separator = verificationUrlBase.contains("?") ? "&" : "?";
-        return verificationUrlBase + separator + "token=" + token;
     }
 }
