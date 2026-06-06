@@ -168,7 +168,13 @@ export interface Post {
 
   threadId: string;
 
+  authorUserId: string;
+
+  parentPostId: string | null;
+
   authorHandle: string | null;
+
+  bodyMd: string;
 
   bodyHtml: string;
 
@@ -181,6 +187,8 @@ export interface Post {
   sourceUrl: string | null;
 
   createdAt: string;
+
+  lastEditedAt: string | null;
 
 }
 
@@ -352,13 +360,39 @@ export function listThreadPosts(threadId: string, page = 0, size = 20) {
 
 
 
-export function createPost(threadId: string, body: string) {
+export function createPost(threadId: string, body: string, parentPostId?: string) {
 
   return apiFetch<Post>(`/api/v1/threads/${threadId}/posts`, {
 
     method: "POST",
 
+    body: JSON.stringify({ body, parentPostId: parentPostId ?? null }),
+
+  });
+
+}
+
+
+
+export function updatePost(threadId: string, postId: string, body: string) {
+
+  return apiFetch<Post>(`/api/v1/threads/${threadId}/posts/${postId}`, {
+
+    method: "PATCH",
+
     body: JSON.stringify({ body }),
+
+  });
+
+}
+
+
+
+export function deletePost(threadId: string, postId: string) {
+
+  return apiFetch<void>(`/api/v1/threads/${threadId}/posts/${postId}`, {
+
+    method: "DELETE",
 
   });
 

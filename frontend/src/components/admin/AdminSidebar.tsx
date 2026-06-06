@@ -30,6 +30,18 @@ const NAV = [
     permission: "coursera.request.admin:read",
   },
   {
+    href: "/admin/moderation/flags",
+    label: "Moderation — Báo cáo",
+    exact: false,
+    permission: "forum.moderation:read",
+  },
+  {
+    href: "/admin/moderation/queue",
+    label: "Moderation — Hàng chờ",
+    exact: false,
+    permission: "forum.moderation:read",
+  },
+  {
     href: "/admin/source/catalog",
     label: "Suộc — Tài liệu",
     exact: false,

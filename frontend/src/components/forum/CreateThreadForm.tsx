@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import { createThread, type ThreadType } from "@/lib/api/forum";
+import { MarkdownEditor } from "@/components/forum/MarkdownEditor";
 import {
   CAMPUS_OPTIONS,
   MATERIAL_TYPE_OPTIONS,
@@ -109,16 +110,12 @@ export function CreateThreadForm({
 
       <div>
         <label className="mb-1 block text-sm font-medium text-slate-700">Nội dung</label>
-        <textarea
-          className="input-field min-h-[220px] font-mono text-sm"
+        <MarkdownEditor
           value={body}
-          onChange={(event) => setBody(event.target.value)}
-          placeholder="Nội dung bài viết..."
-          required
+          onChange={setBody}
+          minHeight={220}
+          placeholder="Nội dung bài viết (Markdown)..."
         />
-        <p className="mt-1 text-xs text-slate-500">
-          Hỗ trợ văn bản thuần; xuống dòng sẽ được hiển thị trong bài viết.
-        </p>
       </div>
 
       {threadType === "poll" && (

@@ -8,6 +8,7 @@ import { ReplyForm } from "@/components/forum/ReplyForm";
 import { ThreadWatchButton } from "@/components/forum/ThreadWatchButton";
 import { PromoBanner } from "@/components/layout/PromoBanner";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { can } from "@/lib/auth/permissions";
 import { ApiError } from "@/lib/api/client";
 import { threadTypeLabel } from "@/lib/forum-thread-types";
 import {
@@ -17,6 +18,7 @@ import {
   getThread,
   listThreadPosts,
 } from "@/lib/api/forum";
+import { ReportContentDialog } from "@/components/forum/ReportContentDialog";
 import { formatDateTime } from "@/lib/format-datetime";
 
 const PAGE_SIZE = 20;
@@ -33,6 +35,7 @@ export default function ThreadDetailPage() {
   const [postsLoading, setPostsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const canReply = can(user, "forum.post:create");
 
   useEffect(() => {
     if (!threadId) return;
@@ -112,6 +115,7 @@ export default function ThreadDetailPage() {
         </div>
         <div className="flex flex-col items-end gap-2">
           {user && <ThreadWatchButton threadId={threadId} />}
+          <ReportContentDialog targetType="thread" targetId={threadId} />
           {thread.sourceUrl && (
             <a
               href={thread.sourceUrl}
@@ -134,7 +138,7 @@ export default function ThreadDetailPage() {
         {postsLoading ? (
           <p className="px-4 py-8 text-sm text-slate-500">Đang tải bài viết...</p>
         ) : (
-          <PostList posts={posts} />
+          <PostList posts={posts} threadId={threadId} onChanged={loadPosts} />
         )}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-3 border-t border-slate-100 py-3">
@@ -159,7 +163,17 @@ export default function ThreadDetailPage() {
             </button>
           </div>
         )}
-        {user && <ReplyForm threadId={threadId} onPosted={loadPosts} />}
+        {canReply ? (
+          <ReplyForm threadId={threadId} onPosted={loadPosts} />
+        ) : user ? (
+          <div className="border-t border-slate-100 px-4 py-4 text-sm text-slate-600">
+            Trả lời yêu cầu gói{" "}
+            <Link href="/membership" className="font-medium text-fuo-600 hover:underline">
+              FUO MEMBER
+            </Link>
+            .
+          </div>
+        ) : null}
       </section>
     </div>
   );

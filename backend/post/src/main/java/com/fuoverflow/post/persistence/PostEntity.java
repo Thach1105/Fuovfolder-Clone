@@ -78,10 +78,14 @@ public class PostEntity {
 
     public void setThreadId(UUID threadId) { this.threadId = threadId; }
     public void setAuthorUserId(UUID authorUserId) { this.authorUserId = authorUserId; }
+    public void setParentPostId(UUID parentPostId) { this.parentPostId = parentPostId; }
     public void setBodyMd(String bodyMd) { this.bodyMd = bodyMd; }
     public void setBodyHtml(String bodyHtml) { this.bodyHtml = bodyHtml; }
     public void setStatus(String status) { this.status = status; }
+    public void setEditCount(int editCount) { this.editCount = editCount; }
     public void setEditVersion(int editVersion) { this.editVersion = editVersion; }
+    public void setReactionCount(int reactionCount) { this.reactionCount = reactionCount; }
+    public void setLastEditedAt(Instant lastEditedAt) { this.lastEditedAt = lastEditedAt; }
     public void setImportedAuthorHandle(String importedAuthorHandle) { this.importedAuthorHandle = importedAuthorHandle; }
     public void setSourceUrl(String sourceUrl) { this.sourceUrl = sourceUrl; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
@@ -107,15 +111,23 @@ public class PostEntity {
     }
 
     public static PostEntity createUserPost(
-            UUID id, UUID threadId, UUID authorUserId, String authorHandle,
-            String bodyMd, String bodyHtml, Instant now) {
+            UUID id,
+            UUID threadId,
+            UUID authorUserId,
+            UUID parentPostId,
+            String authorHandle,
+            String bodyMd,
+            String bodyHtml,
+            String status,
+            Instant now) {
         PostEntity e = new PostEntity();
         e.id = id;
         e.threadId = threadId;
         e.authorUserId = authorUserId;
+        e.parentPostId = parentPostId;
         e.bodyMd = bodyMd;
         e.bodyHtml = bodyHtml;
-        e.status = "visible";
+        e.status = status;
         e.editCount = 0;
         e.editVersion = 1;
         e.reactionCount = 0;
