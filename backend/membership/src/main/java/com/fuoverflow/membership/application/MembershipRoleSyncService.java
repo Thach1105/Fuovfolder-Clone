@@ -6,6 +6,8 @@ import com.fuoverflow.membership.persistence.MembershipPlanRepository;
 import com.fuoverflow.membership.persistence.MembershipRepository;
 import com.fuoverflow.membership.support.MembershipFeatures;
 import com.fuoverflow.user.application.RoleAssignmentService;
+import com.fuoverflow.user.domain.RoleType;
+import com.fuoverflow.user.persistence.RoleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,14 +20,17 @@ public class MembershipRoleSyncService {
     private final MembershipRepository membershipRepository;
     private final MembershipPlanRepository planRepository;
     private final RoleAssignmentService roleAssignmentService;
+    private final RoleRepository roleRepository;
 
     public MembershipRoleSyncService(
             MembershipRepository membershipRepository,
             MembershipPlanRepository planRepository,
-            RoleAssignmentService roleAssignmentService) {
+            RoleAssignmentService roleAssignmentService,
+            RoleRepository roleRepository) {
         this.membershipRepository = membershipRepository;
         this.planRepository = planRepository;
         this.roleAssignmentService = roleAssignmentService;
+        this.roleRepository = roleRepository;
     }
 
     @Transactional
@@ -45,9 +50,9 @@ public class MembershipRoleSyncService {
 
     @Transactional
     public void revokeMembershipRoles(UUID userId) {
-        for (String slug : List.of("FUO_MEMBER", "FUO_VIP", "FUO_NOVA")) {
-            roleAssignmentService.revokeGlobalRole(userId, slug);
-        }
+        roleRepository.findAllByOrderByRoleTypeAscSlugAsc().stream()
+                .filter(role -> role.getRoleType() == RoleType.MEMBERSHIP)
+                .forEach(role -> roleAssignmentService.revokeGlobalRole(userId, role.getSlug()));
     }
 
     @Transactional
