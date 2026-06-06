@@ -55,10 +55,9 @@ jobs:
 
       - name: Prepare persistent data directories
         run: |
-          sudo mkdir -p /opt/fuoverflow/data/{uploads,logs,tmp}
-          if sudo -n true 2>/dev/null; then
-            sudo chown -R "$(whoami):$(whoami)" /opt/fuoverflow/data
-          fi
+          # Runner often has Docker access but not passwordless sudo.
+          docker run --rm -v /opt/fuoverflow/data:/data alpine:3.20 \
+            sh -c 'mkdir -p /data/uploads /data/logs /data/tmp && chmod -R 777 /data/uploads /data/logs /data/tmp'
 
       - name: Build and start Docker stack
         working-directory: ${{ github.workspace }}
