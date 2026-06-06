@@ -37,7 +37,8 @@ public class MembershipExpiryService {
         this.permissionResolver = permissionResolver;
     }
 
-    @Scheduled(fixedDelayString = "${fuoverflow.membership.expiry-scan-interval-ms:60000}")
+    @Scheduled(cron = "${fuoverflow.membership.expiry-cron:0 0 0 * * *}",
+            zone = "${fuoverflow.scheduling.timezone:Asia/Ho_Chi_Minh}")
     @Transactional
     public void expireElapsedMemberships() {
         Instant now = Instant.now();
