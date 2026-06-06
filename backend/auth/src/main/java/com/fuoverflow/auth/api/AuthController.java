@@ -4,9 +4,11 @@ import com.fuoverflow.auth.api.dto.*;
 import com.fuoverflow.auth.application.AuthService;
 import com.fuoverflow.auth.application.CookieService;
 import com.fuoverflow.auth.application.EmailVerificationService;
+import com.fuoverflow.auth.application.PasswordResetService;
 import com.fuoverflow.auth.config.AuthProperties;
 import com.fuoverflow.auth.domain.ClientContext;
 import com.fuoverflow.auth.support.EmailVerificationLinks;
+import com.fuoverflow.auth.support.PasswordResetLinks;
 import com.fuoverflow.common.config.CorsProperties;
 import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
@@ -26,6 +28,7 @@ import java.util.UUID;
 public class AuthController {
     private final AuthService authService;
     private final EmailVerificationService emailVerificationService;
+    private final PasswordResetService passwordResetService;
     private final CookieService cookieService;
     private final AuthProperties authProperties;
     private final CorsProperties corsProperties;
@@ -33,11 +36,13 @@ public class AuthController {
     public AuthController(
             AuthService authService,
             EmailVerificationService emailVerificationService,
+            PasswordResetService passwordResetService,
             CookieService cookieService,
             AuthProperties authProperties,
             CorsProperties corsProperties) {
         this.authService = authService;
         this.emailVerificationService = emailVerificationService;
+        this.passwordResetService = passwordResetService;
         this.cookieService = cookieService;
         this.authProperties = authProperties;
         this.corsProperties = corsProperties;
@@ -62,6 +67,27 @@ public class AuthController {
     @PostMapping("/email/verify")
     public ApiResponse<AuthenticatedUserResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
         return ApiResponse.ok(authService.userResponse(emailVerificationService.verify(request.token())));
+    }
+
+    @PostMapping("/password/forgot")
+    public ApiResponse<ForgotPasswordResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return ApiResponse.ok(passwordResetService.requestReset(request.email()));
+    }
+
+    @GetMapping("/password/reset")
+    public void resetPasswordRedirect(@RequestParam("token") String token, HttpServletResponse response) throws IOException {
+        AuthProperties.PasswordReset config = authProperties.passwordReset();
+        String link = PasswordResetLinks.buildLink(
+                config == null ? null : config.resetUrlBase(),
+                corsProperties.allowedOrigins(),
+                token);
+        response.sendRedirect(link);
+    }
+
+    @PostMapping("/password/reset")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request.token(), request.password());
     }
 
     @PostMapping("/login")

@@ -56,6 +56,10 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
 export interface UserProfileResponse {
   id: string;
   email: string;

@@ -20,6 +20,12 @@ auth:
     from: ${MAIL_FROM:${spring.mail.username:}}
     verification-url-base: ${AUTH_EMAIL_VERIFICATION_URL_BASE:http://localhost:3000/verify-email}
     subject: ${AUTH_EMAIL_VERIFICATION_SUBJECT:Verify your FuOverflow email}
+  password-reset:
+    enabled: ${AUTH_PASSWORD_RESET_ENABLED:true}
+    from: ${MAIL_FROM:${spring.mail.username:}}
+    reset-url-base: ${AUTH_PASSWORD_RESET_URL_BASE:http://localhost:3000/reset-password}
+    subject: ${AUTH_PASSWORD_RESET_SUBJECT:Reset your FuOverflow password}
+    token-ttl: ${AUTH_PASSWORD_RESET_TOKEN_TTL:1h}
 
 logging:
   level:

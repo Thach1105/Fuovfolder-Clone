@@ -160,6 +160,12 @@ public class UserEntity {
         this.updatedAt = at;
     }
 
+    public void updatePassword(String passwordHash, Instant at) {
+        this.passwordHash = passwordHash;
+        this.passwordChangedAt = at;
+        this.updatedAt = at;
+    }
+
     public void markLastLogin(Instant at) {
         this.lastLoginAt = at;
         this.updatedAt = at;

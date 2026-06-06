@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/api/client";
 import type {
   AuthTokenResponse,
   AuthenticatedUserResponse,
+  ForgotPasswordResponse,
   LoginRequest,
   RegisterRequest,
   RegisterResponse,
@@ -18,6 +19,20 @@ export function verifyEmail(token: string) {
   return apiFetch<AuthenticatedUserResponse>("/api/v1/auth/email/verify", {
     method: "POST",
     body: JSON.stringify({ token }),
+  });
+}
+
+export function forgotPassword(email: string) {
+  return apiFetch<ForgotPasswordResponse>("/api/v1/auth/password/forgot", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function resetPassword(token: string, password: string) {
+  return apiFetch<void>("/api/v1/auth/password/reset", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
   });
 }
 
