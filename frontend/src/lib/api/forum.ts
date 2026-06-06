@@ -238,48 +238,6 @@ export interface ThreadBookmarkStatus {
 
 
 
-export interface SyncRun {
-
-  id: string;
-
-  mode: string;
-
-  scope: string;
-
-  status: string;
-
-  forumsSynced: number;
-
-  threadsSynced: number;
-
-  postsSynced: number;
-
-  errorMessage: string | null;
-
-  startedAt: string;
-
-  finishedAt: string | null;
-
-}
-
-
-
-export interface SyncRunPage {
-
-  items: SyncRun[];
-
-  page: number;
-
-  size: number;
-
-  totalElements: number;
-
-  totalPages: number;
-
-}
-
-
-
 export type ThreadTab = "discussion" | "confession" | "popular";
 
 
@@ -445,38 +403,6 @@ export function unwatchThread(threadId: string) {
     method: "DELETE",
 
   });
-
-}
-
-
-
-export function triggerForumSync(body: {
-
-  mode?: "public" | "authenticated";
-
-  scope?: "full" | "incremental";
-
-  cookie?: string;
-
-}) {
-
-  return apiFetch<SyncRun>("/api/v1/admin/forum-sync", {
-
-    method: "POST",
-
-    body: JSON.stringify(body),
-
-  });
-
-}
-
-
-
-export function listSyncRuns(page = 0, size = 20) {
-
-  const params = new URLSearchParams({ page: String(page), size: String(size) });
-
-  return apiFetch<SyncRunPage>(`/api/v1/admin/forum-sync/runs?${params}`);
 
 }
 

@@ -29,7 +29,7 @@ export default function ForumsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Diễn đàn</h1>
           <p className="text-sm text-slate-600">
-            Danh sách khu vực thảo luận đã được đồng bộ từ fuoverflow.com.
+            Danh sách khu vực thảo luận trong hệ thống.
           </p>
         </div>
         <Link href="/" className="text-sm font-medium text-fuo-600 hover:underline">
@@ -46,13 +46,6 @@ export default function ForumsPage() {
       ) : forums.length === 0 ? (
         <div className="card p-6 text-sm text-slate-600">
           <p>Chưa có diễn đàn nào trong hệ thống.</p>
-          <p className="mt-2">
-            Quản trị viên có thể chạy đồng bộ tại{" "}
-            <Link href="/admin/forum/sync" className="font-medium text-fuo-600 hover:underline">
-              /admin/forum/sync
-            </Link>
-            .
-          </p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -115,8 +115,8 @@ export default function HomePage() {
                 forumTitleById={forumTitleById}
                 emptyMessage={
                   tab === "confession"
-                    ? "Chưa có chủ đề confession được đồng bộ. Chạy crawl từ trang quản trị."
-                    : "Chưa có chủ đề. Admin có thể đồng bộ dữ liệu tại /admin/forum/sync."
+                    ? "Chưa có chủ đề confession nào."
+                    : "Chưa có chủ đề nào."
                 }
               />
             )}

@@ -41,7 +41,6 @@ const NAV = [
     exact: false,
     permission: "source.purchase.admin:read",
   },
-  { href: "/admin/forum/sync", label: "Diễn đàn — Đồng bộ", exact: false, permission: "forum.sync:read" },
 ];
 
 export function AdminSidebar() {

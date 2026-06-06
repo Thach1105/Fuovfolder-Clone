@@ -37,7 +37,7 @@ export default function WhatsNewPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Bài mới</h1>
           <p className="text-sm text-slate-600">
-            Chủ đề được cập nhật gần đây nhất từ diễn đàn đã đồng bộ.
+            Chủ đề được cập nhật gần đây nhất.
           </p>
         </div>
         <Link href="/" className="text-sm font-medium text-fuo-600 hover:underline">
@@ -57,7 +57,7 @@ export default function WhatsNewPage() {
           <ThreadTable
             threads={threadItems}
             forumTitleById={forumTitleById}
-            emptyMessage="Chưa có hoạt động mới. Chạy đồng bộ diễn đàn từ trang quản trị."
+            emptyMessage="Chưa có hoạt động mới."
           />
         )}
       </div>
