@@ -4,6 +4,7 @@ import com.fuoverflow.award.api.dto.AdjustPointsRequest;
 import com.fuoverflow.award.api.dto.PointsLedgerEntryResponse;
 import com.fuoverflow.award.application.PointsWalletService;
 import com.fuoverflow.award.persistence.PointsLedgerEntity;
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
@@ -17,6 +18,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/users")
+@RequirePermission("admin.panel:access")
 public class AdminPointsController {
     private final PointsWalletService walletService;
 
@@ -25,6 +27,7 @@ public class AdminPointsController {
     }
 
     @PostMapping("/{userId}/points/adjust")
+    @RequirePermission("points.admin:update")
     public ApiResponse<PointsLedgerEntryResponse> adjust(
             Authentication authentication,
             @PathVariable UUID userId,

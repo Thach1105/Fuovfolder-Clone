@@ -1,5 +1,6 @@
 package com.fuoverflow.notification.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.notification.api.dto.NotificationPageResponse;
 import com.fuoverflow.notification.api.dto.NotificationResponse;
@@ -27,6 +28,7 @@ public class NotificationController {
     }
 
     @GetMapping
+    @RequirePermission("notification:read")
     public ApiResponse<NotificationPageResponse> list(
             Authentication authentication,
             @RequestParam(defaultValue = "false") boolean unreadOnly,
@@ -37,12 +39,14 @@ public class NotificationController {
     }
 
     @GetMapping("/unread-count")
+    @RequirePermission("notification:read")
     public ApiResponse<UnreadCountResponse> unreadCount(Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         return ApiResponse.ok(notificationService.unreadCount(userId));
     }
 
     @PatchMapping("/{notificationId}/read")
+    @RequirePermission("notification:update")
     public ApiResponse<NotificationResponse> markRead(
             Authentication authentication,
             @PathVariable UUID notificationId) {
@@ -51,6 +55,7 @@ public class NotificationController {
     }
 
     @PostMapping("/mark-all-read")
+    @RequirePermission("notification:update")
     public ApiResponse<Map<String, Integer>> markAllRead(Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         int updated = notificationService.markAllRead(userId);

@@ -1,5 +1,6 @@
 package com.fuoverflow.coursera.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.coursera.api.dto.CatalogItemResponse;
 import com.fuoverflow.coursera.application.CourseraCatalogQueryService;
@@ -22,6 +23,7 @@ public class CourseraCatalogController {
     }
 
     @GetMapping
+    @RequirePermission(value = "coursera.catalog:read", allowAnonymous = true)
     public ApiResponse<List<CatalogItemResponse>> list(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) Boolean featured) {
@@ -29,6 +31,7 @@ public class CourseraCatalogController {
     }
 
     @GetMapping("/{id}")
+    @RequirePermission(value = "coursera.catalog:read", allowAnonymous = true)
     public ApiResponse<CatalogItemResponse> get(@PathVariable UUID id) {
         return ApiResponse.ok(queryService.getActive(id));
     }

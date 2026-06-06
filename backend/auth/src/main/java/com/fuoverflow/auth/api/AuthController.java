@@ -5,6 +5,7 @@ import com.fuoverflow.auth.application.AuthService;
 import com.fuoverflow.auth.application.CookieService;
 import com.fuoverflow.auth.application.EmailVerificationService;
 import com.fuoverflow.auth.domain.ClientContext;
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -56,6 +57,7 @@ public class AuthController {
     }
 
     @PostMapping("/token/generate")
+    @RequirePermission("auth.token:generate")
     public ApiResponse<AuthTokenResponse> generate(@RequestParam UUID userId, HttpServletRequest httpRequest,
                                                    HttpServletResponse httpResponse) {
         AuthService.AuthTokenBundle bundle = authService.generateForUser(userId, context(httpRequest));

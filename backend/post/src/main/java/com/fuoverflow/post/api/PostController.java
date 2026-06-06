@@ -1,5 +1,6 @@
 package com.fuoverflow.post.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.post.api.dto.CreatePostRequest;
 import com.fuoverflow.post.api.dto.PostPageResponse;
@@ -30,6 +31,7 @@ public class PostController {
     }
 
     @GetMapping
+    @RequirePermission(value = "forum.post:read", allowAnonymous = true)
     public ApiResponse<PostPageResponse> listByThread(
             @PathVariable UUID threadId,
             @RequestParam(defaultValue = "0") int page,
@@ -38,6 +40,7 @@ public class PostController {
     }
 
     @PostMapping
+    @RequirePermission("forum.post:create")
     public ApiResponse<PostResponse> create(
             @PathVariable UUID threadId,
             Authentication authentication,

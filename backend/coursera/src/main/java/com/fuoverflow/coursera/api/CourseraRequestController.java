@@ -1,5 +1,6 @@
 package com.fuoverflow.coursera.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.coursera.api.dto.CreateCourseraRequestBody;
 import com.fuoverflow.coursera.api.dto.RequestDetailResponse;
@@ -32,6 +33,7 @@ public class CourseraRequestController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @RequirePermission("coursera.request:create")
     public ApiResponse<RequestDetailResponse> create(
             Authentication authentication,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
@@ -41,6 +43,7 @@ public class CourseraRequestController {
     }
 
     @GetMapping
+    @RequirePermission("coursera.request:read")
     public ApiResponse<RequestPageResponse> list(
             Authentication authentication,
             @RequestParam(required = false) String status,
@@ -51,12 +54,14 @@ public class CourseraRequestController {
     }
 
     @GetMapping("/stats")
+    @RequirePermission("coursera.request:read")
     public ApiResponse<RequestStatsResponse> stats(Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         return ApiResponse.ok(requestService.stats(userId));
     }
 
     @GetMapping("/{id}")
+    @RequirePermission("coursera.request:read")
     public ApiResponse<RequestDetailResponse> get(Authentication authentication, @PathVariable UUID id) {
         UUID userId = UUID.fromString(authentication.getName());
         return ApiResponse.ok(requestService.getMine(userId, id));

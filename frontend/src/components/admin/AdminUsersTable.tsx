@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { AdminUserSummary } from "@/types/api";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -19,20 +20,27 @@ function formatDate(iso: string | null) {
   });
 }
 
+function roleClass(role: string) {
+  if (role === "SUPER_ADMIN") {
+    return "rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-red-300";
+  }
+  if (role === "ADMIN") {
+    return "rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300";
+  }
+  if (role === "SUB_ADMIN") {
+    return "rounded bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-violet-300";
+  }
+  if (role.startsWith("FUO_")) {
+    return "rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300";
+  }
+  return "rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-300";
+}
+
 function RoleBadges({ roles }: { roles: string[] }) {
   return (
     <div className="flex flex-wrap gap-1">
       {roles.map((role) => (
-        <span
-          key={role}
-          className={
-            role === "ADMIN"
-              ? "rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300"
-              : role === "SUB_ADMIN"
-                ? "rounded bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-violet-300"
-                : "rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-300"
-          }
-        >
+        <span key={role} className={roleClass(role)}>
           {role}
         </span>
       ))}
@@ -59,6 +67,7 @@ export function AdminUsersTable({ users }: { users: AdminUserSummary[] }) {
             <th className="px-4 py-3 font-medium">Trạng thái</th>
             <th className="px-4 py-3 font-medium">Đăng nhập cuối</th>
             <th className="px-4 py-3 font-medium">Tạo lúc</th>
+            <th className="px-4 py-3 font-medium" />
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-800 bg-slate-950/50">
@@ -73,15 +82,21 @@ export function AdminUsersTable({ users }: { users: AdminUserSummary[] }) {
                 <RoleBadges roles={user.roles} />
               </td>
               <td className="px-4 py-3">
-                <span className="text-slate-300">
-                  {STATUS_LABELS[user.status] ?? user.status}
-                </span>
+                <span className="text-slate-300">{STATUS_LABELS[user.status] ?? user.status}</span>
                 {!user.emailVerified && (
                   <p className="mt-0.5 text-xs text-amber-500">Email chưa xác minh</p>
                 )}
               </td>
               <td className="px-4 py-3 text-slate-400">{formatDate(user.lastLoginAt)}</td>
               <td className="px-4 py-3 text-slate-400">{formatDate(user.createdAt)}</td>
+              <td className="px-4 py-3">
+                <Link
+                  href={`/admin/users/${user.id}/permissions`}
+                  className="text-xs text-amber-400 hover:underline"
+                >
+                  Quyền
+                </Link>
+              </td>
             </tr>
           ))}
         </tbody>

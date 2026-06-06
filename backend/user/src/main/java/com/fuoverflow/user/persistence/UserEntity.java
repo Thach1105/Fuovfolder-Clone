@@ -112,7 +112,7 @@ public class UserEntity {
         entity.passwordHash = passwordHash;
         entity.displayName = displayName;
         entity.status = UserStatus.ACTIVE;
-        entity.rolesJson = rolesJson(UserRole.ADMIN);
+        entity.rolesJson = rolesJson(UserRole.SUPER_ADMIN);
         entity.emailVerifiedAt = now;
         entity.passwordChangedAt = now;
         entity.createdAt = now;

@@ -1,5 +1,6 @@
 package com.fuoverflow.notification.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.notification.api.dto.PushSubscribeRequest;
 import com.fuoverflow.notification.api.dto.VapidPublicKeyResponse;
@@ -35,6 +36,7 @@ public class PushNotificationController {
     }
 
     @PostMapping("/users/me/push-subscriptions")
+    @RequirePermission("push.subscription:create")
     public ApiResponse<Map<String, Boolean>> subscribe(
             Authentication authentication,
             HttpServletRequest request,
@@ -47,6 +49,7 @@ public class PushNotificationController {
     }
 
     @DeleteMapping("/users/me/push-subscriptions")
+    @RequirePermission("push.subscription:delete")
     public ApiResponse<Map<String, Boolean>> unsubscribe(@RequestParam String endpoint) {
         pushSubscriptionService.unsubscribe(endpoint);
         return ApiResponse.ok(Map.of("subscribed", false));

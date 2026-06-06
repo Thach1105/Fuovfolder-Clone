@@ -1,5 +1,6 @@
 package com.fuoverflow.notification.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.notification.api.dto.NotificationPreferenceUpdateRequest;
 import com.fuoverflow.notification.api.dto.NotificationPreferencesResponse;
@@ -24,12 +25,14 @@ public class NotificationPreferenceController {
     }
 
     @GetMapping
+    @RequirePermission("notification.preference:read")
     public ApiResponse<NotificationPreferencesResponse> get(Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         return ApiResponse.ok(preferenceService.getForUser(userId));
     }
 
     @PutMapping
+    @RequirePermission("notification.preference:update")
     public ApiResponse<NotificationPreferencesResponse> update(
             Authentication authentication,
             @Valid @RequestBody NotificationPreferenceUpdateRequest request) {

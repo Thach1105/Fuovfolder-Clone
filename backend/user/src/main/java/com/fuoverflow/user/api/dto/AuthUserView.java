@@ -14,6 +14,9 @@ public record AuthUserView(
         String displayName,
         UserStatus status,
         List<String> roles,
+        long permVersion,
+        List<String> permissions,
+        boolean superAdmin,
         Instant emailVerifiedAt,
         Instant passwordChangedAt,
         Instant deletedAt

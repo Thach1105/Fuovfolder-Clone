@@ -5,6 +5,7 @@ import com.fuoverflow.award.api.dto.PointsLedgerEntryResponse;
 import com.fuoverflow.award.api.dto.PointsLedgerPageResponse;
 import com.fuoverflow.award.application.PointsQueryService;
 import com.fuoverflow.award.application.PointsWalletService;
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,12 +27,14 @@ public class PointsController {
     }
 
     @GetMapping("/balance")
+    @RequirePermission("points:read")
     public ApiResponse<PointsBalanceResponse> balance(Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         return ApiResponse.ok(new PointsBalanceResponse(walletService.getBalance(userId)));
     }
 
     @GetMapping("/ledger")
+    @RequirePermission("points:read")
     public ApiResponse<PointsLedgerPageResponse> ledger(
             Authentication authentication,
             @RequestParam(defaultValue = "0") int page,

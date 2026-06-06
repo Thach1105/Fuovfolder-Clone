@@ -25,13 +25,16 @@ public class AdminSeedService implements ApplicationRunner {
     private final UserRepository repository;
     private final EmailNormalizer emailNormalizer;
     private final PasswordEncoder passwordEncoder;
+    private final RoleAssignmentService roleAssignmentService;
 
     public AdminSeedService(AdminSeedProperties properties, UserRepository repository,
-                            EmailNormalizer emailNormalizer, PasswordEncoder passwordEncoder) {
+                            EmailNormalizer emailNormalizer, PasswordEncoder passwordEncoder,
+                            RoleAssignmentService roleAssignmentService) {
         this.properties = properties;
         this.repository = repository;
         this.emailNormalizer = emailNormalizer;
         this.passwordEncoder = passwordEncoder;
+        this.roleAssignmentService = roleAssignmentService;
     }
 
     @Override
@@ -78,6 +81,8 @@ public class AdminSeedService implements ApplicationRunner {
                 displayName,
                 now);
         repository.save(admin);
+        roleAssignmentService.assignGlobalRole(admin.getId(), "SUPER_ADMIN", null);
+        roleAssignmentService.assignGlobalRole(admin.getId(), "USER", null);
         log.info("Seeded administrator account for email {}", normalizedEmail);
     }
 }

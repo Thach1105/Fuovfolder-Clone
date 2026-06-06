@@ -1,5 +1,6 @@
 package com.fuoverflow.thread.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.thread.api.dto.CreateThreadRequest;
 import com.fuoverflow.thread.api.dto.ThreadDetailResponse;
@@ -30,6 +31,7 @@ public class ThreadController {
     }
 
     @GetMapping
+    @RequirePermission(value = "forum.thread:read", allowAnonymous = true)
     public ApiResponse<ThreadPageResponse> browse(
             @RequestParam(required = false) UUID forumId,
             @RequestParam(required = false) UUID categoryId,
@@ -39,11 +41,13 @@ public class ThreadController {
     }
 
     @GetMapping("/{threadId}")
+    @RequirePermission(value = "forum.thread:read", allowAnonymous = true)
     public ApiResponse<ThreadDetailResponse> get(@PathVariable UUID threadId) {
         return ApiResponse.ok(threadQueryService.getDetail(threadId));
     }
 
     @PostMapping
+    @RequirePermission("forum.thread:create")
     public ApiResponse<ThreadDetailResponse> create(
             Authentication authentication,
             @Valid @RequestBody CreateThreadRequest request) {

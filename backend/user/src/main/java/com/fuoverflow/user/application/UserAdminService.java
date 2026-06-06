@@ -31,6 +31,7 @@ public class UserAdminService {
                 repository.countByDeletedAtIsNullAndStatus(UserStatus.ACTIVE),
                 repository.countByDeletedAtIsNullAndStatus(UserStatus.PENDING_EMAIL_VERIFICATION),
                 repository.countByDeletedAtIsNullAndStatus(UserStatus.DISABLED),
+                repository.countByRole("[\"SUPER_ADMIN\"]"),
                 repository.countByRole("[\"ADMIN\"]"),
                 repository.countByRole("[\"SUB_ADMIN\"]")
         );

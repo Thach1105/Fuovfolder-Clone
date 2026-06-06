@@ -1,5 +1,6 @@
 package com.fuoverflow.thread.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.thread.api.dto.ThreadBookmarkStatusResponse;
 import com.fuoverflow.thread.api.dto.ThreadPageResponse;
@@ -25,6 +26,7 @@ public class ThreadBookmarkController {
     }
 
     @GetMapping("/users/me/thread-bookmarks")
+    @RequirePermission("forum.thread.bookmark:read")
     public ApiResponse<ThreadPageResponse> myBookmarks(
             Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
@@ -34,6 +36,7 @@ public class ThreadBookmarkController {
     }
 
     @GetMapping("/threads/{threadId}/bookmark")
+    @RequirePermission("forum.thread.bookmark:read")
     public ApiResponse<ThreadBookmarkStatusResponse> status(
             Authentication authentication,
             @PathVariable UUID threadId) {
@@ -42,6 +45,7 @@ public class ThreadBookmarkController {
     }
 
     @PostMapping("/threads/{threadId}/bookmark")
+    @RequirePermission("forum.thread.bookmark:create")
     public ApiResponse<ThreadBookmarkStatusResponse> watch(
             Authentication authentication,
             @PathVariable UUID threadId) {
@@ -50,6 +54,7 @@ public class ThreadBookmarkController {
     }
 
     @DeleteMapping("/threads/{threadId}/bookmark")
+    @RequirePermission("forum.thread.bookmark:delete")
     public ApiResponse<ThreadBookmarkStatusResponse> unwatch(
             Authentication authentication,
             @PathVariable UUID threadId) {

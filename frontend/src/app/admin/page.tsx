@@ -59,11 +59,12 @@ export default function AdminDashboardPage() {
               value={overview.disabledUsers}
               accent="danger"
             />
-            <StatCard label="Quản trị viên (ADMIN)" value={overview.adminUsers} />
+            <StatCard label="Super Admin" value={overview.superAdminUsers} accent="danger" />
+            <StatCard label="Quản trị (ADMIN)" value={overview.adminUsers} />
             <StatCard label="Phó quản trị (SUB_ADMIN)" value={overview.subAdminUsers} />
           </div>
 
-          <section className="mt-10 grid gap-4 lg:grid-cols-2">
+          <section className="mt-10 grid gap-4 lg:grid-cols-3">
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-6">
               <h2 className="text-sm font-semibold text-white">Quản lý nhanh</h2>
               <p className="mt-1 text-sm text-slate-500">
@@ -77,12 +78,28 @@ export default function AdminDashboardPage() {
               </Link>
             </div>
             <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/50 p-6">
-              <h2 className="text-sm font-semibold text-slate-300">Sắp có</h2>
-              <ul className="mt-3 space-y-2 text-sm text-slate-500">
-                <li>• Kiểm duyệt báo cáo nội dung</li>
-                <li>• Quản lý diễn đàn &amp; danh mục</li>
-                <li>• Gán vai trò SUB_ADMIN</li>
-              </ul>
+              <h2 className="text-sm font-semibold text-slate-300">Gói Membership</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Cấu hình giá FUO Point, role gắn kèm và thời hạn từng gói bán.
+              </p>
+              <Link
+                href="/admin/membership/plans"
+                className="btn-secondary mt-4 inline-flex border-slate-700 bg-slate-900 text-slate-300"
+              >
+                Quản lý gói membership
+              </Link>
+            </div>
+            <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/50 p-6">
+              <h2 className="text-sm font-semibold text-slate-300">Phân quyền RBAC</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Chỉnh ma trận permission theo role hoặc gán quyền cho từng user.
+              </p>
+              <Link
+                href="/admin/rbac/roles"
+                className="btn-secondary mt-4 inline-flex border-slate-700 bg-slate-900 text-slate-300"
+              >
+                Ma trận phân quyền
+              </Link>
             </div>
           </section>
         </>

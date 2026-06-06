@@ -5,6 +5,7 @@ public record AdminOverviewResponse(
         long activeUsers,
         long pendingVerificationUsers,
         long disabledUsers,
+        long superAdminUsers,
         long adminUsers,
         long subAdminUsers
 ) {

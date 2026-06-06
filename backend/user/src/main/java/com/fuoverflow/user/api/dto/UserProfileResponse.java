@@ -16,6 +16,9 @@ public record UserProfileResponse(
         String avatarUrl,
         UserStatus status,
         List<String> roles,
+        long permVersion,
+        List<String> permissions,
+        boolean superAdmin,
         boolean emailVerified,
         Instant createdAt
 ) {

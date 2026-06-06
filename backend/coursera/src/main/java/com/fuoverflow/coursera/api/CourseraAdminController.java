@@ -1,5 +1,6 @@
 package com.fuoverflow.coursera.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.coursera.api.dto.AdminCatalogItemResponse;
 import com.fuoverflow.coursera.api.dto.AdminRequestDetailResponse;
@@ -30,6 +31,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/coursera")
+@RequirePermission("admin.panel:access")
 public class CourseraAdminController {
     private final CourseraCatalogAdminService catalogAdminService;
     private final CourseraRequestAdminService requestAdminService;
@@ -42,27 +44,32 @@ public class CourseraAdminController {
     }
 
     @GetMapping("/overview")
+    @RequirePermission("coursera.request.admin:read")
     public ApiResponse<CourseraOverviewResponse> overview() {
         return ApiResponse.ok(requestAdminService.overview());
     }
 
     @GetMapping("/catalog")
+    @RequirePermission("coursera.catalog.admin:read")
     public ApiResponse<List<AdminCatalogItemResponse>> listCatalog() {
         return ApiResponse.ok(catalogAdminService.listAll());
     }
 
     @GetMapping("/catalog/{id}")
+    @RequirePermission("coursera.catalog.admin:read")
     public ApiResponse<AdminCatalogItemResponse> getCatalog(@PathVariable UUID id) {
         return ApiResponse.ok(catalogAdminService.get(id));
     }
 
     @PostMapping("/catalog")
     @ResponseStatus(HttpStatus.CREATED)
+    @RequirePermission("coursera.catalog.admin:create")
     public ApiResponse<AdminCatalogItemResponse> createCatalog(@Valid @RequestBody CreateCatalogItemRequest request) {
         return ApiResponse.ok(catalogAdminService.create(request));
     }
 
     @PutMapping("/catalog/{id}")
+    @RequirePermission("coursera.catalog.admin:update")
     public ApiResponse<AdminCatalogItemResponse> updateCatalog(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateCatalogItemRequest request) {
@@ -71,11 +78,13 @@ public class CourseraAdminController {
 
     @DeleteMapping("/catalog/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @RequirePermission("coursera.catalog.admin:delete")
     public void deleteCatalog(@PathVariable UUID id) {
         catalogAdminService.delete(id);
     }
 
     @GetMapping("/requests")
+    @RequirePermission("coursera.request.admin:read")
     public ApiResponse<RequestPageResponse> listRequests(
             @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) UUID catalogItemId,
@@ -87,11 +96,13 @@ public class CourseraAdminController {
     }
 
     @GetMapping("/requests/{id}")
+    @RequirePermission("coursera.request.admin:read")
     public ApiResponse<AdminRequestDetailResponse> getRequest(@PathVariable UUID id) {
         return ApiResponse.ok(requestAdminService.getDetail(id));
     }
 
     @PatchMapping("/requests/{id}/status")
+    @RequirePermission("coursera.request.admin:update")
     public ApiResponse<AdminRequestDetailResponse> updateStatus(
             Authentication authentication,
             @PathVariable UUID id,

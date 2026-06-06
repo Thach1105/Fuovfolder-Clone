@@ -2,14 +2,23 @@ package com.fuoverflow.user.persistence;
 
 import com.fuoverflow.user.api.dto.AdminUserSummaryResponse;
 import com.fuoverflow.user.api.dto.AuthUserView;
+import com.fuoverflow.user.api.dto.EffectivePermissions;
 import com.fuoverflow.user.api.dto.UserProfileResponse;
+import com.fuoverflow.user.application.PermissionResolverService;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
 public class UserMapper {
+    private final PermissionResolverService permissionResolver;
+
+    public UserMapper(PermissionResolverService permissionResolver) {
+        this.permissionResolver = permissionResolver;
+    }
+
     public AuthUserView toAuthUser(UserEntity entity) {
+        EffectivePermissions effective = permissionResolver.resolve(entity.getId());
         return new AuthUserView(
                 entity.getId(),
                 entity.getEmail(),
@@ -17,7 +26,10 @@ public class UserMapper {
                 entity.getPasswordHash(),
                 entity.getDisplayName(),
                 entity.getStatus(),
-                roles(entity.getRolesJson()),
+                effective.roles(),
+                effective.permVersion(),
+                effective.permissions(),
+                effective.superAdmin(),
                 entity.getEmailVerifiedAt(),
                 entity.getPasswordChangedAt(),
                 entity.getDeletedAt()
@@ -25,13 +37,14 @@ public class UserMapper {
     }
 
     public AdminUserSummaryResponse toAdminSummary(UserEntity entity) {
+        EffectivePermissions effective = permissionResolver.resolve(entity.getId());
         return new AdminUserSummaryResponse(
                 entity.getId(),
                 entity.getEmail(),
                 entity.getUsername(),
                 entity.getDisplayName(),
                 entity.getStatus(),
-                roles(entity.getRolesJson()),
+                effective.roles(),
                 entity.getEmailVerifiedAt() != null,
                 entity.getCreatedAt(),
                 entity.getLastLoginAt()
@@ -39,6 +52,7 @@ public class UserMapper {
     }
 
     public UserProfileResponse toProfile(UserEntity entity) {
+        EffectivePermissions effective = permissionResolver.resolve(entity.getId());
         return new UserProfileResponse(
                 entity.getId(),
                 entity.getEmail(),
@@ -48,18 +62,12 @@ public class UserMapper {
                 entity.getLastName(),
                 entity.getAvatarUrl(),
                 entity.getStatus(),
-                roles(entity.getRolesJson()),
+                effective.roles(),
+                effective.permVersion(),
+                effective.permissions(),
+                effective.superAdmin(),
                 entity.getEmailVerifiedAt() != null,
                 entity.getCreatedAt()
         );
-    }
-
-    private List<String> roles(String rolesJson) {
-        if (rolesJson == null || rolesJson.isBlank()) return List.of("USER");
-        return rolesJson.replace("[", "").replace("]", "").replace("\"", "").lines()
-                .flatMap(line -> List.of(line.split(",")).stream())
-                .map(String::trim)
-                .filter(role -> !role.isBlank())
-                .toList();
     }
 }

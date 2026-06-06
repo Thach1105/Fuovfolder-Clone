@@ -65,7 +65,7 @@ export function AppHeader() {
             <>
               <NotificationBell />
               <PointsBalanceBadge />
-              {hasStaffAccess(user.roles) && (
+              {hasStaffAccess(user) && (
                 <Link
                   href="/admin"
                   className="hidden rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100 sm:inline-flex"

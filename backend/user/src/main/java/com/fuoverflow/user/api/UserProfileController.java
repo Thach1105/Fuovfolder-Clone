@@ -1,5 +1,6 @@
 package com.fuoverflow.user.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.user.api.dto.UpdateUserProfileRequest;
 import com.fuoverflow.user.api.dto.UserProfileResponse;
@@ -24,11 +25,13 @@ public class UserProfileController {
     }
 
     @GetMapping("/me")
+    @RequirePermission("user.profile:read")
     public ApiResponse<UserProfileResponse> me(Authentication authentication) {
         return ApiResponse.ok(service.getCurrentUser(UUID.fromString(authentication.getName())));
     }
 
     @PatchMapping("/me/profile")
+    @RequirePermission("user.profile:update")
     public ApiResponse<UserProfileResponse> updateProfile(Authentication authentication, @Valid @RequestBody UpdateUserProfileRequest request) {
         return ApiResponse.ok(service.updateProfile(UUID.fromString(authentication.getName()), request));
     }

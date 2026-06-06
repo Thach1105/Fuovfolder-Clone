@@ -3,22 +3,52 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { isAdmin, staffRoleLabel } from "@/lib/auth/roles";
+import { can } from "@/lib/auth/permissions";
+import { isSuperAdmin, staffRoleLabel } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/admin", label: "Tổng quan", exact: true },
-  { href: "/admin/users", label: "Người dùng", exact: false },
-  { href: "/admin/coursera/catalog", label: "Coursera — Khóa học", exact: false },
-  { href: "/admin/coursera/orders", label: "Coursera — Đơn", exact: false },
-  { href: "/admin/source/catalog", label: "Suộc — Tài liệu", exact: false },
-  { href: "/admin/source/purchases", label: "Suộc — Đơn mua", exact: false },
-  { href: "/admin/forum/sync", label: "Diễn đàn — Đồng bộ", exact: false },
+  { href: "/admin", label: "Tổng quan", exact: true, permission: "admin.overview:read" },
+  { href: "/admin/users", label: "Người dùng", exact: false, permission: "admin.user:read" },
+  { href: "/admin/rbac/roles", label: "Phân quyền", exact: false, permission: "rbac.role:read" },
+  {
+    href: "/admin/membership/plans",
+    label: "Membership — Gói",
+    exact: false,
+    permission: "membership.admin:read",
+  },
+  {
+    href: "/admin/coursera/catalog",
+    label: "Coursera — Khóa học",
+    exact: false,
+    permission: "coursera.catalog.admin:read",
+  },
+  {
+    href: "/admin/coursera/orders",
+    label: "Coursera — Đơn",
+    exact: false,
+    permission: "coursera.request.admin:read",
+  },
+  {
+    href: "/admin/source/catalog",
+    label: "Suộc — Tài liệu",
+    exact: false,
+    permission: "source.catalog.admin:read",
+  },
+  {
+    href: "/admin/source/purchases",
+    label: "Suộc — Đơn mua",
+    exact: false,
+    permission: "source.purchase.admin:read",
+  },
+  { href: "/admin/forum/sync", label: "Diễn đàn — Đồng bộ", exact: false, permission: "forum.sync:read" },
 ];
 
 export function AdminSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+
+  const visibleNav = NAV.filter((item) => can(user, item.permission));
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-950">
@@ -35,7 +65,7 @@ export function AdminSidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {NAV.map((item) => {
+        {visibleNav.map((item) => {
           const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
           return (
             <Link
@@ -60,9 +90,9 @@ export function AdminSidebar() {
             <p className="truncate text-sm font-medium text-slate-200">{user.displayName}</p>
             <p className="truncate text-xs text-slate-500">@{user.username}</p>
             <p className="mt-1 text-xs text-amber-400/90">{staffRoleLabel(user)}</p>
-            {isAdmin(user.roles) && (
+            {isSuperAdmin(user) && (
               <span className="mt-2 inline-block rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
-                ADMIN
+                SUPER_ADMIN
               </span>
             )}
           </div>

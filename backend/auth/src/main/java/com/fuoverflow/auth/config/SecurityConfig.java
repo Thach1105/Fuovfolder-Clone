@@ -3,9 +3,11 @@ package com.fuoverflow.auth.config;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -17,6 +19,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
+@EnableAspectJAutoProxy
 @EnableConfigurationProperties(AuthProperties.class)
 public class SecurityConfig {
     @Bean
@@ -43,33 +47,14 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/push/vapid-public-key")
                         .permitAll()
-                        .requestMatchers(
-                                "/api/v1/users/me/notifications",
-                                "/api/v1/users/me/notifications/**",
-                                "/api/v1/users/me/notification-preferences",
-                                "/api/v1/users/me/push-subscriptions")
-                        .authenticated()
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/v1/users/me/thread-bookmarks",
-                                "/api/v1/threads/*/bookmark")
-                        .authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/threads/*/bookmark")
-                        .authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/threads/*/bookmark")
-                        .authenticated()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/forums", "/api/v1/forums/**",
                                 "/api/v1/threads", "/api/v1/threads/**")
                         .permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/threads", "/api/v1/threads/*/posts")
-                        .authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/source/catalog/*/questions")
-                        .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/source/catalog", "/api/v1/source/catalog/**")
                         .permitAll()
-                        .requestMatchers("/api/v1/auth/token/generate").hasAnyRole("ADMIN", "SUB_ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/source/purchases/*/refund").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "SUB_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/membership/plans")
+                        .permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(cookieAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

@@ -1,6 +1,7 @@
 package com.fuoverflow.forum.api;
 
 import com.fuoverflow.common.exception.BadRequestException;
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.forum.api.dto.StartSyncRequest;
 import com.fuoverflow.forum.api.dto.SyncRunPageResponse;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin/forum-sync")
+@RequirePermission("admin.panel:access")
 public class ForumSyncAdminController {
     private final ForumSyncService syncService;
     private final SyncRunQueryService syncRunQueryService;
@@ -35,6 +37,7 @@ public class ForumSyncAdminController {
     }
 
     @PostMapping
+    @RequirePermission("forum.sync:create")
     public ApiResponse<SyncRunResponse> trigger(@RequestBody(required = false) StartSyncRequest request) {
         SyncMode mode = SyncMode.from(request != null ? request.mode() : null);
         SyncScope scope = SyncScope.from(request != null ? request.scope() : null);
@@ -50,6 +53,7 @@ public class ForumSyncAdminController {
     }
 
     @GetMapping("/runs")
+    @RequirePermission("forum.sync:read")
     public ApiResponse<SyncRunPageResponse> runs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {

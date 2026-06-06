@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { isAdmin } from "@/lib/auth/roles";
+import { canRefundSource } from "@/lib/auth/roles";
 import {
   type AdminSourcePurchase,
   type SourceOverview,
@@ -37,7 +37,7 @@ function OverviewCard({ label, value }: { label: string; value: string | number 
 
 export default function AdminSourcePurchasesPage() {
   const { user } = useAuth();
-  const canRefund = isAdmin(user?.roles);
+  const canRefund = canRefundSource(user);
   const [overview, setOverview] = useState<SourceOverview | null>(null);
   const [items, setItems] = useState<AdminSourcePurchase[]>([]);
   const [statusFilter, setStatusFilter] = useState("");

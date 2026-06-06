@@ -1,5 +1,6 @@
 package com.fuoverflow.source.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.source.api.dto.CreatePurchaseRequest;
 import com.fuoverflow.source.api.dto.PurchasePageResponse;
@@ -32,6 +33,7 @@ public class SourcePurchaseController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @RequirePermission("source.purchase:create")
     public ApiResponse<PurchaseResponse> purchase(
             Authentication authentication,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
@@ -41,6 +43,7 @@ public class SourcePurchaseController {
     }
 
     @GetMapping
+    @RequirePermission("source.purchase:read")
     public ApiResponse<PurchasePageResponse> list(
             Authentication authentication,
             @RequestParam(defaultValue = "all") String filter,
@@ -51,12 +54,14 @@ public class SourcePurchaseController {
     }
 
     @GetMapping("/stats")
+    @RequirePermission("source.purchase:read")
     public ApiResponse<PurchaseStatsResponse> stats(Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         return ApiResponse.ok(purchaseService.stats(userId));
     }
 
     @GetMapping("/{id}")
+    @RequirePermission("source.purchase:read")
     public ApiResponse<PurchaseResponse> get(Authentication authentication, @PathVariable UUID id) {
         UUID userId = UUID.fromString(authentication.getName());
         return ApiResponse.ok(purchaseService.getMine(userId, id));

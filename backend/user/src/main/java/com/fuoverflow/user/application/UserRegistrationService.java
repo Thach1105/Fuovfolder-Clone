@@ -21,12 +21,15 @@ public class UserRegistrationService {
     private final EmailNormalizer emailNormalizer;
     private final UsernameNormalizer usernameNormalizer;
 
+    private final RoleAssignmentService roleAssignments;
+
     public UserRegistrationService(UserRepository repository, UserMapper mapper, EmailNormalizer emailNormalizer,
-                                   UsernameNormalizer usernameNormalizer) {
+                                   UsernameNormalizer usernameNormalizer, RoleAssignmentService roleAssignments) {
         this.repository = repository;
         this.mapper = mapper;
         this.emailNormalizer = emailNormalizer;
         this.usernameNormalizer = usernameNormalizer;
+        this.roleAssignments = roleAssignments;
     }
 
     @Transactional
@@ -44,7 +47,9 @@ public class UserRegistrationService {
         UserEntity entity = UserEntity.pending(UUID.randomUUID(), command.email().trim(), normalizedEmail,
                 command.username().trim(), normalizedUsername, command.passwordHash(), command.displayName().trim(), campus, now);
         try {
-            return mapper.toAuthUser(repository.save(entity));
+            UserEntity saved = repository.save(entity);
+            roleAssignments.ensureDefaultUserRole(saved.getId());
+            return mapper.toAuthUser(saved);
         } catch (DataIntegrityViolationException exception) {
             throw new ConflictException("USER_ALREADY_EXISTS", "Email or username is already used");
         }

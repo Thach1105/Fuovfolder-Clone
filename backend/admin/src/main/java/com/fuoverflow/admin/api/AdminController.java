@@ -1,5 +1,6 @@
 package com.fuoverflow.admin.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.user.api.dto.AdminOverviewResponse;
 import com.fuoverflow.user.api.dto.AdminUserPageResponse;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin")
+@RequirePermission("admin.panel:access")
 public class AdminController {
     private final UserAdminService userAdminService;
 
@@ -19,11 +21,13 @@ public class AdminController {
     }
 
     @GetMapping("/overview")
+    @RequirePermission("admin.overview:read")
     public ApiResponse<AdminOverviewResponse> overview() {
         return ApiResponse.ok(userAdminService.getOverview());
     }
 
     @GetMapping("/users")
+    @RequirePermission("admin.user:read")
     public ApiResponse<AdminUserPageResponse> users(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {

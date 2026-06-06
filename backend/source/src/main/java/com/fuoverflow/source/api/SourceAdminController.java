@@ -1,5 +1,6 @@
 package com.fuoverflow.source.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.source.api.dto.AdminCatalogItemResponse;
 import com.fuoverflow.source.api.dto.AdminPurchasePageResponse;
@@ -40,6 +41,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/source")
+@RequirePermission("admin.panel:access")
 public class SourceAdminController {
     private final SourceCatalogAdminService catalogAdminService;
     private final SourcePurchaseAdminService purchaseAdminService;
@@ -58,27 +60,32 @@ public class SourceAdminController {
     }
 
     @GetMapping("/overview")
+    @RequirePermission("source.purchase.admin:read")
     public ApiResponse<SourceOverviewResponse> overview() {
         return ApiResponse.ok(purchaseAdminService.overview());
     }
 
     @GetMapping("/catalog")
+    @RequirePermission("source.catalog.admin:read")
     public ApiResponse<List<AdminCatalogItemResponse>> listCatalog() {
         return ApiResponse.ok(catalogAdminService.listAll());
     }
 
     @GetMapping("/catalog/{id}")
+    @RequirePermission("source.catalog.admin:read")
     public ApiResponse<AdminCatalogItemResponse> getCatalog(@PathVariable UUID id) {
         return ApiResponse.ok(catalogAdminService.get(id));
     }
 
     @PostMapping("/catalog")
     @ResponseStatus(HttpStatus.CREATED)
+    @RequirePermission("source.catalog.admin:create")
     public ApiResponse<AdminCatalogItemResponse> createCatalog(@Valid @RequestBody CreateCatalogItemRequest request) {
         return ApiResponse.ok(catalogAdminService.create(request));
     }
 
     @PutMapping("/catalog/{id}")
+    @RequirePermission("source.catalog.admin:update")
     public ApiResponse<AdminCatalogItemResponse> updateCatalog(
             @PathVariable UUID id, @Valid @RequestBody UpdateCatalogItemRequest request) {
         return ApiResponse.ok(catalogAdminService.update(id, request));
@@ -86,11 +93,13 @@ public class SourceAdminController {
 
     @DeleteMapping("/catalog/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @RequirePermission("source.catalog.admin:delete")
     public void deleteCatalog(@PathVariable UUID id) {
         catalogAdminService.delete(id);
     }
 
     @PutMapping("/catalog/{id}/related")
+    @RequirePermission("source.catalog.admin:update")
     public ApiResponse<AdminCatalogItemResponse> setRelated(
             @PathVariable UUID id, @Valid @RequestBody SetRelatedItemsRequest request) {
         catalogAdminService.setRelated(id, request.relatedIds());
@@ -98,11 +107,13 @@ public class SourceAdminController {
     }
 
     @GetMapping("/catalog/{itemId}/questions")
+    @RequirePermission("source.question.admin:read")
     public ApiResponse<List<AdminQuestionResponse>> listQuestions(@PathVariable UUID itemId) {
         return ApiResponse.ok(questionAdminService.list(itemId));
     }
 
     @GetMapping("/catalog/{itemId}/questions/{questionId}")
+    @RequirePermission("source.question.admin:read")
     public ApiResponse<AdminQuestionResponse> getQuestion(
             @PathVariable UUID itemId,
             @PathVariable UUID questionId) {
@@ -111,6 +122,7 @@ public class SourceAdminController {
 
     @PostMapping("/catalog/{itemId}/questions")
     @ResponseStatus(HttpStatus.CREATED)
+    @RequirePermission("source.question.admin:create")
     public ApiResponse<AdminQuestionResponse> createQuestion(
             @PathVariable UUID itemId,
             @Valid @RequestBody CreateQuestionRequest request) {
@@ -118,6 +130,7 @@ public class SourceAdminController {
     }
 
     @PutMapping("/catalog/{itemId}/questions/{questionId}")
+    @RequirePermission("source.question.admin:update")
     public ApiResponse<AdminQuestionResponse> updateQuestion(
             @PathVariable UUID itemId,
             @PathVariable UUID questionId,
@@ -127,12 +140,14 @@ public class SourceAdminController {
 
     @DeleteMapping("/catalog/{itemId}/questions/{questionId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @RequirePermission("source.question.admin:delete")
     public void deleteQuestion(@PathVariable UUID itemId, @PathVariable UUID questionId) {
         questionAdminService.delete(itemId, questionId);
     }
 
     @PutMapping("/catalog/{itemId}/questions/reorder")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @RequirePermission("source.question.admin:update")
     public void reorderQuestions(
             @PathVariable UUID itemId,
             @Valid @RequestBody ReorderQuestionsRequest request) {
@@ -140,12 +155,14 @@ public class SourceAdminController {
     }
 
     @PostMapping(value = "/media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RequirePermission("source.media.admin:create")
     public ApiResponse<MediaUploadResponse> uploadMedia(@RequestPart("file") MultipartFile file) {
         var stored = mediaService.uploadQuestionImage(file);
         return ApiResponse.ok(new MediaUploadResponse(stored.objectKey(), stored.publicUrl()));
     }
 
     @GetMapping("/purchases")
+    @RequirePermission("source.purchase.admin:read")
     public ApiResponse<AdminPurchasePageResponse> listPurchases(
             @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) UUID catalogItemId,
@@ -157,11 +174,13 @@ public class SourceAdminController {
     }
 
     @GetMapping("/purchases/{id}")
+    @RequirePermission("source.purchase.admin:read")
     public ApiResponse<AdminPurchaseResponse> getPurchase(@PathVariable UUID id) {
         return ApiResponse.ok(purchaseAdminService.getDetail(id));
     }
 
     @PostMapping("/purchases/{id}/refund")
+    @RequirePermission("source.purchase.admin:refund")
     public ApiResponse<AdminPurchaseResponse> refund(
             Authentication authentication,
             @PathVariable UUID id,

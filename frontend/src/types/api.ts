@@ -66,6 +66,9 @@ export interface UserProfileResponse {
   avatarUrl: string | null;
   status: string;
   roles: string[];
+  permVersion: number;
+  permissions: string[];
+  superAdmin: boolean;
   emailVerified: boolean;
   createdAt: string;
 }
@@ -82,6 +85,7 @@ export interface AdminOverviewResponse {
   activeUsers: number;
   pendingVerificationUsers: number;
   disabledUsers: number;
+  superAdminUsers: number;
   adminUsers: number;
   subAdminUsers: number;
 }
@@ -123,4 +127,90 @@ export interface MockContributor {
   username: string;
   score: number;
   initial: string;
+}
+
+export interface PermissionItemResponse {
+  slug: string;
+  module: string;
+  resource: string;
+  action: string;
+  description: string;
+}
+
+export interface PermissionCatalogResponse {
+  modules: Record<string, PermissionItemResponse[]>;
+}
+
+export interface RoleSummaryResponse {
+  id: string;
+  slug: string;
+  name: string;
+  roleType: string;
+  parentRoleId: string | null;
+  system: boolean;
+  editable: boolean;
+  permissionCount: number;
+}
+
+export interface RoleDetailResponse {
+  id: string;
+  slug: string;
+  name: string;
+  roleType: string;
+  parentRoleId: string | null;
+  system: boolean;
+  editable: boolean;
+  permissions: string[];
+}
+
+export interface CreateRoleRequest {
+  slug: string;
+  name: string;
+  parentRoleSlug?: string | null;
+  permissions: string[];
+}
+
+export interface EffectivePermissions {
+  userId: string;
+  permVersion: number;
+  roles: string[];
+  permissions: string[];
+  superAdmin: boolean;
+}
+
+export interface UserPermissionOverrideResponse {
+  permissionSlug: string;
+  effect: string;
+  reason: string | null;
+}
+
+export interface MembershipPlanResponse {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  pricePoints: number;
+  currency: string;
+  billingInterval: string;
+  roleSlug: string;
+  durationDays: number;
+}
+
+export interface AdminMembershipPlanResponse extends MembershipPlanResponse {
+  status: string;
+}
+
+export interface MembershipRoleOptionResponse {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+export interface MembershipStatusResponse {
+  membershipId: string | null;
+  planSlug: string | null;
+  planName: string | null;
+  roleSlug: string | null;
+  expiresAt: string | null;
+  active: boolean;
 }
