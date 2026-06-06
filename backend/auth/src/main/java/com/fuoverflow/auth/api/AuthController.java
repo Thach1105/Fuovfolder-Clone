@@ -4,7 +4,10 @@ import com.fuoverflow.auth.api.dto.*;
 import com.fuoverflow.auth.application.AuthService;
 import com.fuoverflow.auth.application.CookieService;
 import com.fuoverflow.auth.application.EmailVerificationService;
+import com.fuoverflow.auth.config.AuthProperties;
 import com.fuoverflow.auth.domain.ClientContext;
+import com.fuoverflow.auth.support.EmailVerificationLinks;
+import com.fuoverflow.common.config.CorsProperties;
 import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import jakarta.servlet.http.Cookie;
@@ -14,6 +17,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -23,17 +27,36 @@ public class AuthController {
     private final AuthService authService;
     private final EmailVerificationService emailVerificationService;
     private final CookieService cookieService;
+    private final AuthProperties authProperties;
+    private final CorsProperties corsProperties;
 
-    public AuthController(AuthService authService, EmailVerificationService emailVerificationService, CookieService cookieService) {
+    public AuthController(
+            AuthService authService,
+            EmailVerificationService emailVerificationService,
+            CookieService cookieService,
+            AuthProperties authProperties,
+            CorsProperties corsProperties) {
         this.authService = authService;
         this.emailVerificationService = emailVerificationService;
         this.cookieService = cookieService;
+        this.authProperties = authProperties;
+        this.corsProperties = corsProperties;
     }
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ApiResponse.ok(authService.register(request));
+    }
+
+    @GetMapping("/email/verify")
+    public void verifyEmailRedirect(@RequestParam("token") String token, HttpServletResponse response) throws IOException {
+        AuthProperties.EmailVerification config = authProperties.emailVerification();
+        String link = EmailVerificationLinks.buildLink(
+                config == null ? null : config.verificationUrlBase(),
+                corsProperties.allowedOrigins(),
+                token);
+        response.sendRedirect(link);
     }
 
     @PostMapping("/email/verify")
