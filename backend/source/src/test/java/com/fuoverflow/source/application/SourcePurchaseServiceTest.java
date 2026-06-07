@@ -142,7 +142,7 @@ class SourcePurchaseServiceTest {
     private SourceCatalogItemEntity catalog(int price, int accessDays) {
         return SourceCatalogItemEntity.create(
                 catalogId, "MLN111", "Triết học Mác - Lênin", null, price, accessDays,
-                583, 15472, 0, null, "on-thi", true, true, 10, Instant.now());
+                583, 15472, 0, null, null, "on-thi", true, true, 10, Instant.now());
     }
 
     private void stubActiveUser() {
