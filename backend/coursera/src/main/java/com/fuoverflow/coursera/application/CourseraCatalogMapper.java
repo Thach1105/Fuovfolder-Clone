@@ -15,6 +15,7 @@ public final class CourseraCatalogMapper {
                 e.getTitle(),
                 e.getDescription(),
                 e.getPricePoints(),
+                e.getCoverImageUrl(),
                 e.isFeatured());
     }
 
@@ -25,6 +26,7 @@ public final class CourseraCatalogMapper {
                 e.getTitle(),
                 e.getDescription(),
                 e.getPricePoints(),
+                e.getCoverImageUrl(),
                 e.isActive(),
                 e.isFeatured(),
                 e.getSortOrder(),

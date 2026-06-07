@@ -198,6 +198,7 @@ export interface MembershipPlanResponse {
   billingInterval: string;
   roleSlug: string;
   durationDays: number;
+  imageUrl: string | null;
 }
 
 export interface AdminMembershipPlanResponse extends MembershipPlanResponse {

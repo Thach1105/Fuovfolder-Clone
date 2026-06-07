@@ -51,6 +51,7 @@ public class CourseraCatalogAdminService {
                 request.featured() != null && request.featured(),
                 request.sortOrder() != null ? request.sortOrder() : 0,
                 now);
+        entity.setCoverImageUrl(request.coverImageUrl());
         return CourseraCatalogMapper.toAdmin(repository.save(entity));
     }
 
@@ -73,6 +74,9 @@ public class CourseraCatalogAdminService {
         }
         if (request.pricePoints() != null) {
             entity.setPricePoints(request.pricePoints());
+        }
+        if (request.coverImageUrl() != null) {
+            entity.setCoverImageUrl(blankToNull(request.coverImageUrl()));
         }
         if (request.active() != null) {
             entity.setActive(request.active());
@@ -108,5 +112,12 @@ public class CourseraCatalogAdminService {
 
     private static String normalizeCode(String code) {
         return code.trim().toUpperCase();
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

@@ -11,6 +11,7 @@ public record CreateMembershipPlanRequest(
         String billingInterval,
         @NotBlank String roleSlug,
         @Min(1) int durationDays,
-        String status
+        String status,
+        String imageUrl
 ) {
 }

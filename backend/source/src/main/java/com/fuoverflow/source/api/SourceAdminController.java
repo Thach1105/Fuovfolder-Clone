@@ -156,8 +156,11 @@ public class SourceAdminController {
 
     @PostMapping(value = "/media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RequirePermission("source.media.admin:create")
-    public ApiResponse<MediaUploadResponse> uploadMedia(@RequestPart("file") MultipartFile file) {
-        var stored = mediaService.uploadQuestionImage(file);
+    public ApiResponse<MediaUploadResponse> uploadMedia(
+            Authentication authentication,
+            @RequestPart("file") MultipartFile file) {
+        UUID adminUserId = UUID.fromString(authentication.getName());
+        var stored = mediaService.uploadQuestionImage(file, adminUserId);
         return ApiResponse.ok(new MediaUploadResponse(stored.objectKey(), stored.publicUrl()));
     }
 

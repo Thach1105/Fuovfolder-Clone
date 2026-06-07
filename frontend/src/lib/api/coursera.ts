@@ -6,6 +6,7 @@ export interface CatalogItem {
   title: string;
   description: string | null;
   pricePoints: number;
+  coverImageUrl: string | null;
   featured: boolean;
 }
 
@@ -15,6 +16,7 @@ export interface AdminCatalogItem {
   title: string;
   description: string | null;
   pricePoints: number;
+  coverImageUrl: string | null;
   active: boolean;
   featured: boolean;
   sortOrder: number;

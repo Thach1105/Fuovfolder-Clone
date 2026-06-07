@@ -74,6 +74,7 @@ public class MembershipPlanAdminService {
                 status,
                 MembershipFeatures.buildFeaturesJson(request.roleSlug().trim(), request.durationDays()),
                 now);
+        plan.setImageUrl(blankToNull(request.imageUrl()));
         planRepository.save(plan);
         return toResponse(plan);
     }
@@ -91,6 +92,7 @@ public class MembershipPlanAdminService {
         plan.setStatus(status);
         plan.setFeaturesJson(MembershipFeatures.buildFeaturesJson(
                 request.roleSlug().trim(), request.durationDays()));
+        plan.setImageUrl(blankToNull(request.imageUrl()));
         planRepository.save(plan);
         return toResponse(plan);
     }
@@ -149,6 +151,7 @@ public class MembershipPlanAdminService {
                 plan.getBillingInterval(),
                 plan.getStatus(),
                 MembershipFeatures.roleSlug(plan.getFeaturesJson()),
-                MembershipFeatures.durationDays(plan.getFeaturesJson(), 30));
+                MembershipFeatures.durationDays(plan.getFeaturesJson(), 30),
+                plan.getImageUrl());
     }
 }

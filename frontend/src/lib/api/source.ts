@@ -11,6 +11,7 @@ export interface SourceCatalogItem {
   passRatePercent: number;
   viewCount: number;
   cardColor: string | null;
+  coverImageUrl: string | null;
   featured: boolean;
 }
 
@@ -181,6 +182,7 @@ export interface AdminSourceCatalogBody {
   duplicationRateBp?: number;
   passRateBp?: number;
   cardColor?: string;
+  coverImageUrl?: string;
   categorySlug?: string;
   active?: boolean;
   featured?: boolean;

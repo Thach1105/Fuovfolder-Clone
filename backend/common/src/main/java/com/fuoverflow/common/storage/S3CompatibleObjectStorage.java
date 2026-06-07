@@ -1,38 +1,51 @@
 package com.fuoverflow.common.storage;
 
 import com.fuoverflow.common.config.ObjectStorageProperties;
+import com.fuoverflow.common.config.UploadProperties;
 import com.fuoverflow.common.exception.BadRequestException;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 
 public class S3CompatibleObjectStorage implements ObjectStorage {
     private final ObjectStorageProperties.S3 s3;
+    private final UploadProperties uploadProperties;
     private final S3Client client;
 
-    public S3CompatibleObjectStorage(ObjectStorageProperties properties) {
+    public S3CompatibleObjectStorage(ObjectStorageProperties properties, UploadProperties uploadProperties) {
         this.s3 = requireS3(properties);
+        this.uploadProperties = uploadProperties;
         this.client = buildClient(this.s3);
     }
 
     @Override
     public StoredObject storeImage(MultipartFile file, String logicalFolder) {
-        ObjectStorageSupport.validateImage(file);
-        String contentType = file.getContentType();
-        String objectKey = ObjectStorageSupport.buildObjectKey(logicalFolder, contentType);
+        return storeFile(file, logicalFolder, FileKind.IMAGE);
+    }
+
+    @Override
+    public StoredObject storeFile(MultipartFile file, String logicalFolder, FileKind kind) {
+        ObjectStorageSupport.validateFile(file, kind, uploadProperties);
+        String contentType = ObjectStorageSupport.requireContentType(file);
+        String objectKey = ObjectStorageSupport.buildObjectKey(
+                logicalFolder, contentType, file.getOriginalFilename());
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(s3.bucket())
                 .key(objectKey)
@@ -43,7 +56,27 @@ public class S3CompatibleObjectStorage implements ObjectStorage {
         } catch (IOException | S3Exception ex) {
             throw new BadRequestException("FILE_STORE_FAILED", "Failed to store uploaded file");
         }
-        return new StoredObject(objectKey, buildPublicUrl(objectKey));
+        String publicUrl = kind == FileKind.IMAGE ? buildPublicUrl(objectKey) : null;
+        return new StoredObject(objectKey, publicUrl);
+    }
+
+    @Override
+    public InputStream openStream(String objectKeyOrLegacyReference) {
+        String objectKey = normalizeToObjectKey(objectKeyOrLegacyReference);
+        if (objectKey == null) {
+            throw new BadRequestException("FILE_NOT_FOUND", "File not found");
+        }
+        try {
+            ResponseInputStream<?> stream = client.getObject(GetObjectRequest.builder()
+                    .bucket(s3.bucket())
+                    .key(objectKey)
+                    .build());
+            return stream;
+        } catch (NoSuchKeyException ex) {
+            throw new BadRequestException("FILE_NOT_FOUND", "File not found");
+        } catch (S3Exception ex) {
+            throw new BadRequestException("FILE_READ_FAILED", "Unable to read stored file");
+        }
     }
 
     @Override
@@ -109,7 +142,7 @@ public class S3CompatibleObjectStorage implements ObjectStorage {
         return publicUrl;
     }
 
-    private String buildPublicUrl(String objectKey) {
+    String buildPublicUrl(String objectKey) {
         String base = s3.publicBaseUrl().replaceAll("/+$", "");
         if (s3.pathStyleAccessOrDefault()) {
             return base + "/" + s3.bucket() + "/" + objectKey;

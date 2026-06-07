@@ -178,6 +178,8 @@ export interface Post {
 
   authorHandle: string | null;
 
+  authorAvatarUrl: string | null;
+
   bodyMd: string;
 
   bodyHtml: string;
@@ -190,9 +192,25 @@ export interface Post {
 
   sourceUrl: string | null;
 
+  attachments: PostAttachment[];
+
   createdAt: string;
 
   lastEditedAt: string | null;
+
+}
+
+
+
+export interface PostAttachment {
+
+  fileId: string;
+
+  originalFilename: string;
+
+  mimeType: string;
+
+  sizeBytes: number;
 
 }
 
@@ -235,6 +253,8 @@ export interface CreateThreadPayload {
   pollOptions?: string[];
 
   watchThread?: boolean;
+
+  attachmentFileIds?: string[];
 
 }
 
@@ -364,16 +384,20 @@ export function listThreadPosts(threadId: string, page = 0, size = 20) {
 
 
 
-export function createPost(threadId: string, body: string, parentPostId?: string) {
-
+export function createPost(
+  threadId: string,
+  body: string,
+  parentPostId?: string,
+  attachmentFileIds?: string[],
+) {
   return apiFetch<Post>(`/api/v1/threads/${threadId}/posts`, {
-
     method: "POST",
-
-    body: JSON.stringify({ body, parentPostId: parentPostId ?? null }),
-
+    body: JSON.stringify({
+      body,
+      parentPostId: parentPostId ?? null,
+      attachmentFileIds: attachmentFileIds ?? [],
+    }),
   });
-
 }
 
 

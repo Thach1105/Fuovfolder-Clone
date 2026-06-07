@@ -87,7 +87,8 @@ public class ThreadWriteService {
                 threadId,
                 authorUserId,
                 authorHandle,
-                request.body());
+                request.body(),
+                request.attachmentFileIds());
         thread.setLastPostId(postId);
         threadRepository.save(thread);
 

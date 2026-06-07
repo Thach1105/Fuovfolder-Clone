@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ApiError } from "@/lib/api/client";
 import * as membershipApi from "@/lib/api/membership";
+import { resolveMediaUrl } from "@/lib/api/media";
 import type { MembershipPlanResponse, MembershipStatusResponse } from "@/types/api";
 
 export default function MembershipPage() {
@@ -91,6 +92,14 @@ export default function MembershipPage() {
             key={plan.id}
             className={`rounded-2xl border p-6 ${tierStyle(plan.slug)} ${plan.slug.includes("vip") ? "ring-1 ring-emerald-500/30" : ""}`}
           >
+            {resolveMediaUrl(plan.imageUrl) && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={resolveMediaUrl(plan.imageUrl)!}
+                alt=""
+                className="mb-4 h-24 w-full rounded-lg object-cover"
+              />
+            )}
             <h2 className="text-xl font-bold text-white">{plan.name}</h2>
             <p className="mt-2 text-3xl font-bold text-amber-300">
               {plan.pricePoints.toLocaleString("vi-VN")}{" "}

@@ -41,6 +41,9 @@ public class MembershipPlanEntity {
     @Column(name = "features_json", columnDefinition = "jsonb", nullable = false)
     private String featuresJson;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -56,6 +59,7 @@ public class MembershipPlanEntity {
     public String getBillingInterval() { return billingInterval; }
     public String getStatus() { return status; }
     public String getFeaturesJson() { return featuresJson; }
+    public String getImageUrl() { return imageUrl; }
 
     public void setName(String name) { this.name = name; }
     public void setDescription(String description) { this.description = description; }
@@ -64,6 +68,7 @@ public class MembershipPlanEntity {
     public void setBillingInterval(String billingInterval) { this.billingInterval = billingInterval; }
     public void setStatus(String status) { this.status = status; }
     public void setFeaturesJson(String featuresJson) { this.featuresJson = featuresJson; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
     public static MembershipPlanEntity create(
             UUID id,

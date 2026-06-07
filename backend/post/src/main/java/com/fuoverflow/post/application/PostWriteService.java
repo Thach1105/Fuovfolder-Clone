@@ -7,6 +7,8 @@ import com.fuoverflow.common.forum.PostBodyFormatter;
 import com.fuoverflow.common.forum.PostChangeNotifier;
 import com.fuoverflow.common.forum.ThreadLookup;
 import com.fuoverflow.common.notification.NotificationPublisher;
+import com.fuoverflow.material.api.dto.AttachmentResponse;
+import com.fuoverflow.material.application.PostAttachmentService;
 import com.fuoverflow.post.api.dto.CreatePostRequest;
 import com.fuoverflow.post.api.dto.PostResponse;
 import com.fuoverflow.post.api.dto.UpdatePostRequest;
@@ -34,6 +36,7 @@ public class PostWriteService {
     private final PermissionResolverService permissionResolver;
     private final NotificationPublisher notificationPublisher;
     private final PostChangeNotifier postChangeNotifier;
+    private final PostAttachmentService postAttachmentService;
 
     public PostWriteService(
             PostRepository postRepository,
@@ -42,7 +45,8 @@ public class PostWriteService {
             UserLookupService userLookupService,
             PermissionResolverService permissionResolver,
             NotificationPublisher notificationPublisher,
-            PostChangeNotifier postChangeNotifier) {
+            PostChangeNotifier postChangeNotifier,
+            PostAttachmentService postAttachmentService) {
         this.postRepository = postRepository;
         this.threadRepository = threadRepository;
         this.threadLookup = threadLookup;
@@ -50,6 +54,7 @@ public class PostWriteService {
         this.permissionResolver = permissionResolver;
         this.notificationPublisher = notificationPublisher;
         this.postChangeNotifier = postChangeNotifier;
+        this.postAttachmentService = postAttachmentService;
     }
 
     @Transactional
@@ -72,6 +77,7 @@ public class PostWriteService {
                 status,
                 now);
         postRepository.save(post);
+        postAttachmentService.linkToPost(postId, authorUserId, request.attachmentFileIds());
 
         if ("visible".equals(status)) {
             updateThreadAfterReply(threadId, postId, now);
@@ -84,7 +90,7 @@ public class PostWriteService {
                 authorUserId,
                 authorHandle);
 
-        return PostMapper.toResponse(post);
+        return PostMapper.toResponse(post, null, List.of());
     }
 
     @Transactional
@@ -102,7 +108,7 @@ public class PostWriteService {
         post.setUpdatedAt(now);
         postRepository.save(post);
         postChangeNotifier.postUpdated(post.getId(), post.getThreadId());
-        return PostMapper.toResponse(post);
+        return PostMapper.toResponse(post, null, List.of());
     }
 
     @Transactional

@@ -27,6 +27,9 @@ public class CourseraCatalogItemEntity {
     @Column(name = "price_points", nullable = false)
     private int pricePoints;
 
+    @Column(name = "cover_image_url", length = 500)
+    private String coverImageUrl;
+
     @Column(name = "is_active", nullable = false)
     private boolean active;
 
@@ -54,6 +57,7 @@ public class CourseraCatalogItemEntity {
     public String getTitle() { return title; }
     public String getDescription() { return description; }
     public int getPricePoints() { return pricePoints; }
+    public String getCoverImageUrl() { return coverImageUrl; }
     public boolean isActive() { return active; }
     public boolean isFeatured() { return featured; }
     public int getSortOrder() { return sortOrder; }
@@ -66,6 +70,7 @@ public class CourseraCatalogItemEntity {
     public void setTitle(String title) { this.title = title; }
     public void setDescription(String description) { this.description = description; }
     public void setPricePoints(int pricePoints) { this.pricePoints = pricePoints; }
+    public void setCoverImageUrl(String coverImageUrl) { this.coverImageUrl = coverImageUrl; }
     public void setActive(boolean active) { this.active = active; }
     public void setFeatured(boolean featured) { this.featured = featured; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }

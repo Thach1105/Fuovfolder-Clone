@@ -8,6 +8,7 @@ public record CatalogItemResponse(
         String title,
         String description,
         int pricePoints,
+        String coverImageUrl,
         boolean featured
 ) {
 }

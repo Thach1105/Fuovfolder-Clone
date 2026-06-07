@@ -45,6 +45,9 @@ public class SourceCatalogItemEntity {
     @Column(name = "card_color", length = 32)
     private String cardColor;
 
+    @Column(name = "cover_image_url", length = 500)
+    private String coverImageUrl;
+
     @Column(name = "category_slug", length = 64)
     private String categorySlug;
 
@@ -81,6 +84,7 @@ public class SourceCatalogItemEntity {
     public int getPassRateBp() { return passRateBp; }
     public long getViewCount() { return viewCount; }
     public String getCardColor() { return cardColor; }
+    public String getCoverImageUrl() { return coverImageUrl; }
     public String getCategorySlug() { return categorySlug; }
     public boolean isActive() { return active; }
     public boolean isFeatured() { return featured; }
@@ -99,6 +103,7 @@ public class SourceCatalogItemEntity {
     public void setDuplicationRateBp(int duplicationRateBp) { this.duplicationRateBp = duplicationRateBp; }
     public void setPassRateBp(int passRateBp) { this.passRateBp = passRateBp; }
     public void setCardColor(String cardColor) { this.cardColor = cardColor; }
+    public void setCoverImageUrl(String coverImageUrl) { this.coverImageUrl = coverImageUrl; }
     public void setCategorySlug(String categorySlug) { this.categorySlug = categorySlug; }
     public void setActive(boolean active) { this.active = active; }
     public void setFeatured(boolean featured) { this.featured = featured; }
@@ -108,8 +113,8 @@ public class SourceCatalogItemEntity {
 
     public static SourceCatalogItemEntity create(
             UUID id, String code, String title, String description, int pricePoints,
-            int accessDays, int questionCount, int duplicationRateBp, int passRateBp,
-            String cardColor, String categorySlug,
+            int accessDays, int questionCount,             int duplicationRateBp, int passRateBp,
+            String cardColor, String coverImageUrl, String categorySlug,
             boolean active, boolean featured, int sortOrder, Instant now) {
         SourceCatalogItemEntity e = new SourceCatalogItemEntity();
         e.id = id;
@@ -123,6 +128,7 @@ public class SourceCatalogItemEntity {
         e.passRateBp = passRateBp;
         e.viewCount = 0L;
         e.cardColor = cardColor;
+        e.coverImageUrl = coverImageUrl;
         e.categorySlug = categorySlug;
         e.active = active;
         e.featured = featured;

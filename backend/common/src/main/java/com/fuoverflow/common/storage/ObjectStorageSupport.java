@@ -1,50 +1,39 @@
 package com.fuoverflow.common.storage;
 
+import com.fuoverflow.common.config.UploadProperties;
 import com.fuoverflow.common.exception.BadRequestException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
-import java.util.Set;
 import java.util.UUID;
 
 final class ObjectStorageSupport {
-    static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/png", "image/jpeg", "image/webp", "image/gif");
-    static final long MAX_BYTES = 5L * 1024 * 1024;
     static final String LEGACY_UPLOADS_PREFIX = "/uploads/";
 
     private ObjectStorageSupport() {
     }
 
-    static void validateImage(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BadRequestException("FILE_EMPTY", "Uploaded file is empty");
-        }
-        String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
-            throw new BadRequestException("FILE_TYPE_INVALID", "Only PNG, JPEG, WebP, and GIF images are allowed");
-        }
-        if (file.getSize() > MAX_BYTES) {
-            throw new BadRequestException("FILE_TOO_LARGE", "Image must be 5 MB or smaller");
-        }
+    static void validateImage(MultipartFile file, UploadProperties properties) {
+        FileContentValidator.validate(file, FileKind.IMAGE, properties);
     }
 
-    static String buildObjectKey(String logicalFolder, String contentType) {
+    static void validateFile(MultipartFile file, FileKind kind, UploadProperties properties) {
+        FileContentValidator.validate(file, kind, properties);
+    }
+
+    static String buildObjectKey(String logicalFolder, String contentType, String originalFilename) {
         LocalDate today = LocalDate.now();
+        String safeName = FileContentValidator.sanitizeFilename(originalFilename);
+        String extension = FileContentValidator.extensionFor(contentType, safeName);
         return logicalFolder + "/"
                 + today.getYear() + "/"
                 + String.format("%02d", today.getMonthValue()) + "/"
                 + String.format("%02d", today.getDayOfMonth()) + "/"
-                + UUID.randomUUID() + extensionFor(contentType);
+                + UUID.randomUUID() + extension;
     }
 
-    static String extensionFor(String contentType) {
-        return switch (contentType) {
-            case "image/png" -> ".png";
-            case "image/webp" -> ".webp";
-            case "image/gif" -> ".gif";
-            default -> ".jpg";
-        };
+    static String buildObjectKey(String logicalFolder, String contentType) {
+        return buildObjectKey(logicalFolder, contentType, "upload.bin");
     }
 
     static String blankToNull(String value) {
@@ -52,5 +41,13 @@ final class ObjectStorageSupport {
             return null;
         }
         return value.trim();
+    }
+
+    static String requireContentType(MultipartFile file) {
+        String contentType = file.getContentType();
+        if (contentType == null || contentType.isBlank()) {
+            throw new BadRequestException("FILE_TYPE_INVALID", "Missing content type");
+        }
+        return contentType.toLowerCase().split(";")[0].trim();
     }
 }

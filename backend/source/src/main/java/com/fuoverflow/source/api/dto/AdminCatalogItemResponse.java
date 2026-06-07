@@ -15,6 +15,7 @@ public record AdminCatalogItemResponse(
         int passRateBp,
         long viewCount,
         String cardColor,
+        String coverImageUrl,
         String categorySlug,
         boolean active,
         boolean featured,

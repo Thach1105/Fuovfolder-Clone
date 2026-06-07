@@ -24,4 +24,12 @@
   .card {
     @apply rounded-xl border border-slate-200 bg-white shadow-sm;
   }
+
+  .ProseMirror p.is-editor-empty:first-child::before {
+    color: rgb(100 116 139);
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
 }

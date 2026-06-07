@@ -12,6 +12,7 @@ public record MembershipPlanResponse(
         String currency,
         String billingInterval,
         String roleSlug,
-        int durationDays
+        int durationDays,
+        String imageUrl
 ) {
 }

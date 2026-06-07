@@ -9,6 +9,7 @@ public record AdminCatalogItemResponse(
         String title,
         String description,
         int pricePoints,
+        String coverImageUrl,
         boolean active,
         boolean featured,
         int sortOrder,

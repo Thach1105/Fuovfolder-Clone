@@ -13,6 +13,7 @@ public record CatalogItemResponse(
         double passRatePercent,
         long viewCount,
         String cardColor,
+        String coverImageUrl,
         boolean featured
 ) {
 }

@@ -1,25 +1,35 @@
 package com.fuoverflow.common.storage;
 
 import com.fuoverflow.common.config.ObjectStorageProperties;
+import com.fuoverflow.common.config.UploadProperties;
 import com.fuoverflow.common.exception.BadRequestException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class LocalObjectStorage implements ObjectStorage {
     private final ObjectStorageProperties properties;
+    private final UploadProperties uploadProperties;
 
-    public LocalObjectStorage(ObjectStorageProperties properties) {
+    public LocalObjectStorage(ObjectStorageProperties properties, UploadProperties uploadProperties) {
         this.properties = properties;
+        this.uploadProperties = uploadProperties;
     }
 
     @Override
     public StoredObject storeImage(MultipartFile file, String logicalFolder) {
-        ObjectStorageSupport.validateImage(file);
-        String contentType = file.getContentType();
-        String objectKey = ObjectStorageSupport.buildObjectKey(logicalFolder, contentType);
+        return storeFile(file, logicalFolder, FileKind.IMAGE);
+    }
+
+    @Override
+    public StoredObject storeFile(MultipartFile file, String logicalFolder, FileKind kind) {
+        ObjectStorageSupport.validateFile(file, kind, uploadProperties);
+        String contentType = ObjectStorageSupport.requireContentType(file);
+        String objectKey = ObjectStorageSupport.buildObjectKey(
+                logicalFolder, contentType, file.getOriginalFilename());
         Path target = resolvePhysicalPath(objectKey);
         try {
             Files.createDirectories(target.getParent());
@@ -27,8 +37,21 @@ public class LocalObjectStorage implements ObjectStorage {
         } catch (IOException ex) {
             throw new BadRequestException("FILE_STORE_FAILED", "Failed to store uploaded file");
         }
-        String legacyUrl = ObjectStorageSupport.LEGACY_UPLOADS_PREFIX + objectKey;
+        String legacyUrl = kind == FileKind.IMAGE ? ObjectStorageSupport.LEGACY_UPLOADS_PREFIX + objectKey : null;
         return new StoredObject(objectKey, legacyUrl);
+    }
+
+    @Override
+    public InputStream openStream(String objectKeyOrLegacyReference) {
+        String objectKey = normalizeToObjectKey(objectKeyOrLegacyReference);
+        if (objectKey == null) {
+            throw new BadRequestException("FILE_NOT_FOUND", "File not found");
+        }
+        try {
+            return Files.newInputStream(resolvePhysicalPath(objectKey));
+        } catch (IOException ex) {
+            throw new BadRequestException("FILE_READ_FAILED", "Unable to read stored file");
+        }
     }
 
     @Override

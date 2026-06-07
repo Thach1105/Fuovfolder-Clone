@@ -24,6 +24,7 @@ public final class SourceCatalogMapper {
                 e.getPassRateBp() / 100.0,
                 e.getViewCount(),
                 e.getCardColor(),
+                e.getCoverImageUrl(),
                 e.isFeatured());
     }
 
@@ -63,6 +64,7 @@ public final class SourceCatalogMapper {
                 e.getPassRateBp(),
                 e.getViewCount(),
                 e.getCardColor(),
+                e.getCoverImageUrl(),
                 e.getCategorySlug(),
                 e.isActive(),
                 e.isFeatured(),

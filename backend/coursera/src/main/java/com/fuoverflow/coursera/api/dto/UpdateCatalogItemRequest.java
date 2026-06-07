@@ -8,6 +8,7 @@ public record UpdateCatalogItemRequest(
         @Size(max = 500) String title,
         String description,
         @Min(0) Integer pricePoints,
+        @Size(max = 500) String coverImageUrl,
         Boolean active,
         Boolean featured,
         Integer sortOrder

@@ -61,6 +61,7 @@ public class SourceCatalogAdminService {
                 request.duplicationRateBp() != null ? request.duplicationRateBp() : 0,
                 request.passRateBp() != null ? request.passRateBp() : 0,
                 request.cardColor(),
+                request.coverImageUrl(),
                 request.categorySlug(),
                 request.active() == null || request.active(),
                 request.featured() != null && request.featured(),
@@ -100,6 +101,9 @@ public class SourceCatalogAdminService {
         }
         if (request.cardColor() != null) {
             entity.setCardColor(request.cardColor());
+        }
+        if (request.coverImageUrl() != null) {
+            entity.setCoverImageUrl(blankToNull(request.coverImageUrl()));
         }
         if (request.categorySlug() != null) {
             entity.setCategorySlug(request.categorySlug());
@@ -160,5 +164,12 @@ public class SourceCatalogAdminService {
 
     private static String normalizeCode(String code) {
         return code.trim().toUpperCase();
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

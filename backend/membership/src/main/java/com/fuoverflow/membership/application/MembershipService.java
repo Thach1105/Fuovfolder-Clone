@@ -106,7 +106,8 @@ public class MembershipService {
                 plan.getCurrency(),
                 plan.getBillingInterval(),
                 MembershipFeatures.roleSlug(plan.getFeaturesJson()),
-                MembershipFeatures.durationDays(plan.getFeaturesJson(), 30));
+                MembershipFeatures.durationDays(plan.getFeaturesJson(), 30),
+                plan.getImageUrl());
     }
 
     private MembershipStatusResponse toStatus(MembershipEntity membership, MembershipPlanEntity plan) {

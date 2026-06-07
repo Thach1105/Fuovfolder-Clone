@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import { createThread, type ThreadType } from "@/lib/api/forum";
-import { MarkdownEditor } from "@/components/forum/MarkdownEditor";
+import { RichTextEditor } from "@/components/forum/RichTextEditor";
+import { DocumentUploader, type StagedFile } from "@/components/media/DocumentUploader";
 import {
   CAMPUS_OPTIONS,
   MATERIAL_TYPE_OPTIONS,
@@ -35,6 +36,7 @@ export function CreateThreadForm({
   const [tags, setTags] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [watchThread, setWatchThread] = useState(true);
+  const [attachments, setAttachments] = useState<StagedFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +59,7 @@ export function CreateThreadForm({
             ? pollOptions.map((option) => option.trim()).filter(Boolean)
             : undefined,
         watchThread,
+        attachmentFileIds: attachments.map((file) => file.fileId),
       });
       router.push(`/threads/${thread.id}`);
     } catch (err) {
@@ -110,13 +113,15 @@ export function CreateThreadForm({
 
       <div>
         <label className="mb-1 block text-sm font-medium text-slate-700">Nội dung</label>
-        <MarkdownEditor
+        <RichTextEditor
           value={body}
           onChange={setBody}
           minHeight={220}
-          placeholder="Nội dung bài viết (Markdown)..."
+          placeholder="Nội dung bài viết..."
         />
       </div>
+
+      <DocumentUploader value={attachments} onChange={setAttachments} />
 
       {threadType === "poll" && (
         <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-4">

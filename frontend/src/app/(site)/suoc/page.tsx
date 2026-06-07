@@ -12,6 +12,7 @@ import {
   formatPoints,
   getFeaturedSource,
 } from "@/lib/api/source";
+import { resolveMediaUrl } from "@/lib/api/media";
 
 const SORT_OPTIONS = [
   { value: "", label: "Mặc định" },
@@ -24,17 +25,23 @@ const SORT_OPTIONS = [
 const PAGE_SIZE = 24;
 
 function SourceCard({ item }: { item: SourceCatalogItem }) {
+  const coverUrl = resolveMediaUrl(item.coverImageUrl);
   return (
     <Link
       href={`/suoc/${item.code}`}
       className="card flex flex-col overflow-hidden transition hover:shadow-md"
     >
-      <div
-        className="flex h-32 items-center justify-center px-4 text-center text-xl font-bold text-white"
-        style={{ background: item.cardColor ?? "#6d28d9" }}
-      >
-        {item.code}
-      </div>
+      {coverUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={coverUrl} alt="" className="h-32 w-full object-cover" />
+      ) : (
+        <div
+          className="flex h-32 items-center justify-center px-4 text-center text-xl font-bold text-white"
+          style={{ background: item.cardColor ?? "#6d28d9" }}
+        >
+          {item.code}
+        </div>
+      )}
       <div className="space-y-1 p-4">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-slate-800">{item.code}</span>

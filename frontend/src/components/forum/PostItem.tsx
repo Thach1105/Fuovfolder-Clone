@@ -5,10 +5,11 @@ import { ApiError } from "@/lib/api/client";
 import { deletePost, type Post, updatePost } from "@/lib/api/forum";
 import { authorInitial } from "@/lib/api/forum";
 import { formatDateTime } from "@/lib/format-datetime";
-import { MarkdownEditor } from "@/components/forum/MarkdownEditor";
+import { RichTextEditor } from "@/components/forum/RichTextEditor";
 import { PostReactions } from "@/components/forum/PostReactions";
 import { ReportContentDialog } from "@/components/forum/ReportContentDialog";
 import { ReplyForm } from "@/components/forum/ReplyForm";
+import { mediaDownloadUrl } from "@/lib/api/media";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { can } from "@/lib/auth/permissions";
 
@@ -65,9 +66,18 @@ export function PostItem({ post, index, threadId, nested = false, onChanged }: P
   return (
     <article className={`flex gap-4 p-4 ${nested ? "border-l-2 border-slate-200 pl-6" : ""}`}>
       <div className="hidden shrink-0 sm:block">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-fuo-50 text-sm font-bold text-fuo-700">
-          {authorInitial(post.authorHandle)}
-        </div>
+        {post.authorAvatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={post.authorAvatarUrl}
+            alt=""
+            className="h-12 w-12 rounded-full border border-slate-200 object-cover"
+          />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-fuo-50 text-sm font-bold text-fuo-700">
+            {authorInitial(post.authorHandle)}
+          </div>
+        )}
         <p className="mt-2 max-w-[4.5rem] truncate text-center text-xs text-slate-600">
           {post.authorHandle ?? "Ẩn danh"}
         </p>
@@ -89,7 +99,7 @@ export function PostItem({ post, index, threadId, nested = false, onChanged }: P
 
         {editing ? (
           <form onSubmit={handleSave} className="space-y-3">
-            <MarkdownEditor value={body} onChange={setBody} />
+            <RichTextEditor value={body} onChange={setBody} />
             {error && <p className="text-sm text-red-700">{error}</p>}
             <div className="flex gap-2">
               <button type="submit" className="btn-primary" disabled={submitting}>
@@ -105,6 +115,26 @@ export function PostItem({ post, index, threadId, nested = false, onChanged }: P
             className="prose prose-sm max-w-none text-slate-800 prose-a:text-fuo-600"
             dangerouslySetInnerHTML={{ __html: post.bodyHtml || "<p>(trống)</p>" }}
           />
+        )}
+
+        {post.attachments?.length > 0 && (
+          <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Tài liệu đính kèm
+            </p>
+            <ul className="space-y-1 text-sm">
+              {post.attachments.map((attachment) => (
+                <li key={attachment.fileId}>
+                  <a
+                    href={mediaDownloadUrl(attachment.fileId)}
+                    className="font-medium text-fuo-600 hover:underline"
+                  >
+                    {attachment.originalFilename}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {!editing && (
@@ -124,7 +154,7 @@ export function PostItem({ post, index, threadId, nested = false, onChanged }: P
                 type="button"
                 className="text-xs font-medium text-slate-500 hover:text-slate-700"
                 onClick={() => {
-                  setBody(post.bodyMd);
+                  setBody(post.bodyHtml || post.bodyMd);
                   setEditing(true);
                 }}
               >

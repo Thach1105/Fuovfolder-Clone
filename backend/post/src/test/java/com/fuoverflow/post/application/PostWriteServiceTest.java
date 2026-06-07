@@ -4,6 +4,8 @@ import com.fuoverflow.common.exception.ForbiddenException;
 import com.fuoverflow.common.forum.PostChangeNotifier;
 import com.fuoverflow.common.forum.ThreadLookup;
 import com.fuoverflow.common.notification.NotificationPublisher;
+import com.fuoverflow.material.application.PostAttachmentService;
+import com.fuoverflow.post.api.dto.CreatePostRequest;
 import com.fuoverflow.post.api.dto.UpdatePostRequest;
 import com.fuoverflow.post.persistence.PostEntity;
 import com.fuoverflow.post.persistence.PostRepository;
@@ -45,6 +47,8 @@ class PostWriteServiceTest {
     private NotificationPublisher notificationPublisher;
     @Mock
     private PostChangeNotifier postChangeNotifier;
+    @Mock
+    private PostAttachmentService postAttachmentService;
 
     @InjectMocks
     private PostWriteService postWriteService;
@@ -115,5 +119,35 @@ class PostWriteServiceTest {
 
         assertEquals(0, thread.getReplyCount());
         verify(postChangeNotifier).postDeleted(postId, threadId);
+    }
+
+    @Test
+    void replyLinksAttachments() {
+        UUID threadId = UUID.randomUUID();
+        UUID authorId = UUID.randomUUID();
+        UUID attachmentId = UUID.randomUUID();
+        ThreadEntity thread = ThreadEntity.createUserThread(
+                threadId,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                authorId,
+                "title",
+                "title",
+                "discussion",
+                "author",
+                null,
+                null,
+                null,
+                null,
+                Instant.now());
+        when(userLookupService.findAuthUserById(authorId)).thenReturn(Optional.empty());
+        when(permissionResolver.hasPermission(authorId, "forum.post:bypass_moderation")).thenReturn(true);
+        when(threadRepository.findByIdAndDeletedAtIsNull(threadId)).thenReturn(Optional.of(thread));
+        when(postRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(threadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        postWriteService.reply(threadId, authorId, new CreatePostRequest("hello", null, List.of(attachmentId)));
+
+        verify(postAttachmentService).linkToPost(any(UUID.class), eq(authorId), eq(List.of(attachmentId)));
     }
 }

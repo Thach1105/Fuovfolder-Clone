@@ -9,19 +9,19 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(ObjectStorageProperties.class)
+@EnableConfigurationProperties({ObjectStorageProperties.class, UploadProperties.class})
 public class ObjectStorageConfiguration {
 
     @Bean
     @ConditionalOnProperty(name = "fuoverflow.storage.provider", havingValue = "local")
-    ObjectStorage localObjectStorage(ObjectStorageProperties properties) {
-        return new LocalObjectStorage(properties);
+    ObjectStorage localObjectStorage(ObjectStorageProperties properties, UploadProperties uploadProperties) {
+        return new LocalObjectStorage(properties, uploadProperties);
     }
 
     @Bean
     @ConditionalOnProperty(name = "fuoverflow.storage.provider", havingValue = "s3", matchIfMissing = true)
-    ObjectStorage s3CompatibleObjectStorage(ObjectStorageProperties properties) {
-        S3CompatibleObjectStorage storage = new S3CompatibleObjectStorage(properties);
+    ObjectStorage s3CompatibleObjectStorage(ObjectStorageProperties properties, UploadProperties uploadProperties) {
+        S3CompatibleObjectStorage storage = new S3CompatibleObjectStorage(properties, uploadProperties);
         storage.ensureBucketExists();
         return storage;
     }

@@ -17,6 +17,7 @@ public record CreateThreadRequest(
         String materialType,
         @Size(max = 500) String tags,
         List<@NotBlank @Size(max = 255) String> pollOptions,
-        Boolean watchThread
+        Boolean watchThread,
+        List<UUID> attachmentFileIds
 ) {
 }
