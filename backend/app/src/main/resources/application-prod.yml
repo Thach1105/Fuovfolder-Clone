@@ -31,3 +31,8 @@ logging:
   level:
     com.fuoverflow: INFO
     org.hibernate.SQL: WARN
+
+management:
+  health:
+    mail:
+      enabled: false

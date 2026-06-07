@@ -71,7 +71,7 @@ jobs:
           backend_ok=0
           frontend_ok=0
           for attempt in $(seq 1 24); do
-            if [ "$backend_ok" -eq 0 ] && curl -fsS "http://localhost:${{ env.BACKEND_PORT }}/actuator/health" >/dev/null; then
+            if [ "$backend_ok" -eq 0 ] && curl -fsS "http://localhost:${{ env.BACKEND_PORT }}/actuator/health/liveness" >/dev/null; then
               backend_ok=1
               echo "Backend health OK on port ${{ env.BACKEND_PORT }}."
             fi
