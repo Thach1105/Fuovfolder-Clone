@@ -34,14 +34,24 @@ public class ForumQueryService {
 
     @Transactional(readOnly = true)
     public List<ForumResponse> listForums() {
-        return forumRepository.findByDeletedAtIsNullOrderBySortOrderAscTitleAsc().stream()
-                .map(ForumQueryService::toForum)
+        return forumRepository.findByParentForumIdIsNullAndDeletedAtIsNullOrderBySortOrderAscTitleAsc().stream()
+                .map(this::toForumWithChildren)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public ForumResponse getForum(String forumSlug) {
-        return toForum(requireForum(forumSlug));
+        ForumEntity forum = requireForum(forumSlug);
+        return toForumWithChildren(forum);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ForumResponse> listChildForums(String forumSlug) {
+        ForumEntity forum = requireForum(forumSlug);
+        return forumRepository
+                .findByParentForumIdAndDeletedAtIsNullOrderBySortOrderAscTitleAsc(forum.getId()).stream()
+                .map(ForumQueryService::toForum)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -58,6 +68,9 @@ public class ForumQueryService {
         ForumEntity forum = requireForum(forumSlug);
         List<CategoryEntity> all = categoryRepository
                 .findByForumIdAndDeletedAtIsNullOrderBySortOrderAscTitleAsc(forum.getId());
+        if (all.isEmpty()) {
+            return List.of();
+        }
         CategoryStatsService.StatsBundle stats = categoryStatsService.statsForForum(forum.getId());
 
         Map<UUID, List<CategoryEntity>> childrenByParent = new HashMap<>();
@@ -82,6 +95,25 @@ public class ForumQueryService {
                 .findByForumIdAndSlugAndDeletedAtIsNull(forum.getId(), categorySlug)
                 .orElseThrow(() -> new NotFoundException("CATEGORY_NOT_FOUND", "Category not found"));
         return toCategory(category);
+    }
+
+    private ForumResponse toForumWithChildren(ForumEntity forum) {
+        List<ForumResponse> children = forumRepository
+                .findByParentForumIdAndDeletedAtIsNullOrderBySortOrderAscTitleAsc(forum.getId()).stream()
+                .map(ForumQueryService::toForum)
+                .toList();
+        if (children.isEmpty()) {
+            return toForum(forum);
+        }
+        return new ForumResponse(
+                forum.getId(),
+                forum.getSlug(),
+                forum.getTitle(),
+                forum.getDescription(),
+                forum.getVisibility(),
+                forum.getCreatedAt(),
+                forum.getParentForumId(),
+                children);
     }
 
     private CategoryTreeNodeResponse toTreeNode(
@@ -116,7 +148,14 @@ public class ForumQueryService {
 
     private static ForumResponse toForum(ForumEntity f) {
         return new ForumResponse(
-                f.getId(), f.getSlug(), f.getTitle(), f.getDescription(), f.getVisibility(), f.getCreatedAt());
+                f.getId(),
+                f.getSlug(),
+                f.getTitle(),
+                f.getDescription(),
+                f.getVisibility(),
+                f.getCreatedAt(),
+                f.getParentForumId(),
+                List.of());
     }
 
     private static CategoryResponse toCategory(CategoryEntity c) {

@@ -3,6 +3,7 @@ export interface ForumNavItem {
   label: string;
   icon: ForumNavIcon;
   dividerBefore?: boolean;
+  children?: ForumNavItem[];
 }
 
 export type ForumNavIcon =
@@ -19,13 +20,35 @@ export type ForumNavIcon =
   | "mark-read"
   | "award";
 
-export const FORUM_DROPDOWN_ITEMS: ForumNavItem[] = [
-  { href: "/forums/tai-lieu-cac-mon-hoc", label: "Tài liệu", icon: "documents" },
-  { href: "/forums/de-thi-cac-ky-truoc", label: "Đề thi các kỳ trước", icon: "exam" },
+export const DOCUMENT_HUB_SLUG = "tai-lieu";
+
+export const DOCUMENT_CHILD_FORUMS = [
   {
-    href: "/forums/giao-trinh-slide-code-mau",
+    slug: "de-thi-cac-ky-truoc",
+    label: "Đề thi các kỳ trước",
+    icon: "exam" as const,
+  },
+  {
+    slug: "giao-trinh-slide-code-mau",
     label: "Giáo trình - Slide - Code mẫu",
-    icon: "textbook",
+    icon: "textbook" as const,
+  },
+] as const;
+
+export const DOCUMENT_FORUM_SLUGS = DOCUMENT_CHILD_FORUMS.map((forum) => forum.slug);
+
+export const LEGACY_DOCUMENT_HUB_SLUG = "tai-lieu-cac-mon-hoc";
+
+export const FORUM_DROPDOWN_ITEMS: ForumNavItem[] = [
+  {
+    href: `/forums/${DOCUMENT_HUB_SLUG}`,
+    label: "Tài liệu",
+    icon: "documents",
+    children: DOCUMENT_CHILD_FORUMS.map((forum) => ({
+      href: `/forums/${forum.slug}`,
+      label: forum.label,
+      icon: forum.icon,
+    })),
   },
   { href: "/search", label: "Tìm tài liệu", icon: "search" },
   { href: "/profile", label: "Tài liệu của tôi", icon: "user", dividerBefore: true },
@@ -41,7 +64,7 @@ export const FORUM_DROPDOWN_ITEMS: ForumNavItem[] = [
 ];
 
 export const FORUM_SUB_NAV_ITEMS: ForumNavItem[] = [
-  { href: "/forums/tai-lieu-cac-mon-hoc", label: "Tài liệu", icon: "documents" },
+  { href: `/forums/${DOCUMENT_HUB_SLUG}`, label: "Tài liệu", icon: "documents" },
   { href: "/whats-new", label: "Bài mới", icon: "new" },
   { href: "/search", label: "Tìm chủ đề", icon: "topics" },
   { href: "/watched", label: "Đã theo dõi", icon: "watched" },
@@ -50,11 +73,13 @@ export const FORUM_SUB_NAV_ITEMS: ForumNavItem[] = [
   { href: "/awards", label: "Danh hiệu", icon: "award" },
 ];
 
-export const DOCUMENT_FORUM_SLUGS = [
-  "tai-lieu-cac-mon-hoc",
-  "de-thi-cac-ky-truoc",
-  "giao-trinh-slide-code-mau",
-] as const;
+export function isDocumentHubSlug(slug: string): boolean {
+  return slug === DOCUMENT_HUB_SLUG;
+}
+
+export function isDocumentChildForumSlug(slug: string): boolean {
+  return (DOCUMENT_FORUM_SLUGS as readonly string[]).includes(slug);
+}
 
 export function isForumSectionPath(pathname: string): boolean {
   return (

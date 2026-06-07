@@ -16,6 +16,10 @@ export interface Forum {
 
   createdAt: string;
 
+  parentForumId?: string | null;
+
+  children?: Forum[];
+
 }
 
 

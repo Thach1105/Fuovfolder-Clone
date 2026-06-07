@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Forum } from "@/lib/api/forum";
 
 export function ForumCard({ forum }: { forum: Forum }) {
+  const childCount = forum.children?.length ?? 0;
   return (
     <Link
       href={`/forums/${forum.slug}`}
@@ -10,6 +11,9 @@ export function ForumCard({ forum }: { forum: Forum }) {
       <h3 className="font-semibold text-slate-900">{forum.title}</h3>
       {forum.description && (
         <p className="mt-1 line-clamp-2 text-sm text-slate-600">{forum.description}</p>
+      )}
+      {childCount > 0 && (
+        <p className="mt-2 text-xs text-fuo-600">{childCount} khu vực con</p>
       )}
       <p className="mt-3 text-xs text-slate-400">/{forum.slug}</p>
     </Link>

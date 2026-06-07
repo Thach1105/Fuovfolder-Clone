@@ -66,7 +66,7 @@ export default function HomePage() {
                 <p className="text-sm text-slate-500">Xin chào, {user.displayName}</p>
               )}
             </div>
-            <Link href="/forums/tai-lieu-cac-mon-hoc" className="btn-primary">
+            <Link href="/forums/tai-lieu" className="btn-primary">
               Đăng tài liệu
             </Link>
           </div>

@@ -29,6 +29,9 @@ public class ForumEntity {
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
+    @Column(name = "parent_forum_id")
+    private UUID parentForumId;
+
     @Column(name = "created_by_user_id")
     private UUID createdByUserId;
 
@@ -47,6 +50,7 @@ public class ForumEntity {
     public String getDescription() { return description; }
     public String getVisibility() { return visibility; }
     public int getSortOrder() { return sortOrder; }
+    public UUID getParentForumId() { return parentForumId; }
     public UUID getCreatedByUserId() { return createdByUserId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

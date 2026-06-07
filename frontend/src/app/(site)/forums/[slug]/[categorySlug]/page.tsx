@@ -17,6 +17,10 @@ import {
   getForum,
   listCategories,
 } from "@/lib/api/forum";
+import {
+  DOCUMENT_HUB_SLUG,
+  isDocumentChildForumSlug,
+} from "@/lib/forum-nav";
 
 const PAGE_SIZE = 20;
 
@@ -90,6 +94,14 @@ export default function CategoryThreadsPage() {
               Trang chủ
             </Link>
             <span>/</span>
+            {isDocumentChildForumSlug(forumSlug) && (
+              <>
+                <Link href={`/forums/${DOCUMENT_HUB_SLUG}`} className="hover:text-fuo-600">
+                  Tài liệu
+                </Link>
+                <span>/</span>
+              </>
+            )}
             <Link href={`/forums/${forumSlug}`} className="hover:text-fuo-600">
               {forum?.title ?? forumSlug}
             </Link>

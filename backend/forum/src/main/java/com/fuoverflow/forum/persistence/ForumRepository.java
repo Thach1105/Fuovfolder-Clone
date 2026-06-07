@@ -10,4 +10,8 @@ public interface ForumRepository extends JpaRepository<ForumEntity, UUID> {
     Optional<ForumEntity> findBySlugAndDeletedAtIsNull(String slug);
 
     List<ForumEntity> findByDeletedAtIsNullOrderBySortOrderAscTitleAsc();
+
+    List<ForumEntity> findByParentForumIdIsNullAndDeletedAtIsNullOrderBySortOrderAscTitleAsc();
+
+    List<ForumEntity> findByParentForumIdAndDeletedAtIsNullOrderBySortOrderAscTitleAsc(UUID parentForumId);
 }

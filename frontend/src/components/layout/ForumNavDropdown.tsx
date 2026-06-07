@@ -57,7 +57,7 @@ export function ForumNavDropdown() {
       {open && (
         <div
           role="menu"
-          className="absolute left-0 top-full z-50 mt-1 min-w-[280px] rounded-xl border border-slate-200 bg-white py-2 shadow-lg"
+          className="absolute left-0 top-full z-50 mt-1 min-w-[300px] rounded-xl border border-slate-200 bg-white py-2 shadow-lg"
         >
           {FORUM_DROPDOWN_ITEMS.map((item) => (
             <div key={`${item.href}-${item.label}`}>
@@ -73,6 +73,20 @@ export function ForumNavDropdown() {
                 </span>
                 {item.label}
               </Link>
+              {item.children?.map((child) => (
+                <Link
+                  key={`${child.href}-${child.label}`}
+                  href={child.href}
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 py-2 pl-11 pr-4 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-fuo-700"
+                >
+                  <span className="text-slate-400">
+                    <ForumNavIcon name={child.icon} />
+                  </span>
+                  {child.label}
+                </Link>
+              ))}
             </div>
           ))}
         </div>

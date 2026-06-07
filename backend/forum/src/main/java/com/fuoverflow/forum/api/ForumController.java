@@ -34,6 +34,12 @@ public class ForumController {
         return ApiResponse.ok(forumQueryService.getForum(forumSlug));
     }
 
+    @GetMapping("/{forumSlug}/children")
+    @RequirePermission(value = "forum:read", allowAnonymous = true)
+    public ApiResponse<List<ForumResponse>> children(@PathVariable String forumSlug) {
+        return ApiResponse.ok(forumQueryService.listChildForums(forumSlug));
+    }
+
     @GetMapping("/{forumSlug}/categories")
     @RequirePermission(value = "forum.category:read", allowAnonymous = true)
     public ApiResponse<List<CategoryResponse>> categories(@PathVariable String forumSlug) {
