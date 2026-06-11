@@ -3,33 +3,112 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --bg: 250 249 247; /* ink-50 */
+    --surface: 255 255 255;
+    --text: 26 23 18; /* ink-900 */
+    --muted: 124 117 104; /* ink-500 */
+    --border: 231 227 218; /* ink-200 */
+    --accent: 19 80 225; /* fuo-700 */
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-ink-50 text-ink-900 antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  h1, h2, h3 {
+    @apply font-display tracking-tight;
+  }
+
+  ::selection {
+    background: rgb(var(--accent) / 0.15);
   }
 }
 
 @layer components {
+  /* Buttons */
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-lg bg-fuo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-fuo-700 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink-900 px-5 py-2 text-sm font-medium text-ink-50 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-ink-800 hover:shadow-lift disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0;
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-fuo-600 px-5 py-2 text-sm font-medium text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-fuo-700 hover:shadow-lift disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-ink-200 bg-white px-5 py-2 text-sm font-medium text-ink-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-ink-300 hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0;
   }
 
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900;
+  }
+
+  /* Inputs */
   .input-field {
-    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-fuo-400 focus:ring-2 focus:ring-fuo-100;
+    @apply w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 outline-none transition focus:border-fuo-400 focus:ring-4 focus:ring-fuo-100 placeholder:text-ink-400;
   }
 
+  /* Surfaces */
   .card {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    @apply rounded-2xl border border-ink-200 bg-white shadow-soft;
+  }
+
+  .card-interactive {
+    @apply rounded-2xl border border-ink-200 bg-white shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-ink-300 hover:shadow-lift;
+  }
+
+  /* Chips / pills */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1 text-xs font-medium text-ink-600 transition hover:border-ink-300 hover:text-ink-900;
+  }
+
+  .chip-active {
+    @apply border-transparent bg-ink-900 text-ink-50 hover:text-ink-50;
+  }
+
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.18em] text-ink-400;
   }
 
   .ProseMirror p.is-editor-empty:first-child::before {
-    color: rgb(100 116 139);
+    color: rgb(168 161 147);
     content: attr(data-placeholder);
     float: left;
     height: 0;
     pointer-events: none;
+  }
+}
+
+@layer utilities {
+  .hover-lift {
+    @apply transition-transform duration-300;
+  }
+  .hover-lift:hover {
+    transform: translateY(-4px);
+  }
+
+  /* Lightweight skeleton shimmer */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgb(var(--border) / 0.6);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.65),
+      transparent
+    );
+    animation: shimmer 1.5s infinite;
   }
 }

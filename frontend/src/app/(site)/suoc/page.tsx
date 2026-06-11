@@ -29,36 +29,58 @@ function SourceCard({ item }: { item: SourceCatalogItem }) {
   return (
     <Link
       href={`/suoc/${item.code}`}
-      className="card flex flex-col overflow-hidden transition hover:shadow-md"
+      className="card-interactive group flex flex-col overflow-hidden"
     >
-      {coverUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={coverUrl} alt="" className="h-32 w-full object-cover" />
-      ) : (
-        <div
-          className="flex h-32 items-center justify-center px-4 text-center text-xl font-bold text-white"
-          style={{ background: item.cardColor ?? "#6d28d9" }}
-        >
-          {item.code}
-        </div>
-      )}
-      <div className="space-y-1 p-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-slate-800">{item.code}</span>
-          {item.featured && (
-            <span className="text-[10px] font-semibold uppercase text-amber-600">Nổi bật</span>
-          )}
-        </div>
-        <p className="line-clamp-2 text-xs text-slate-500">{item.title}</p>
-        <div className="flex flex-wrap gap-2 pt-1 text-[11px] text-slate-500">
-          <span>{item.questionCount} câu</span>
+      <div className="relative h-32 w-full overflow-hidden">
+        {coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={coverUrl}
+            alt=""
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div
+            className="flex h-full items-center justify-center px-4 text-center font-display text-2xl text-white transition-transform duration-500 group-hover:scale-105"
+            style={{ background: item.cardColor ?? "#6d28d9" }}
+          >
+            {item.code}
+          </div>
+        )}
+        {item.featured && (
+          <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 shadow-sm">
+            Nổi bật
+          </span>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col gap-1 p-4">
+        <span className="text-sm font-semibold text-ink-900">{item.code}</span>
+        <p className="line-clamp-2 text-xs text-ink-500">{item.title}</p>
+        <div className="mt-auto flex flex-wrap items-center gap-2 pt-2 text-[11px] text-ink-500">
+          <span className="rounded-full bg-ink-100 px-2 py-0.5">{item.questionCount} câu</span>
           {item.duplicationRatePercent > 0 && (
-            <span className="text-emerald-600">{item.duplicationRatePercent}% trùng lặp</span>
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-600">
+              {item.duplicationRatePercent}% trùng lặp
+            </span>
           )}
         </div>
-        <p className="pt-1 text-sm font-bold text-fuo-700">{formatPoints(item.pricePoints)}</p>
+        <p className="pt-2 text-sm font-bold text-fuo-700">{formatPoints(item.pricePoints)}</p>
       </div>
     </Link>
+  );
+}
+
+function CardSkeleton() {
+  return (
+    <div className="card flex flex-col overflow-hidden">
+      <div className="skeleton h-32 w-full" />
+      <div className="space-y-2 p-4">
+        <div className="skeleton h-4 w-16 rounded" />
+        <div className="skeleton h-3 w-full rounded" />
+        <div className="skeleton h-3 w-2/3 rounded" />
+        <div className="skeleton h-4 w-20 rounded" />
+      </div>
+    </div>
   );
 }
 
@@ -113,34 +135,43 @@ export default function SuocPage() {
     getPointsBalance().then((r) => setBalance(r.balance)).catch(() => setBalance(null));
   }, [user]);
 
+  const showFeatured = featured.length > 0 && !search.trim();
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <PromoBanner />
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Suộc — Tài liệu ôn thi</h1>
-          <p className="text-sm text-slate-600">
-            Ngân hàng câu hỏi ôn thi theo mã môn, thanh toán bằng FUO Point.
-          </p>
+      {/* Hero */}
+      <section className="relative overflow-hidden rounded-2xl border border-ink-200 bg-gradient-to-br from-ink-900 to-ink-700 p-6 text-ink-50 sm:p-8">
+        <div className="relative z-10 flex flex-wrap items-end justify-between gap-4">
+          <div className="max-w-xl space-y-2">
+            <p className="eyebrow text-ink-300">Ngân hàng câu hỏi ôn thi</p>
+            <h1 className="font-display text-3xl leading-tight sm:text-4xl">
+              Suộc — Ôn thi đúng trọng tâm
+            </h1>
+            <p className="text-sm text-ink-200">
+              Tài liệu ôn thi theo mã môn, luyện câu hỏi tương tác và thanh toán bằng FUO Point.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {balance !== null && (
+              <span className="rounded-full bg-ink-50/10 px-3.5 py-1.5 text-sm font-semibold text-ink-50 backdrop-blur">
+                Số dư: {formatPoints(balance)}
+              </span>
+            )}
+            <Link
+              href="/suoc/my-purchases"
+              className="inline-flex items-center gap-1 rounded-full bg-ink-50 px-4 py-2 text-sm font-medium text-ink-900 transition hover:bg-white"
+            >
+              Suộc của tôi →
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {balance !== null && (
-            <span className="rounded-lg bg-fuo-50 px-3 py-1.5 text-sm font-semibold text-fuo-700">
-              {formatPoints(balance)}
-            </span>
-          )}
-          <Link href="/suoc/my-purchases" className="text-sm font-medium text-fuo-600 hover:underline">
-            Suộc của tôi →
-          </Link>
-        </div>
-      </div>
+      </section>
 
-      {featured.length > 0 && !search.trim() && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Suộc nổi bật
-          </h2>
+      {showFeatured && (
+        <section className="space-y-3">
+          <h2 className="eyebrow">Suộc nổi bật</h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {featured.map((item) => (
               <SourceCard key={item.id} item={item} />
@@ -149,60 +180,68 @@ export default function SuocPage() {
         </section>
       )}
 
-      <div className="card flex flex-wrap items-end gap-3 p-4">
-        <div className="min-w-[200px] flex-1">
-          <label className="text-xs font-medium text-slate-500" htmlFor="suoc-search">
-            Tìm tài liệu
-          </label>
-          <input
-            id="suoc-search"
-            className="input-field mt-1"
-            placeholder="VD: MLN111, CSI106"
-            value={search}
-            onChange={(e) => {
-              setPage(0);
-              setSearch(e.target.value);
-            }}
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-slate-500" htmlFor="suoc-sort">
-            Sắp xếp
-          </label>
-          <select
-            id="suoc-sort"
-            className="input-field mt-1 min-w-[160px]"
-            value={sort}
-            onChange={(e) => {
-              setPage(0);
-              setSort(e.target.value);
-            }}
-          >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+      {/* Sticky filter */}
+      <div className="sticky top-16 z-30 -mx-4 border-y border-ink-200 bg-ink-50/85 px-4 py-3 backdrop-blur">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[220px] flex-1">
+            <label className="eyebrow" htmlFor="suoc-search">
+              Tìm tài liệu
+            </label>
+            <input
+              id="suoc-search"
+              className="input-field mt-1"
+              placeholder="VD: MLN111, CSI106"
+              value={search}
+              onChange={(e) => {
+                setPage(0);
+                setSearch(e.target.value);
+              }}
+            />
+          </div>
+          <div>
+            <label className="eyebrow" htmlFor="suoc-sort">
+              Sắp xếp
+            </label>
+            <select
+              id="suoc-sort"
+              className="input-field mt-1 min-w-[170px]"
+              value={sort}
+              onChange={(e) => {
+                setPage(0);
+                setSort(e.target.value);
+              }}
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      <section className="space-y-3">
+      <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Danh sách Suộc
-          </h2>
-          <span className="text-xs text-slate-500">{totalElements} tài liệu</span>
+          <h2 className="eyebrow">Danh sách Suộc</h2>
+          <span className="text-xs text-ink-500">{totalElements} tài liệu</span>
         </div>
 
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
+          <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
         )}
 
         {loading ? (
-          <p className="text-sm text-slate-500">Đang tải...</p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
         ) : items.length === 0 ? (
-          <p className="text-sm text-slate-500">Không có tài liệu phù hợp.</p>
+          <div className="card flex flex-col items-center gap-2 py-12 text-center">
+            <p className="text-sm font-medium text-ink-700">Không có tài liệu phù hợp</p>
+            <p className="text-xs text-ink-500">Thử từ khóa khác hoặc xóa bộ lọc.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {items.map((item) => (
@@ -221,7 +260,7 @@ export default function SuocPage() {
             >
               ← Trước
             </button>
-            <span className="text-sm text-slate-600">
+            <span className="text-sm text-ink-600">
               Trang {page + 1} / {totalPages}
             </span>
             <button

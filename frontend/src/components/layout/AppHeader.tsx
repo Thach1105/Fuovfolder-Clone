@@ -21,46 +21,49 @@ export function AppHeader() {
   const { user, loading, logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-fuo-600 text-sm font-bold text-white">
+    <header className="sticky top-0 z-50 border-b border-ink-200/70 bg-ink-50/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4">
+        <Link href="/" className="group flex shrink-0 items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink-900 text-sm font-bold text-ink-50 transition-transform duration-300 group-hover:-rotate-6">
             FUO
           </span>
-          <span className="hidden font-semibold text-slate-800 sm:inline">
+          <span className="hidden font-display text-xl text-ink-900 sm:inline">
             FuOverflow
           </span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
           <ForumNavDropdown />
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-sm font-medium transition",
-                pathname === item.href
-                  ? "bg-fuo-50 text-fuo-700"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-ink-900 text-ink-50"
+                    : "text-ink-600 hover:bg-ink-100 hover:text-ink-900",
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
           <Link
             href="/search"
-            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-full p-2 text-ink-500 transition hover:bg-ink-100 hover:text-ink-800"
             aria-label="Tìm kiếm"
           >
             <SearchIcon />
           </Link>
 
           {loading ? (
-            <span className="h-8 w-20 animate-pulse rounded-lg bg-slate-100" />
+            <span className="skeleton h-8 w-20 rounded-full" />
           ) : user ? (
             <>
               <NotificationBell />
@@ -68,19 +71,19 @@ export function AppHeader() {
               {hasStaffAccess(user) && (
                 <Link
                   href="/admin"
-                  className="hidden rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100 sm:inline-flex"
+                  className="hidden rounded-full border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100 sm:inline-flex"
                 >
                   Quản trị
                 </Link>
               )}
               <Link
                 href="/profile"
-                className="flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-slate-100"
+                className="flex items-center gap-2 rounded-full px-1.5 py-1 transition hover:bg-ink-100"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-fuo-100 text-sm font-semibold text-fuo-700">
                   {user.displayName.charAt(0).toUpperCase()}
                 </span>
-                <span className="hidden text-sm font-medium text-slate-700 sm:inline">
+                <span className="hidden text-sm font-medium text-ink-700 sm:inline">
                   {user.displayName}
                 </span>
               </Link>
