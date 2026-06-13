@@ -22,7 +22,7 @@ public class WebCorsConfig {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         if (corsProperties.allowedOrigins() != null && !corsProperties.allowedOrigins().isEmpty()) {
-            configuration.setAllowedOrigins(corsProperties.allowedOrigins());
+            configuration.setAllowedOriginPatterns(corsProperties.allowedOrigins());
         }
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
