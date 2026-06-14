@@ -17,27 +17,27 @@ After pulling the latest code from `main`, update the environment file with the 
 Add or update these variables in `/opt/fuoverflow/.env`:
 
 ```bash
-# CORS configuration (update YOUR_PRODUCTION_IP with actual server IP or domain)
-CORS_ALLOWED_ORIGINS=http://YOUR_PRODUCTION_IP:3336
+# CORS configuration (update YOUR_SERVER_IP with actual server IP or domain)
+CORS_ALLOWED_ORIGINS=http://YOUR_SERVER_IP:3336
 CORS_ALLOW_CREDENTIALS=true
 
 # Authentication email verification (for email-based account recovery flows)
-AUTH_EMAIL_VERIFICATION_URL_BASE=http://YOUR_PRODUCTION_IP:3336/verify-email
+AUTH_EMAIL_VERIFICATION_URL_BASE=http://YOUR_SERVER_IP:3336/verify-email
 AUTH_EMAIL_VERIFICATION_SUBJECT='Verify your FuOverflow email'
 
 # Authentication password reset (for account recovery)
-AUTH_PASSWORD_RESET_URL_BASE=http://YOUR_PRODUCTION_IP:3336/reset-password
+AUTH_PASSWORD_RESET_URL_BASE=http://YOUR_SERVER_IP:3336/reset-password
 AUTH_PASSWORD_RESET_SUBJECT='Reset your FuOverflow password'
 
 # Fuexam frontend (primary frontend, replaces legacy frontend)
 FUEXAM_PUBLISH_PORT=3336
 
 # Fuexam build args (must all be set for frontend to build correctly)
-FUEXAM_NEXT_PUBLIC_API_URL=http://YOUR_PRODUCTION_IP:18080
-FUEXAM_NEXT_PUBLIC_API_BASE_URL=http://YOUR_PRODUCTION_IP:18080
-FUEXAM_NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL=http://YOUR_PRODUCTION_IP:9000/fuoverflow-media
-FUEXAM_NEXT_PUBLIC_MEDIA_BASE_URL=http://YOUR_PRODUCTION_IP:9000/fuoverflow-media
-FUEXAM_NEXT_PUBLIC_S3_PUBLIC_BASE_URL=http://YOUR_PRODUCTION_IP:9000/fuoverflow-media
+FUEXAM_NEXT_PUBLIC_API_URL=http://YOUR_SERVER_IP:18080
+FUEXAM_NEXT_PUBLIC_API_BASE_URL=http://YOUR_SERVER_IP:18080
+FUEXAM_NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL=http://YOUR_SERVER_IP:9000/fuoverflow-media
+FUEXAM_NEXT_PUBLIC_MEDIA_BASE_URL=http://YOUR_SERVER_IP:9000/fuoverflow-media
+FUEXAM_NEXT_PUBLIC_S3_PUBLIC_BASE_URL=http://YOUR_SERVER_IP:9000/fuoverflow-media
 ```
 
 ### Remove or Comment Out (Legacy Frontend)
@@ -61,12 +61,12 @@ Before deploying, confirm these critical variables are set and correct:
 - `REDIS_PUBLISH_PORT=6379` (Redis cache)
 - `MINIO_API_PUBLISH_PORT=9000` (object storage API)
 - `MINIO_CONSOLE_PUBLISH_PORT=9001` (object storage console)
-- All `FUEXAM_NEXT_PUBLIC_*` variables set (7 variables total)
+- All `FUEXAM_NEXT_PUBLIC_*` variables set (5 variables total)
 
 ### Notes on Environment Variables
 
-- **YOUR_PRODUCTION_IP**: Replace with actual server IP address or fully qualified domain name (e.g., `192.168.1.100` or `api.yourdomain.com`)
-- **Port 3336**: This is the primary frontend port. After deployment, users access the application at `http://YOUR_PRODUCTION_IP:3336`
+- **YOUR_SERVER_IP**: Replace with actual server IP address or fully qualified domain name (e.g., `192.168.1.100` or `api.yourdomain.com`)
+- **Port 3336**: This is the primary frontend port. After deployment, users access the application at `http://YOUR_SERVER_IP:3336`
 - **Port 18080**: Backend API continues to run on this port (not publicly exposed; accessed via frontend)
 - **Email URLs**: Auth links in verification and password reset emails will use these base URLs. Ensure they match the domain users see in their browser.
 
@@ -129,16 +129,13 @@ docker logs fuoverflow-fuexam --tail 20 | grep -iE "error|build fail" | head -10
 # Expected: No build errors
 
 # 8. Verify CORS configuration is correct by making a request from frontend origin
-curl -s -H "Origin: http://YOUR_PRODUCTION_IP:3336" \
+curl -s -H "Origin: http://YOUR_SERVER_IP:3336" \
      -H "Access-Control-Request-Method: GET" \
      -H "Access-Control-Request-Headers: Content-Type" \
-     -X OPTIONS http://localhost:18080/api/v1/health \
+     -X OPTIONS http://localhost:18080/actuator/health/liveness \
      -v 2>&1 | grep "Access-Control-Allow-Origin"
-# Expected: Access-Control-Allow-Origin: http://YOUR_PRODUCTION_IP:3336
+# Expected: Access-Control-Allow-Origin: http://YOUR_SERVER_IP:3336
 
-# 9. Test API connectivity from frontend perspective
-curl -s "http://localhost:3336/api/v1/health" 2>&1 | head -5
-# Should return a response (may be 200 or redirect depending on auth requirements)
 ```
 
 ### Quick Verification Summary Command
@@ -186,12 +183,12 @@ Rollback if any of these occur:
 
 ```bash
 # 1. Stop running containers
-docker compose -f /opt/fuoverflow/deploy/docker-compose.yml down
+docker compose -f docker-compose.yml down
 
 # 2. Revert the 6 commits related to frontend removal
 cd /opt/fuoverflow  # or your deployment git repo
-git revert --no-edit HEAD~5..HEAD
-# This creates 6 new revert commits (HEAD~5 through HEAD, inclusive)
+git revert --no-edit HEAD~6..HEAD
+# This creates 6 new revert commits (HEAD~6 through HEAD, inclusive)
 
 # 3. Push reverted changes to main
 git push origin main
