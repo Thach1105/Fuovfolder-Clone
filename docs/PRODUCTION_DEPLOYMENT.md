@@ -250,7 +250,7 @@ Use this checklist when deploying to production:
 ### Pre-Deployment
 - [ ] All code changes committed to `main` branch
 - [ ] CI/CD pipeline passes (unit tests, integration tests, Docker build)
-- [ ] `/opt/fuoverflow/.env` has been reviewed and `YOUR_PRODUCTION_IP` replaced with actual IP
+- [ ] `/opt/fuoverflow/.env` has been reviewed and `YOUR_SERVER_IP` replaced with actual IP
 - [ ] All `FUEXAM_NEXT_PUBLIC_*` variables are set
 - [ ] Database backups created (optional but recommended)
 - [ ] Team informed of deployment window
@@ -263,7 +263,7 @@ Use this checklist when deploying to production:
 
 ### Post-Deployment
 - [ ] Run verification script (Step 2 above)
-- [ ] All 9 verification checks pass
+- [ ] All 8 verification checks pass
 - [ ] Test critical user journeys:
   - [ ] User signup and email verification
   - [ ] User login
