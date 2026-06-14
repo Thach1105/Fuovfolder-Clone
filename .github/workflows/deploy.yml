@@ -13,7 +13,6 @@ env:
   ENV_FILE: /opt/fuoverflow/.env
   COMPOSE_FILE: deploy/docker-compose.yml
   BACKEND_PORT: "18080"
-  FRONTEND_PORT: "19080"
   FUEXAM_PORT: "3336"
 
 jobs:
@@ -35,15 +34,14 @@ jobs:
           . "${{ env.ENV_FILE }}"
           set +a
           if [ "${BACKEND_PUBLISH_PORT:-18080}" != "${{ env.BACKEND_PORT }}" ] || \
-             [ "${FRONTEND_PUBLISH_PORT:-19080}" != "${{ env.FRONTEND_PORT }}" ] || \
              [ "${FUEXAM_PUBLISH_PORT:-3336}" != "${{ env.FUEXAM_PORT }}" ]; then
-            echo "::error::Expected BACKEND_PUBLISH_PORT=${{ env.BACKEND_PORT }}, FRONTEND_PUBLISH_PORT=${{ env.FRONTEND_PORT }}, and FUEXAM_PUBLISH_PORT=${{ env.FUEXAM_PORT }} in ${{ env.ENV_FILE }}."
+            echo "::error::Expected BACKEND_PUBLISH_PORT=${{ env.BACKEND_PORT }} and FUEXAM_PUBLISH_PORT=${{ env.FUEXAM_PORT }} in ${{ env.ENV_FILE }}."
             exit 1
           fi
 
       - name: Stop legacy systemd services
         run: |
-          for svc in fuoverflow-backend fuoverflow-frontend; do
+          for svc in fuoverflow-backend; do
             if systemctl is-active --quiet "$svc" 2>/dev/null; then
               if sudo -n systemctl stop "$svc" 2>/dev/null; then
                 echo "Stopped systemd service $svc."
@@ -66,30 +64,24 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           compose=(docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}")
-          "${compose[@]}" build --pull backend frontend fuexam
+          "${compose[@]}" build --pull backend fuexam
           "${compose[@]}" up -d --remove-orphans --force-recreate
 
       - name: Health check
         run: |
           backend_ok=0
-          frontend_ok=0
           fuexam_ok=0
           for attempt in $(seq 1 24); do
             if [ "$backend_ok" -eq 0 ] && curl -fsS "http://localhost:${{ env.BACKEND_PORT }}/actuator/health/liveness" >/dev/null; then
               backend_ok=1
               echo "Backend health OK on port ${{ env.BACKEND_PORT }}."
             fi
-            frontend_code="$(curl -sS -o /dev/null -w '%{http_code}' "http://localhost:${{ env.FRONTEND_PORT }}" 2>/dev/null || echo 000)"
-            if [ "$frontend_ok" -eq 0 ] && echo "$frontend_code" | grep -qE '^(200|307|308)$'; then
-              frontend_ok=1
-              echo "Frontend health OK on port ${{ env.FRONTEND_PORT }} (HTTP $frontend_code)."
-            fi
             fuexam_code="$(curl -sS -o /dev/null -w '%{http_code}' "http://localhost:${{ env.FUEXAM_PORT }}" 2>/dev/null || echo 000)"
             if [ "$fuexam_ok" -eq 0 ] && echo "$fuexam_code" | grep -qE '^(200|307|308)$'; then
               fuexam_ok=1
               echo "Fuexam health OK on port ${{ env.FUEXAM_PORT }} (HTTP $fuexam_code)."
             fi
-            if [ "$backend_ok" -eq 1 ] && [ "$frontend_ok" -eq 1 ] && [ "$fuexam_ok" -eq 1 ]; then
+            if [ "$backend_ok" -eq 1 ] && [ "$fuexam_ok" -eq 1 ]; then
               exit 0
             fi
             sleep 5
@@ -97,6 +89,5 @@ jobs:
           echo "::error::Deploy health check failed after 120s."
           docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}" ps
           docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}" logs backend --tail 80 || true
-          docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}" logs frontend --tail 80 || true
           docker compose -f "${{ env.COMPOSE_FILE }}" --env-file "${{ env.ENV_FILE }}" logs fuexam --tail 80 || true
           exit 1
