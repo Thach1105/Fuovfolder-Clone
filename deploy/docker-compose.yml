@@ -124,6 +124,28 @@ services:
       backend:
         condition: service_healthy
 
+  fuexam:
+    build:
+      context: ../Fuexam
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${FUEXAM_NEXT_PUBLIC_API_URL:?FUEXAM_NEXT_PUBLIC_API_URL is required}
+        NEXT_PUBLIC_API_BASE_URL: ${FUEXAM_NEXT_PUBLIC_API_BASE_URL:?FUEXAM_NEXT_PUBLIC_API_BASE_URL is required}
+        NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL: ${FUEXAM_NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL:?FUEXAM_NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL is required}
+        NEXT_PUBLIC_MEDIA_BASE_URL: ${FUEXAM_NEXT_PUBLIC_MEDIA_BASE_URL:?FUEXAM_NEXT_PUBLIC_MEDIA_BASE_URL is required}
+        NEXT_PUBLIC_S3_PUBLIC_BASE_URL: ${FUEXAM_NEXT_PUBLIC_S3_PUBLIC_BASE_URL:?FUEXAM_NEXT_PUBLIC_S3_PUBLIC_BASE_URL is required}
+    image: fuoverflow-fuexam:latest
+    container_name: fuoverflow-fuexam
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    ports:
+      - "${FUEXAM_PUBLISH_PORT:-3336}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   redis_data:
