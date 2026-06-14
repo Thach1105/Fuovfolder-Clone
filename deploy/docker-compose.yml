@@ -105,25 +105,6 @@ services:
       retries: 8
       start_period: 60s
 
-  frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
-        NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL: ${NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL:?NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL is required}
-    image: fuoverflow-frontend:latest
-    container_name: fuoverflow-frontend
-    restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      PORT: "3000"
-    ports:
-      - "${FRONTEND_PUBLISH_PORT:-19080}:3000"
-    depends_on:
-      backend:
-        condition: service_healthy
-
   fuexam:
     build:
       context: ../Fuexam
