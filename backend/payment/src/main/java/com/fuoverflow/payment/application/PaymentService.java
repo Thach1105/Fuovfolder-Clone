@@ -1,12 +1,16 @@
 package com.fuoverflow.payment.application;
 
 import com.fuoverflow.common.exception.NotFoundException;
+import com.fuoverflow.deposit.persistence.DepositTierEntity;
+import com.fuoverflow.deposit.persistence.DepositTierRepository;
 import com.fuoverflow.payment.api.dto.PayOSPaymentLinkResponse;
 import com.fuoverflow.payment.api.dto.PaymentStatusResponse;
 import com.fuoverflow.payment.persistence.OrderEntity;
 import com.fuoverflow.payment.persistence.OrderRepository;
 import com.fuoverflow.payment.persistence.PaymentEntity;
 import com.fuoverflow.payment.persistence.PaymentRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +18,6 @@ import vn.payos.PayOS;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;
@@ -23,60 +26,54 @@ import java.util.UUID;
 @Service
 public class PaymentService {
 
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+
     private final OrderRepository orderRepo;
     private final PaymentRepository paymentRepo;
     private final PayOS payOS;
     private final PointService pointService;
+    private final DepositTierRepository tierRepo;
 
     public PaymentService(OrderRepository orderRepo, PaymentRepository paymentRepo,
-                          PayOS payOS, PointService pointService) {
+                          PayOS payOS, PointService pointService, DepositTierRepository tierRepo) {
         this.orderRepo = orderRepo;
         this.paymentRepo = paymentRepo;
         this.payOS = payOS;
         this.pointService = pointService;
+        this.tierRepo = tierRepo;
     }
 
     @Transactional
-    public PayOSPaymentLinkResponse createPaymentLink(BigDecimal amount, String description,
-                                                      String returnUrl, String cancelUrl, UUID userId) {
+    public PayOSPaymentLinkResponse createPaymentLink(UUID tierId, String returnUrl, String cancelUrl, UUID userId) {
+        DepositTierEntity tier = tierRepo.findById(tierId)
+                .filter(DepositTierEntity::isActive)
+                .orElseThrow(() -> new NotFoundException("DEPOSIT_TIER_NOT_FOUND", "Deposit tier not found: " + tierId));
+
+        String idempotencyKey = buildIdempotencyKey(userId, tierId, returnUrl, cancelUrl);
+        Optional<OrderEntity> existing = orderRepo.findByIdempotencyKey(idempotencyKey);
+        if (existing.isPresent()) {
+            return reuseExistingLink(existing.get());
+        }
+
+        long orderCode = generateOrderCode();
+        CreatePaymentLinkRequest request = CreatePaymentLinkRequest.builder()
+                .orderCode(orderCode)
+                .amount((long) tier.getAmountVnd())
+                .description("Nap diem " + tier.getLabel())
+                .returnUrl(returnUrl)
+                .cancelUrl(cancelUrl)
+                .build();
+
+        CreatePaymentLinkResponse response = payOS.paymentRequests().create(request);
+
         try {
-            String idempotencyKey = buildIdempotencyKey(userId, amount, returnUrl, cancelUrl, description);
-            Optional<OrderEntity> existingOrder = orderRepo.findByIdempotencyKey(idempotencyKey);
-            if (existingOrder.isPresent()) {
-                return reuseExistingLink(existingOrder.get());
-            }
-
-            long orderCode = generateOrderCode();
-            int totalAmountVnd = amount.intValueExact();
-
-            CreatePaymentLinkRequest request = CreatePaymentLinkRequest.builder()
-                    .orderCode(orderCode)
-                    .amount(amount.longValueExact())
-                    .description(description)
-                    .returnUrl(returnUrl)
-                    .cancelUrl(cancelUrl)
-                    .build();
-
-            CreatePaymentLinkResponse response = payOS.paymentRequests().create(request);
-
-            try {
-                OrderEntity order = OrderEntity.create(userId, totalAmountVnd, "VND", "payos", String.valueOf(orderCode));
-                order.setIdempotencyKey(idempotencyKey);
-                orderRepo.save(order);
-            } catch (DataIntegrityViolationException ex) {
-                return reuseExistingLink(
-                        orderRepo.findByIdempotencyKey(idempotencyKey)
-                                .orElseThrow(() -> ex)
-                );
-            }
-
-            return new PayOSPaymentLinkResponse(
-                    response.getCheckoutUrl(),
-                    response.getQrCode(),
-                    String.valueOf(orderCode)
-            );
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create payment link: " + e.getMessage(), e);
+            OrderEntity order = OrderEntity.createFromTier(userId, tier.getAmountVnd(), tier, "payos", String.valueOf(orderCode));
+            order.setIdempotencyKey(idempotencyKey);
+            orderRepo.save(order);
+            return new PayOSPaymentLinkResponse(response.getCheckoutUrl(), response.getQrCode(), String.valueOf(orderCode));
+        } catch (DataIntegrityViolationException ex) {
+            OrderEntity persisted = orderRepo.findByIdempotencyKey(idempotencyKey).orElseThrow(() -> ex);
+            return reuseExistingLink(persisted);
         }
     }
 
@@ -90,15 +87,12 @@ public class PaymentService {
         return new PayOSPaymentLinkResponse(null, null, orderCode);
     }
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PaymentService.class);
-
     static long generateOrderCode() {
         return Math.abs(UUID.randomUUID().getMostSignificantBits());
     }
 
-    String buildIdempotencyKey(UUID userId, BigDecimal amount, String returnUrl, String cancelUrl, String description) {
-        String raw = userId + "|" + amount.toPlainString() + "|" + returnUrl + "|" + cancelUrl + "|"
-                + (description == null ? "" : description);
+    String buildIdempotencyKey(UUID userId, UUID tierId, String returnUrl, String cancelUrl) {
+        String raw = userId + "|" + tierId + "|" + returnUrl + "|" + cancelUrl;
         return UUID.nameUUIDFromBytes(raw.getBytes(StandardCharsets.UTF_8)).toString();
     }
 
@@ -115,7 +109,12 @@ public class PaymentService {
     }
 
     private void creditPointsForPaidOrder(OrderEntity order, PaymentEntity payment) {
-        long points = order.getTotalCents() / 100;
+        long points;
+        if (order.getPointsAwarded() != null) {
+            points = order.getPointsAwarded();
+        } else {
+            points = order.getTotalCents() / 100;
+        }
         pointService.creditPoints(order.getUserId(), points, "payment", payment.getId(), "Deposit points from PayOS");
     }
 
@@ -132,12 +131,11 @@ public class PaymentService {
         try {
             PaymentEntity payment = PaymentEntity.create(
                     order.getId(), order.getUserId(), "payos", orderCode,
-                    order.getTotalCents(), "VND");
+                    order.getTotalCents(), order.getCurrency());
             payment.markPaid(Instant.now());
             return paymentRepo.save(payment);
         } catch (DataIntegrityViolationException ex) {
-            return paymentRepo.findByProviderAndProviderPaymentId("payos", orderCode)
-                    .orElseThrow(() -> ex);
+            return paymentRepo.findByProviderAndProviderPaymentId("payos", orderCode).orElseThrow(() -> ex);
         }
     }
 
@@ -155,12 +153,10 @@ public class PaymentService {
         if (!"pending".equals(order.getStatus())) {
             return;
         }
-
         if (findExistingPayment(orderCode).isPresent()) {
             confirmExistingPayment(order);
             return;
         }
-
         confirmPendingOrder(order, orderCode);
     }
 
@@ -172,11 +168,9 @@ public class PaymentService {
     private OrderEntity getOrderForStatus(String orderCode, UUID userId, boolean isAdmin) {
         OrderEntity order = orderRepo.findByProviderOrderId(orderCode)
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found"));
-
         if (!isAdmin && !order.getUserId().equals(userId)) {
             throw new NotFoundException("ORDER_NOT_FOUND", "Order not found");
         }
-
         return order;
     }
 
@@ -186,6 +180,9 @@ public class PaymentService {
 
     private long calculatePointsEarned(OrderEntity order, Optional<PaymentEntity> paymentOpt) {
         if (paymentOpt.isPresent() && "paid".equals(paymentOpt.get().getStatus())) {
+            if (order.getPointsAwarded() != null) {
+                return order.getPointsAwarded();
+            }
             return order.getTotalCents() / 100;
         }
         return 0;
