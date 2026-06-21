@@ -37,16 +37,17 @@ public class PaymentService {
         try {
             long orderCode = System.currentTimeMillis();
             String idempotencyKey = "idempotent-" + orderCode;
+            int totalAmountVnd = amount.intValueExact();
 
             OrderEntity order = OrderEntity.create(userId,
-                    amount.multiply(new BigDecimal(100)).intValue(),
+                    totalAmountVnd,
                     "VND", "payos", String.valueOf(orderCode));
             order.setIdempotencyKey(idempotencyKey);
             orderRepo.save(order);
 
             CreatePaymentLinkRequest request = CreatePaymentLinkRequest.builder()
                     .orderCode(orderCode)
-                    .amount(amount.longValue())
+                    .amount(amount.longValueExact())
                     .description(description)
                     .returnUrl(returnUrl)
                     .cancelUrl(cancelUrl)

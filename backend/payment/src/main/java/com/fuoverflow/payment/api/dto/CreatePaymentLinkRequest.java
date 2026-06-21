@@ -1,22 +1,26 @@
 package com.fuoverflow.payment.api.dto;
 
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
 public record CreatePaymentLinkRequest(
         @NotNull(message = "amount is required")
-        @DecimalMin(value = "0.01", message = "amount must be >= 0.01")
+        @DecimalMin(value = "1000", message = "amount must be >= 1000 VND")
+        @Digits(integer = 10, fraction = 0, message = "amount must be a whole-number VND value")
         BigDecimal amount,
 
-        @NotNull(message = "returnUrl is required")
+        @NotBlank(message = "returnUrl is required")
         String returnUrl,
 
-        @NotNull(message = "cancelUrl is required")
+        @NotBlank(message = "cancelUrl is required")
         String cancelUrl,
 
+        @Size(max = 255, message = "description must be <= 255 characters")
         String description
 ) {
 }
