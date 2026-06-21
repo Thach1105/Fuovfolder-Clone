@@ -1,6 +1,11 @@
 package com.fuoverflow.payment.application;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fuoverflow.common.exception.NotFoundException;
+import com.fuoverflow.deposit.persistence.DepositTierEntity;
+import com.fuoverflow.deposit.persistence.DepositTierRepository;
 import com.fuoverflow.payment.api.dto.PaymentStatusResponse;
 import com.fuoverflow.payment.persistence.OrderEntity;
 import com.fuoverflow.payment.persistence.OrderRepository;
@@ -12,11 +17,19 @@ import org.mockito.Answers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import vn.payos.PayOS;
 
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.tuple;
+
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -41,8 +54,49 @@ class PaymentServiceTest {
     @Mock
     private PointService pointService;
 
+    @Mock
+    private DepositTierRepository tierRepo;
+
     @InjectMocks
     private PaymentService paymentService;
+
+    @Test
+    void createPaymentLink_shouldLogContextWhenPayOSCreateFails() {
+        UUID userId = UUID.randomUUID();
+        UUID tierId = UUID.randomUUID();
+        DepositTierEntity tier = DepositTierEntity.create("Nap 10k", 10000, 10000, 0, true, 0, Instant.now());
+        RuntimeException providerFailure = new RuntimeException("payos boom");
+        Logger logger = (Logger) LoggerFactory.getLogger(PaymentService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            when(tierRepo.findById(tierId)).thenReturn(Optional.of(tier));
+            when(orderRepo.findByIdempotencyKey(any())).thenReturn(Optional.empty());
+            when(payOS.paymentRequests().create(any())).thenThrow(providerFailure);
+
+            assertThatThrownBy(() -> paymentService.createPaymentLink(
+                    tierId,
+                    "https://fuexam.com/payment/success",
+                    "https://fuexam.com/payment/cancel",
+                    userId
+            )).isSameAs(providerFailure);
+
+            List<ILoggingEvent> events = appender.list;
+            assertThat(events)
+                    .extracting(ILoggingEvent::getFormattedMessage, ILoggingEvent::getThrowableProxy)
+                    .extracting(tuple -> tuple)
+                    .isNotEmpty();
+            assertThat(events.getLast().getFormattedMessage())
+                    .contains("Failed to create PayOS payment link")
+                    .contains(tierId.toString())
+                    .contains(userId.toString());
+            assertThat(events.getLast().getThrowableProxy().getMessage()).contains("payos boom");
+        } finally {
+            logger.detachAppender(appender);
+        }
+    }
+
 
     @Test
     void confirmPayment_shouldRejectWhenOrderBelongsToAnotherUser() {

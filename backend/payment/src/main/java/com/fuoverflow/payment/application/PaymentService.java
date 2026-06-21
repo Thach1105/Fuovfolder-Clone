@@ -64,7 +64,14 @@ public class PaymentService {
                 .cancelUrl(cancelUrl)
                 .build();
 
-        CreatePaymentLinkResponse response = payOS.paymentRequests().create(request);
+        CreatePaymentLinkResponse response;
+        try {
+            response = payOS.paymentRequests().create(request);
+        } catch (Exception ex) {
+            log.error("Failed to create PayOS payment link: userId={}, tierId={}, amountVnd={}, returnUrl={}, cancelUrl={}",
+                    userId, tierId, tier.getAmountVnd(), returnUrl, cancelUrl, ex);
+            throw ex;
+        }
 
         try {
             OrderEntity order = OrderEntity.createFromTier(userId, tier.getAmountVnd(), tier, "payos", String.valueOf(orderCode));
