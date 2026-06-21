@@ -40,17 +40,26 @@ public class PayOSWebhookController {
 
     @PostMapping("/webhook")
     public ResponseEntity<String> handleWebhook(@RequestBody String body) {
-        log.info("Received PayOS webhook");
+        log.info("Received PayOS webhook: bodyLength={} body={}",
+                body != null ? body.length() : 0, body);
         try {
             WebhookData webhookData = payOS.webhooks().verify(body);
+            log.info("PayOS webhook verified: orderCode={} code={} reference={} amount={} accountNumber={}",
+                    webhookData.getOrderCode(), webhookData.getCode(),
+                    webhookData.getReference(), webhookData.getAmount(), webhookData.getAccountNumber());
 
             String orderCode = String.valueOf(webhookData.getOrderCode());
             String providerEventId = deriveProviderEventId(webhookData);
             boolean paid = "00".equals(webhookData.getCode());
 
+            log.info("PayOS webhook processing: orderCode={} providerEventId={} paid={}",
+                    orderCode, providerEventId, paid);
+
             Optional<PaymentWebhookEventEntity> existing =
                     webhookRepo.findByProviderAndProviderEventId("payos", providerEventId);
             if (existing.isPresent()) {
+                log.info("PayOS webhook duplicate: orderCode={} providerEventId={} alreadyProcessed={}",
+                        orderCode, providerEventId, existing.get().getProcessedAt() != null);
                 if (existing.get().getProcessedAt() != null) {
                     log.info("Webhook already processed for orderCode={}", orderCode);
                     return ResponseEntity.ok("OK");
@@ -66,6 +75,7 @@ public class PayOSWebhookController {
             PaymentWebhookEventEntity event = PaymentWebhookEventEntity.create(
                     "payos", providerEventId, paid ? "payment.success" : "payment.failed", body, true);
             webhookRepo.save(event);
+            log.info("PayOS webhook event saved: id={} providerEventId={}", event.getId(), providerEventId);
 
             if (paid) {
                 paymentService.confirmPaymentByOrderCode(orderCode);
@@ -76,7 +86,7 @@ public class PayOSWebhookController {
 
             return ResponseEntity.ok("OK");
         } catch (PayOSException e) {
-            log.warn("Invalid PayOS webhook signature: {}", e.getMessage());
+            log.warn("Invalid PayOS webhook signature: {} body={}", e.getMessage(), body);
             String invalidEventId = invalidEventId(body);
             if (webhookRepo.findByProviderAndProviderEventId("payos", invalidEventId).isEmpty()
                     && isJsonPayload(body)) {
