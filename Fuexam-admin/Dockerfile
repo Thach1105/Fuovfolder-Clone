@@ -3,9 +3,24 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm fetch --frozen-lockfile || true
-RUN pnpm install --frozen-lockfile=false --ignore-scripts
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile=false
+
+# `pnpm-workspace.yaml` in this repo is only used locally to approve sharp builds.
+# This app is a single package, not a pnpm workspace, so copying that file into the
+# image makes pnpm switch to workspace mode and fail with:
+#   ERROR packages field missing or empty
+# In Docker we install in an isolated container, so allowing install scripts is fine.
+# That also lets sharp build normally without a separate approve-builds step.
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN mkdir -p public
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm build
 
 FROM node:20-alpine AS builder
 WORKDIR /app
