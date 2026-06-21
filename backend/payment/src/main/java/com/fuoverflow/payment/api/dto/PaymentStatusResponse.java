@@ -9,5 +9,5 @@ public record PaymentStatusResponse(
         String currency,
         long pointsEarned,
         String provider,
-        String checkoutUrl
+        String providerOrderId
 ) {}

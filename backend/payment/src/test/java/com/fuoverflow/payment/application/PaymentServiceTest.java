@@ -1,6 +1,7 @@
 package com.fuoverflow.payment.application;
 
 import com.fuoverflow.common.exception.NotFoundException;
+import com.fuoverflow.payment.api.dto.PaymentStatusResponse;
 import com.fuoverflow.payment.persistence.OrderEntity;
 import com.fuoverflow.payment.persistence.OrderRepository;
 import com.fuoverflow.payment.persistence.PaymentEntity;
@@ -97,5 +98,45 @@ class PaymentServiceTest {
 
         assertThatThrownBy(() -> paymentService.confirmPaymentByOrderCode("missing"))
                 .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void getPaymentStatus_shouldRejectWhenOrderBelongsToAnotherUser() {
+        UUID ownerId = UUID.randomUUID();
+        UUID anotherUserId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(ownerId, 10000, "VND", "payos", "order-1");
+        when(orderRepo.findByProviderOrderId("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> paymentService.getPaymentStatus("order-1", anotherUserId, false))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Order not found");
+    }
+
+    @Test
+    void getPaymentStatus_shouldAllowAdminToViewAnotherUsersOrder() {
+        UUID ownerId = UUID.randomUUID();
+        UUID adminUserId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(ownerId, 10000, "VND", "payos", "order-1");
+        when(orderRepo.findByProviderOrderId("order-1")).thenReturn(Optional.of(order));
+        when(paymentRepo.findByOrderId(order.getId())).thenReturn(java.util.List.of());
+
+        PaymentStatusResponse response = paymentService.getPaymentStatus("order-1", adminUserId, true);
+
+        org.assertj.core.api.Assertions.assertThat(response.providerOrderId()).isEqualTo("order-1");
+    }
+
+    @Test
+    void getPaymentStatus_shouldReturnProviderOrderIdForOwner() {
+        UUID userId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(userId, 10000, "VND", "payos", "order-1");
+        PaymentEntity payment = PaymentEntity.create(order.getId(), userId, "payos", "order-1", 10000, "VND");
+        payment.markPaid(Instant.now());
+
+        when(orderRepo.findByProviderOrderId("order-1")).thenReturn(Optional.of(order));
+        when(paymentRepo.findByOrderId(order.getId())).thenReturn(java.util.List.of(payment));
+
+        PaymentStatusResponse response = paymentService.getPaymentStatus("order-1", userId, false);
+
+        org.assertj.core.api.Assertions.assertThat(response.providerOrderId()).isEqualTo("order-1");
     }
 }

@@ -127,9 +127,15 @@ public class PaymentService {
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found for code: " + orderCode));
     }
 
-    private OrderEntity getOrderForStatus(String orderCode) {
-        return orderRepo.findByProviderOrderId(orderCode)
+    private OrderEntity getOrderForStatus(String orderCode, UUID userId, boolean isAdmin) {
+        OrderEntity order = orderRepo.findByProviderOrderId(orderCode)
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found"));
+
+        if (!isAdmin && !order.getUserId().equals(userId)) {
+            throw new NotFoundException("ORDER_NOT_FOUND", "Order not found");
+        }
+
+        return order;
     }
 
     private Optional<PaymentEntity> getPaymentForOrder(OrderEntity order) {
@@ -156,8 +162,8 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public PaymentStatusResponse getPaymentStatus(String orderCode) {
-        OrderEntity order = getOrderForStatus(orderCode);
+    public PaymentStatusResponse getPaymentStatus(String orderCode, UUID userId, boolean isAdmin) {
+        OrderEntity order = getOrderForStatus(orderCode, userId, isAdmin);
         Optional<PaymentEntity> paymentOpt = getPaymentForOrder(order);
         long pointsEarned = calculatePointsEarned(order, paymentOpt);
         return toPaymentStatusResponse(orderCode, order, pointsEarned);

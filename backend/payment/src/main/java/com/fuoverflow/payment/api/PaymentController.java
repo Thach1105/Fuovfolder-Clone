@@ -36,6 +36,7 @@ public class PaymentController {
 
     @GetMapping("/status")
     public ApiResponse<PaymentStatusResponse> getPaymentStatus(@RequestParam String orderCode) {
-        return ApiResponse.ok(paymentService.getPaymentStatus(orderCode));
+        UUID userId = AuthContext.currentUserId();
+        return ApiResponse.ok(paymentService.getPaymentStatus(orderCode, userId, AuthContext.isAdmin()));
     }
 }
