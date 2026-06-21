@@ -9,7 +9,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ApiError } from "@/lib/api/client";
 import * as authApi from "@/lib/api/auth";
 import * as usersApi from "@/lib/api/users";
 import type { LoginRequest, RegisterRequest, UserProfileResponse } from "@/types/api";
@@ -33,11 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const profile = await usersApi.getCurrentUser();
       setUser(profile);
-    } catch (error) {
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        setUser(null);
-        return;
-      }
+    } catch {
       setUser(null);
     }
   }, []);

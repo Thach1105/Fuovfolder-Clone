@@ -3,6 +3,7 @@ package com.fuoverflow.payment.application;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.fuoverflow.award.application.PointsWalletService;
 import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.deposit.persistence.DepositTierEntity;
 import com.fuoverflow.deposit.persistence.DepositTierRepository;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -52,7 +54,7 @@ class PaymentServiceTest {
     private PayOS payOS;
 
     @Mock
-    private PointService pointService;
+    private PointsWalletService pointsWalletService;
 
     @Mock
     private DepositTierRepository tierRepo;
@@ -110,7 +112,7 @@ class PaymentServiceTest {
                 .hasMessage("Order does not belong to user");
 
         verify(paymentRepo, never()).save(any(PaymentEntity.class));
-        verify(pointService, never()).creditPoints(any(UUID.class), any(Long.class), any(String.class), any(UUID.class), any(String.class));
+        verify(pointsWalletService, never()).credit(any(UUID.class), anyInt(), any(String.class), any(String.class), any(UUID.class));
     }
 
     @Test
@@ -126,7 +128,7 @@ class PaymentServiceTest {
         paymentService.confirmPaymentByOrderCode("order-1");
 
         verify(paymentRepo, never()).save(any(PaymentEntity.class));
-        verify(pointService, never()).creditPoints(any(UUID.class), any(Long.class), any(String.class), any(UUID.class), any(String.class));
+        verify(pointsWalletService, never()).credit(any(UUID.class), anyInt(), any(String.class), any(String.class), any(UUID.class));
         verify(orderRepo, times(1)).save(order);
     }
 
@@ -143,8 +145,8 @@ class PaymentServiceTest {
         paymentService.confirmPaymentByOrderCode("order-1");
 
         verify(paymentRepo, times(1)).save(any(PaymentEntity.class));
-        verify(pointService, times(1))
-                .creditPoints(userId, 100L, "payment", savedPayment.getId(), "Deposit points from PayOS");
+        verify(pointsWalletService, times(1))
+                .credit(userId, 100, "Deposit points from PayOS", PointsWalletService.SOURCE_TOPUP, savedPayment.getId());
         verify(orderRepo, times(1)).save(order);
     }
 

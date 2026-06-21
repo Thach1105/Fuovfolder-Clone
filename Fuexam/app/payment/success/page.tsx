@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
 import { getPaymentStatus, type PaymentStatusResponse } from "@/lib/api/payment";
+import { useAuth } from "@/lib/auth/AuthProvider";
 
 function SuccessInner() {
   const searchParams = useSearchParams();
   const orderCode = searchParams.get("orderCode");
+  const { refreshUser } = useAuth();
+  const refreshedAfterPaid = useRef(false);
   const [status, setStatus] = useState<PaymentStatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,9 +28,13 @@ function SuccessInner() {
           setStatus(data);
           if (data.status === "pending") {
             setTimeout(poll, 2000);
-          } else {
-            setLoading(false);
+            return;
           }
+          if (data.status === "paid" && !refreshedAfterPaid.current) {
+            refreshedAfterPaid.current = true;
+            void refreshUser();
+          }
+          setLoading(false);
         })
         .catch((err) => {
           setLoading(false);

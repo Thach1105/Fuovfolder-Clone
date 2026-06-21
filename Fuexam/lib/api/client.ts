@@ -1,6 +1,8 @@
+import * as authApi from "@/lib/api/auth";
 import type { ApiEnvelope } from "@/types/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const NO_REFRESH_RETRY_PATHS = new Set(["/api/v1/auth/refresh", "/api/v1/auth/logout"]);
 
 function isApiEnvelope(value: unknown): value is ApiEnvelope<unknown> {
   return (
@@ -25,12 +27,9 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(
-  path: string,
-  init?: RequestInit,
-): Promise<T> {
+async function doFetch(path: string, init?: RequestInit): Promise<Response> {
   const hasBody = init?.body != null;
-  const res = await fetch(`${API_BASE}${path}`, {
+  return fetch(`${API_BASE}${path}`, {
     ...init,
     credentials: "include",
     headers: {
@@ -38,7 +37,9 @@ export async function apiFetch<T>(
       ...init?.headers,
     },
   });
+}
 
+async function parseResponse<T>(res: Response): Promise<T> {
   if (res.status === 204) {
     return undefined as T;
   }
@@ -65,6 +66,27 @@ export async function apiFetch<T>(
   }
 
   return parsed as T;
+}
+
+export async function apiFetch<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  let res = await doFetch(path, init);
+
+  if (
+    (res.status === 401 || res.status === 403) &&
+    !NO_REFRESH_RETRY_PATHS.has(path)
+  ) {
+    try {
+      await authApi.refreshSession();
+      res = await doFetch(path, init);
+    } catch {
+      // fall through to normal parsing of the original auth failure path
+    }
+  }
+
+  return parseResponse<T>(res);
 }
 
 export async function checkHealth(): Promise<{ status: string }> {

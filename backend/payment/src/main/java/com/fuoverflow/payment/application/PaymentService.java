@@ -1,5 +1,6 @@
 package com.fuoverflow.payment.application;
 
+import com.fuoverflow.award.application.PointsWalletService;
 import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.deposit.persistence.DepositTierEntity;
 import com.fuoverflow.deposit.persistence.DepositTierRepository;
@@ -33,15 +34,15 @@ public class PaymentService {
     private final OrderRepository orderRepo;
     private final PaymentRepository paymentRepo;
     private final PayOS payOS;
-    private final PointService pointService;
+    private final PointsWalletService pointsWalletService;
     private final DepositTierRepository tierRepo;
 
     public PaymentService(OrderRepository orderRepo, PaymentRepository paymentRepo,
-                          PayOS payOS, PointService pointService, DepositTierRepository tierRepo) {
+                          PayOS payOS, PointsWalletService pointsWalletService, DepositTierRepository tierRepo) {
         this.orderRepo = orderRepo;
         this.paymentRepo = paymentRepo;
         this.payOS = payOS;
-        this.pointService = pointService;
+        this.pointsWalletService = pointsWalletService;
         this.tierRepo = tierRepo;
     }
 
@@ -124,7 +125,8 @@ public class PaymentService {
         } else {
             points = order.getTotalCents() / 100;
         }
-        pointService.creditPoints(order.getUserId(), points, "payment", payment.getId(), "Deposit points from PayOS");
+        pointsWalletService.credit(order.getUserId(), Math.toIntExact(points), "Deposit points from PayOS",
+                PointsWalletService.SOURCE_TOPUP, payment.getId());
     }
 
     private Optional<PaymentEntity> findExistingPayment(String orderCode) {
