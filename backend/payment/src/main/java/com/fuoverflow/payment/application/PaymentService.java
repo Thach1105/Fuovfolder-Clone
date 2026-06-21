@@ -9,8 +9,10 @@ import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -67,40 +69,83 @@ public class PaymentService {
         OrderEntity order = orderRepo.findByProviderOrderId(orderCode)
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found for code: " + orderCode));
 
+        if (!order.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Order does not belong to user");
+        }
+
+        confirmPaymentByOrderCode(orderCode);
+    }
+
+    private void creditPointsForPaidOrder(OrderEntity order, PaymentEntity payment) {
+        long points = order.getTotalCents() / 100;
+        pointService.creditPoints(order.getUserId(), points, "payment", payment.getId(), "Deposit points from PayOS");
+    }
+
+    private Optional<PaymentEntity> findExistingPayment(String orderCode) {
+        return paymentRepo.findByProviderAndProviderPaymentId("payos", orderCode);
+    }
+
+    private void markOrderPaid(OrderEntity order) {
+        order.markAsPaid();
+        orderRepo.save(order);
+    }
+
+    private PaymentEntity createPaidPayment(OrderEntity order, String orderCode) {
+        PaymentEntity payment = PaymentEntity.create(
+                order.getId(), order.getUserId(), "payos", orderCode,
+                order.getTotalCents(), "VND");
+        payment.markPaid(Instant.now());
+        return paymentRepo.save(payment);
+    }
+
+    private void confirmPendingOrder(OrderEntity order, String orderCode) {
+        PaymentEntity payment = createPaidPayment(order, orderCode);
+        markOrderPaid(order);
+        creditPointsForPaidOrder(order, payment);
+    }
+
+    private void confirmExistingPayment(OrderEntity order) {
+        markOrderPaid(order);
+    }
+
+    private void confirmOrder(OrderEntity order, String orderCode) {
         if (!"pending".equals(order.getStatus())) {
             return;
         }
 
-        PaymentEntity payment = PaymentEntity.create(
-                order.getId(), userId, "payos", orderCode,
-                order.getTotalCents(), "VND");
-        payment.markPaid(Instant.now());
-        paymentRepo.save(payment);
-
-        order.setStatus("paid");
-        orderRepo.save(order);
-
-        long points = order.getTotalCents() / 100;
-        pointService.creditPoints(userId, points, "payment", payment.getId(), "Deposit points from PayOS");
-    }
-
-    @Transactional(readOnly = true)
-    public PaymentStatusResponse getPaymentStatus(String orderCode) {
-        OrderEntity order = orderRepo.findByProviderOrderId(orderCode)
-                .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found"));
-
-        java.util.Optional<PaymentEntity> paymentOpt = paymentRepo.findByOrderId(order.getId())
-                .stream().findFirst();
-
-        String status = order.getStatus();
-        long pointsEarned = 0;
-        if (paymentOpt.isPresent() && "succeeded".equals(paymentOpt.get().getStatus())) {
-            pointsEarned = order.getTotalCents() / 100;
+        if (findExistingPayment(orderCode).isPresent()) {
+            confirmExistingPayment(order);
+            return;
         }
 
+        confirmPendingOrder(order, orderCode);
+    }
+
+    private OrderEntity getOrderByCode(String orderCode) {
+        return orderRepo.findByProviderOrderId(orderCode)
+                .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found for code: " + orderCode));
+    }
+
+    private OrderEntity getOrderForStatus(String orderCode) {
+        return orderRepo.findByProviderOrderId(orderCode)
+                .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found"));
+    }
+
+    private Optional<PaymentEntity> getPaymentForOrder(OrderEntity order) {
+        return paymentRepo.findByOrderId(order.getId()).stream().findFirst();
+    }
+
+    private long calculatePointsEarned(OrderEntity order, Optional<PaymentEntity> paymentOpt) {
+        if (paymentOpt.isPresent() && "succeeded".equals(paymentOpt.get().getStatus())) {
+            return order.getTotalCents() / 100;
+        }
+        return 0;
+    }
+
+    private PaymentStatusResponse toPaymentStatusResponse(String orderCode, OrderEntity order, long pointsEarned) {
         return new PaymentStatusResponse(
                 orderCode,
-                status,
+                order.getStatus(),
                 order.getTotalCents(),
                 order.getCurrency(),
                 pointsEarned,
@@ -109,25 +154,18 @@ public class PaymentService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public PaymentStatusResponse getPaymentStatus(String orderCode) {
+        OrderEntity order = getOrderForStatus(orderCode);
+        Optional<PaymentEntity> paymentOpt = getPaymentForOrder(order);
+        long pointsEarned = calculatePointsEarned(order, paymentOpt);
+        return toPaymentStatusResponse(orderCode, order, pointsEarned);
+    }
+
     @Transactional
     public void confirmPaymentByOrderCode(String orderCode) {
-        OrderEntity order = orderRepo.findByProviderOrderId(orderCode)
-                .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found for code: " + orderCode));
-
-        if (!"pending".equals(order.getStatus())) {
-            return;
-        }
-
-        PaymentEntity payment = PaymentEntity.create(
-                order.getId(), order.getUserId(), "payos", orderCode,
-                order.getTotalCents(), "VND");
-        payment.markPaid(Instant.now());
-        paymentRepo.save(payment);
-
-        order.setStatus("paid");
-        orderRepo.save(order);
-
-        long points = order.getTotalCents() / 100;
-        pointService.creditPoints(order.getUserId(), points, "payment", payment.getId(), "Deposit points from PayOS");
+        OrderEntity order = getOrderByCode(orderCode);
+        confirmOrder(order, orderCode);
     }
+
 }

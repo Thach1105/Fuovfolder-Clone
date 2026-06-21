@@ -1,0 +1,101 @@
+package com.fuoverflow.payment.application;
+
+import com.fuoverflow.common.exception.NotFoundException;
+import com.fuoverflow.payment.persistence.OrderEntity;
+import com.fuoverflow.payment.persistence.OrderRepository;
+import com.fuoverflow.payment.persistence.PaymentEntity;
+import com.fuoverflow.payment.persistence.PaymentRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import vn.payos.PayOS;
+
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class PaymentServiceTest {
+
+    @Mock
+    private OrderRepository orderRepo;
+
+    @Mock
+    private PaymentRepository paymentRepo;
+
+    @Mock
+    private PayOS payOS;
+
+    @Mock
+    private PointService pointService;
+
+    @InjectMocks
+    private PaymentService paymentService;
+
+    @Test
+    void confirmPayment_shouldRejectWhenOrderBelongsToAnotherUser() {
+        UUID ownerId = UUID.randomUUID();
+        UUID anotherUserId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(ownerId, 10000, "VND", "payos", "order-1");
+        when(orderRepo.findByProviderOrderId("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> paymentService.confirmPayment("order-1", anotherUserId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Order does not belong to user");
+
+        verify(paymentRepo, never()).save(any(PaymentEntity.class));
+        verify(pointService, never()).creditPoints(any(UUID.class), any(Long.class), any(String.class), any(UUID.class), any(String.class));
+    }
+
+    @Test
+    void confirmPaymentByOrderCode_shouldSkipWhenPaymentAlreadyExists() {
+        UUID userId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(userId, 10000, "VND", "payos", "order-1");
+        PaymentEntity payment = PaymentEntity.create(order.getId(), userId, "payos", "order-1", 10000, "VND");
+        payment.markPaid(Instant.now());
+
+        when(orderRepo.findByProviderOrderId("order-1")).thenReturn(Optional.of(order));
+        when(paymentRepo.findByProviderAndProviderPaymentId("payos", "order-1")).thenReturn(Optional.of(payment));
+
+        paymentService.confirmPaymentByOrderCode("order-1");
+
+        verify(paymentRepo, never()).save(any(PaymentEntity.class));
+        verify(pointService, never()).creditPoints(any(UUID.class), any(Long.class), any(String.class), any(UUID.class), any(String.class));
+        verify(orderRepo, times(1)).save(order);
+    }
+
+    @Test
+    void confirmPaymentByOrderCode_shouldCreatePaymentAndCreditPointsWhenPending() {
+        UUID userId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(userId, 10000, "VND", "payos", "order-1");
+        PaymentEntity savedPayment = PaymentEntity.create(order.getId(), userId, "payos", "order-1", 10000, "VND");
+
+        when(orderRepo.findByProviderOrderId("order-1")).thenReturn(Optional.of(order));
+        when(paymentRepo.findByProviderAndProviderPaymentId("payos", "order-1")).thenReturn(Optional.empty());
+        when(paymentRepo.save(any(PaymentEntity.class))).thenReturn(savedPayment);
+
+        paymentService.confirmPaymentByOrderCode("order-1");
+
+        verify(paymentRepo, times(1)).save(any(PaymentEntity.class));
+        verify(pointService, times(1))
+                .creditPoints(userId, 100L, "payment", savedPayment.getId(), "Deposit points from PayOS");
+        verify(orderRepo, times(1)).save(order);
+    }
+
+    @Test
+    void confirmPaymentByOrderCode_shouldThrowWhenOrderMissing() {
+        when(orderRepo.findByProviderOrderId("missing")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> paymentService.confirmPaymentByOrderCode("missing"))
+                .isInstanceOf(NotFoundException.class);
+    }
+}
