@@ -22,11 +22,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+    static final long PAYOS_MAX_SAFE_ORDER_CODE = 9_007_199_254_740_991L;
 
     private final OrderRepository orderRepo;
     private final PaymentRepository paymentRepo;
@@ -95,7 +97,7 @@ public class PaymentService {
     }
 
     static long generateOrderCode() {
-        return Math.abs(UUID.randomUUID().getMostSignificantBits());
+        return ThreadLocalRandom.current().nextLong(1L, PAYOS_MAX_SAFE_ORDER_CODE + 1L);
     }
 
     String buildIdempotencyKey(UUID userId, UUID tierId, String returnUrl, String cancelUrl) {

@@ -203,9 +203,11 @@ class PaymentServiceTest {
     // the new flow is provided by the deposit/payment integration test (Task 13).
 
     @Test
-    void generateOrderCode_shouldReturnPositiveValue() {
-        long orderCode = PaymentService.generateOrderCode();
-
-        assertThat(orderCode).isPositive();
+    void generateOrderCode_shouldStayWithinPayOSSafeIntegerRange() {
+        for (int i = 0; i < 20; i++) {
+            long orderCode = PaymentService.generateOrderCode();
+            assertThat(orderCode).isPositive();
+            assertThat(orderCode).isLessThanOrEqualTo(9_007_199_254_740_991L);
+        }
     }
 }
