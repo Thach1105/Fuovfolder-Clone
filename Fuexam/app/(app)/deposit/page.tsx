@@ -46,9 +46,11 @@ export default function DepositPage() {
       });
       if (response.checkoutUrl) {
         window.location.href = response.checkoutUrl;
-      } else {
-        router.push(`/payment/success?orderCode=${response.orderCode}`);
+        return;
       }
+      setError("Không tạo được link thanh toán mới. Vui lòng thử lại.");
+      setSubmittingId(null);
+      return;
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không tạo được link thanh toán.");
       setSubmittingId(null);

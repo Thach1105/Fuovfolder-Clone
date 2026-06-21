@@ -52,12 +52,6 @@ public class PaymentService {
                 .filter(DepositTierEntity::isActive)
                 .orElseThrow(() -> new NotFoundException("DEPOSIT_TIER_NOT_FOUND", "Deposit tier not found: " + tierId));
 
-        String idempotencyKey = buildIdempotencyKey(userId, tierId, returnUrl, cancelUrl);
-        Optional<OrderEntity> existing = orderRepo.findByIdempotencyKey(idempotencyKey);
-        if (existing.isPresent()) {
-            return reuseExistingLink(existing.get());
-        }
-
         long orderCode = generateOrderCode();
         CreatePaymentLinkRequest request = CreatePaymentLinkRequest.builder()
                 .orderCode(orderCode)
@@ -76,15 +70,9 @@ public class PaymentService {
             throw ex;
         }
 
-        try {
-            OrderEntity order = OrderEntity.createFromTier(userId, tier.getAmountVnd(), tier, "payos", String.valueOf(orderCode));
-            order.setIdempotencyKey(idempotencyKey);
-            orderRepo.save(order);
-            return new PayOSPaymentLinkResponse(response.getCheckoutUrl(), response.getQrCode(), String.valueOf(orderCode));
-        } catch (DataIntegrityViolationException ex) {
-            OrderEntity persisted = orderRepo.findByIdempotencyKey(idempotencyKey).orElseThrow(() -> ex);
-            return reuseExistingLink(persisted);
-        }
+        OrderEntity order = OrderEntity.createFromTier(userId, tier.getAmountVnd(), tier, "payos", String.valueOf(orderCode));
+        orderRepo.save(order);
+        return new PayOSPaymentLinkResponse(response.getCheckoutUrl(), response.getQrCode(), String.valueOf(orderCode));
     }
 
     private PayOSPaymentLinkResponse reuseExistingLink(OrderEntity existingOrder) {

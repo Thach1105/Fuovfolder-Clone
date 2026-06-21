@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import vn.payos.PayOS;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -74,7 +75,6 @@ class PaymentServiceTest {
         logger.addAppender(appender);
         try {
             when(tierRepo.findById(tierId)).thenReturn(Optional.of(tier));
-            when(orderRepo.findByIdempotencyKey(any())).thenReturn(Optional.empty());
             when(payOS.paymentRequests().create(any())).thenThrow(providerFailure);
 
             assertThatThrownBy(() -> paymentService.createPaymentLink(
@@ -99,6 +99,26 @@ class PaymentServiceTest {
         }
     }
 
+
+    @Test
+    void createPaymentLink_shouldCreateFreshProviderLinkEvenWhenSameTierWasRequestedBefore() {
+        UUID userId = UUID.randomUUID();
+        UUID tierId = UUID.randomUUID();
+        DepositTierEntity tier = DepositTierEntity.create("Nap 10k", 10000, 10000, 0, true, 0, Instant.now());
+        CreatePaymentLinkResponse response = org.mockito.Mockito.mock(CreatePaymentLinkResponse.class);
+
+        when(tierRepo.findById(tierId)).thenReturn(Optional.of(tier));
+        when(payOS.paymentRequests().create(any())).thenReturn(response);
+        when(response.getCheckoutUrl()).thenReturn("https://pay.payos.vn/checkout/abc");
+        when(response.getQrCode()).thenReturn("qr-abc");
+
+        paymentService.createPaymentLink(tierId, "https://fuexam.com/payment/success", "https://fuexam.com/payment/cancel", userId);
+        var second = paymentService.createPaymentLink(tierId, "https://fuexam.com/payment/success", "https://fuexam.com/payment/cancel", userId);
+
+        assertThat(second.checkoutUrl()).isEqualTo("https://pay.payos.vn/checkout/abc");
+        assertThat(second.qrCode()).isEqualTo("qr-abc");
+        verify(payOS.paymentRequests(), times(2)).create(any());
+    }
 
     @Test
     void confirmPayment_shouldRejectWhenOrderBelongsToAnotherUser() {
