@@ -32,6 +32,7 @@
         <module>course</module>
         <module>material</module>
         <module>payment</module>
+        <module>deposit</module>
         <module>search</module>
         <module>moderation</module>
         <module>admin</module>
