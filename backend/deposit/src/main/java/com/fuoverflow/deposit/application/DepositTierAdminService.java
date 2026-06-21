@@ -9,7 +9,6 @@ import com.fuoverflow.deposit.persistence.DepositTierRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -18,11 +17,9 @@ import java.util.UUID;
 public class DepositTierAdminService {
 
     private final DepositTierRepository repository;
-    private final Clock clock;
 
-    public DepositTierAdminService(DepositTierRepository repository, Clock clock) {
+    public DepositTierAdminService(DepositTierRepository repository) {
         this.repository = repository;
-        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -39,7 +36,7 @@ public class DepositTierAdminService {
 
     @Transactional
     public AdminDepositTierResponse create(CreateDepositTierRequest request) {
-        Instant now = clock.instant();
+        Instant now = Instant.now();
         DepositTierEntity entity = DepositTierEntity.create(
                 request.label(),
                 request.amountVnd(),
@@ -55,7 +52,7 @@ public class DepositTierAdminService {
     @Transactional
     public AdminDepositTierResponse update(UUID id, UpdateDepositTierRequest request) {
         DepositTierEntity entity = load(id);
-        Instant now = clock.instant();
+        Instant now = Instant.now();
         entity.update(
                 request.label() != null ? request.label() : entity.getLabel(),
                 request.amountVnd() != null ? request.amountVnd() : entity.getAmountVnd(),
@@ -77,7 +74,7 @@ public class DepositTierAdminService {
                 entity.getBonusPercent(),
                 !entity.isActive(),
                 entity.getSortOrder(),
-                clock.instant());
+                Instant.now());
         return AdminDepositTierResponse.from(entity);
     }
 
