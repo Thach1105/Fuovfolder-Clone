@@ -29,7 +29,7 @@ public class DepositTierEntity {
     private int bonusPercent;
 
     @Column(name = "is_active", nullable = false)
-    private boolean active;
+    private boolean isActive;
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
@@ -56,7 +56,7 @@ public class DepositTierEntity {
         e.amountVnd = amountVnd;
         e.points = points;
         e.bonusPercent = bonusPercent;
-        e.active = active;
+        e.isActive = active;
         e.sortOrder = sortOrder;
         e.lockVersion = 0;
         e.createdAt = now;
@@ -70,7 +70,7 @@ public class DepositTierEntity {
         this.amountVnd = amountVnd;
         this.points = points;
         this.bonusPercent = bonusPercent;
-        this.active = active;
+        this.isActive = active;
         this.sortOrder = sortOrder;
         this.updatedAt = now;
     }
@@ -84,7 +84,7 @@ public class DepositTierEntity {
     public int getAmountVnd() { return amountVnd; }
     public int getPoints() { return points; }
     public int getBonusPercent() { return bonusPercent; }
-    public boolean isActive() { return active; }
+    public boolean isActive() { return isActive; }
     public int getSortOrder() { return sortOrder; }
     public int getLockVersion() { return lockVersion; }
     public Instant getCreatedAt() { return createdAt; }
