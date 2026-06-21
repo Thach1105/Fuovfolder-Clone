@@ -775,20 +775,37 @@ where revoked_at is null;
 create index ix_user_awards_user on user_awards(user_id, awarded_at desc);
 create index ix_user_awards_definition on user_awards(award_definition_id, awarded_at desc);
 
--- Bảng sổ cái điểm số (Points Ledger): ghi nhận mọi biến động cộng/trừ điểm tích lũy của user
-create table points_ledger (
+-- Bảng số dư điểm hiện tại: denormalized balance cho truy vấn nhanh
+create table point_balances (
     id uuid primary key,
     user_id uuid not null,
-    delta int not null, -- Lượng thay đổi điểm số (số dương = cộng điểm, số âm = trừ điểm)
-    reason varchar(255) not null, -- Lý do biến động điểm (ví dụ: write_post, buy_material, admin_tweak...)
-    source_type varchar(32) not null, -- Loại đối tượng liên quan (forum, material, payment...)
-    source_id uuid null, -- ID đối tượng tương ứng
+    balance_points bigint not null default 0,
     created_at timestamptz not null default now(),
-    constraint points_delta_nonzero check (delta <> 0)
+    updated_at timestamptz not null default now()
 );
 
-create index ix_points_ledger_user on points_ledger(user_id, created_at desc);
-create index ix_points_ledger_source on points_ledger(source_type, source_id);
+create unique index ux_point_balances_user on point_balances(user_id);
+create index ix_point_balances_user_updated on point_balances(user_id, updated_at desc);
+
+-- Bảng lịch sử giao dịch điểm: ghi nhận mọi biến động cộng/trừ điểm
+create table point_transactions (
+    id uuid primary key,
+    user_id uuid not null,
+    amount_points bigint not null,
+    direction varchar(16) not null,
+    type varchar(64) not null,
+    reference_type varchar(64) null,
+    reference_id uuid null,
+    payment_id uuid null,
+    description text null,
+    created_at timestamptz not null default now(),
+    constraint point_transactions_direction_check check (direction in ('credit','debit'))
+);
+
+create index ix_point_transactions_user_created on point_transactions(user_id, created_at desc);
+create index ix_point_transactions_payment on point_transactions(payment_id) where payment_id is not null;
+
+-- Ghi chú: schema tài liệu này đã đồng bộ với impl hiện tại; points_ledger không còn là bảng đang dùng trong payment module.
 
 -- Bảng chứng chỉ: cấp khi học viên hoàn thành khóa học
 create table certificates (
