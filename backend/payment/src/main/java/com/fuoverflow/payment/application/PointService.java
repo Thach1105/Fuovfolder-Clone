@@ -5,8 +5,10 @@ import com.fuoverflow.payment.persistence.PointBalanceEntity;
 import com.fuoverflow.payment.persistence.PointBalanceRepository;
 import com.fuoverflow.payment.persistence.PointTransactionEntity;
 import com.fuoverflow.payment.persistence.PointTransactionRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.UUID;
 
 @Service
@@ -19,10 +21,17 @@ public class PointService {
         this.transactionRepo = transactionRepo;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PointBalanceEntity getOrCreateBalance(UUID userId) {
         return balanceRepo.findByUserId(userId)
-                .orElseGet(() -> balanceRepo.save(PointBalanceEntity.create(userId)));
+                .orElseGet(() -> {
+                    try {
+                        return balanceRepo.save(PointBalanceEntity.create(userId));
+                    } catch (DataIntegrityViolationException ex) {
+                        return balanceRepo.findByUserId(userId)
+                                .orElseThrow(() -> new IllegalStateException("Failed to get or create balance", ex));
+                    }
+                });
     }
 
     @Transactional
