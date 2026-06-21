@@ -1,0 +1,9 @@
+# pnpm-workspace.yaml is only a local-dev file (allowBuilds for sharp).
+# If it's present in the image, pnpm 9 enters workspace mode and fails
+# with "packages field missing or empty" because this app is a single
+# package, not a pnpm workspace.
+pnpm-workspace.yaml
+node_modules
+.next
+.turbo
+*.log
