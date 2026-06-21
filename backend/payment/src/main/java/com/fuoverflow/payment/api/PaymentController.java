@@ -25,8 +25,7 @@ public class PaymentController {
     public ApiResponse<PayOSPaymentLinkResponse> createPaymentLink(@RequestBody @Valid CreatePaymentLinkRequest request) {
         UUID userId = AuthContext.currentUserId();
         PayOSPaymentLinkResponse response = paymentService.createPaymentLink(
-                request.amount(),
-                request.description(),
+                request.tierId(),
                 request.returnUrl(),
                 request.cancelUrl(),
                 userId
