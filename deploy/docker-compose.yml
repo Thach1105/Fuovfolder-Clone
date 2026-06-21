@@ -127,6 +127,23 @@ services:
       backend:
         condition: service_healthy
 
+  fuexam_admin:
+    build:
+      context: ../Fuexam-admin
+      dockerfile: Dockerfile
+    image: fuoverflow-fuexam-admin:latest
+    container_name: fuoverflow-fuexam-admin
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      BACKEND_ORIGIN: ${FUEXAM_ADMIN_BACKEND_ORIGIN:?FUEXAM_ADMIN_BACKEND_ORIGIN is required}
+    ports:
+      - "${FUEXAM_ADMIN_PUBLISH_PORT:-4446}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   redis_data:
