@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function PaymentCancelPage() {
+function CancelInner() {
   const searchParams = useSearchParams();
   const orderCode = searchParams.get("orderCode");
 
@@ -36,5 +37,13 @@ export default function PaymentCancelPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PaymentCancelPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-400">Đang tải...</div>}>
+      <CancelInner />
+    </Suspense>
   );
 }
