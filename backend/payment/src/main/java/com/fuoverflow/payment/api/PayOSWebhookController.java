@@ -15,8 +15,10 @@ import vn.payos.PayOS;
 import vn.payos.exception.PayOSException;
 import vn.payos.model.webhooks.WebhookData;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/payment/payos")
@@ -43,19 +45,26 @@ public class PayOSWebhookController {
             WebhookData webhookData = payOS.webhooks().verify(body);
 
             String orderCode = String.valueOf(webhookData.getOrderCode());
-            String providerEventId = webhookData.getReference() != null
-                    ? webhookData.getReference() : orderCode;
+            String providerEventId = deriveProviderEventId(webhookData);
             boolean paid = "00".equals(webhookData.getCode());
 
             Optional<PaymentWebhookEventEntity> existing =
                     webhookRepo.findByProviderAndProviderEventId("payos", providerEventId);
-            if (existing.isPresent() && existing.get().getProcessedAt() != null) {
-                log.info("Webhook already processed for orderCode={}", orderCode);
+            if (existing.isPresent()) {
+                if (existing.get().getProcessedAt() != null) {
+                    log.info("Webhook already processed for orderCode={}", orderCode);
+                    return ResponseEntity.ok("OK");
+                }
+                if (paid) {
+                    paymentService.confirmPaymentByOrderCode(orderCode);
+                }
+                existing.get().markProcessed(Instant.now());
+                webhookRepo.save(existing.get());
                 return ResponseEntity.ok("OK");
             }
 
             PaymentWebhookEventEntity event = PaymentWebhookEventEntity.create(
-                    "payos", providerEventId, "payment.success", body, true);
+                    "payos", providerEventId, paid ? "payment.success" : "payment.failed", body, true);
             webhookRepo.save(event);
 
             if (paid) {
@@ -68,13 +77,27 @@ public class PayOSWebhookController {
             return ResponseEntity.ok("OK");
         } catch (PayOSException e) {
             log.warn("Invalid PayOS webhook signature: {}", e.getMessage());
-            PaymentWebhookEventEntity event = PaymentWebhookEventEntity.create(
-                    "payos", "unknown", "payment.invalid", body, false);
-            webhookRepo.save(event);
+            String invalidEventId = invalidEventId(body);
+            if (webhookRepo.findByProviderAndProviderEventId("payos", invalidEventId).isEmpty()) {
+                PaymentWebhookEventEntity event = PaymentWebhookEventEntity.create(
+                        "payos", invalidEventId, "payment.invalid", body, false);
+                webhookRepo.save(event);
+            }
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid signature");
         } catch (Exception e) {
             log.error("Failed to process PayOS webhook", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error");
         }
+    }
+
+    static String deriveProviderEventId(WebhookData webhookData) {
+        if (webhookData.getReference() != null && !webhookData.getReference().isBlank()) {
+            return webhookData.getReference();
+        }
+        return "payos-order-" + webhookData.getOrderCode() + "-code-" + webhookData.getCode();
+    }
+
+    static String invalidEventId(String body) {
+        return "invalid-" + UUID.nameUUIDFromBytes(body.getBytes(StandardCharsets.UTF_8));
     }
 }

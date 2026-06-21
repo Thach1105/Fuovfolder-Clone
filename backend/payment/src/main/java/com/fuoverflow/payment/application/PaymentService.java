@@ -3,14 +3,18 @@ package com.fuoverflow.payment.application;
 import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.payment.api.dto.PayOSPaymentLinkResponse;
 import com.fuoverflow.payment.api.dto.PaymentStatusResponse;
-import com.fuoverflow.payment.persistence.*;
+import com.fuoverflow.payment.persistence.OrderEntity;
+import com.fuoverflow.payment.persistence.OrderRepository;
+import com.fuoverflow.payment.persistence.PaymentEntity;
+import com.fuoverflow.payment.persistence.PaymentRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import vn.payos.PayOS;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,17 +37,16 @@ public class PaymentService {
 
     @Transactional
     public PayOSPaymentLinkResponse createPaymentLink(BigDecimal amount, String description,
-                                                        String returnUrl, String cancelUrl, UUID userId) {
+                                                      String returnUrl, String cancelUrl, UUID userId) {
         try {
-            long orderCode = System.currentTimeMillis();
-            String idempotencyKey = "idempotent-" + orderCode;
-            int totalAmountVnd = amount.intValueExact();
+            String idempotencyKey = buildIdempotencyKey(userId, amount, returnUrl, cancelUrl, description);
+            Optional<OrderEntity> existingOrder = orderRepo.findByIdempotencyKey(idempotencyKey);
+            if (existingOrder.isPresent()) {
+                return new PayOSPaymentLinkResponse(null, null, existingOrder.get().getProviderOrderId());
+            }
 
-            OrderEntity order = OrderEntity.create(userId,
-                    totalAmountVnd,
-                    "VND", "payos", String.valueOf(orderCode));
-            order.setIdempotencyKey(idempotencyKey);
-            orderRepo.save(order);
+            long orderCode = generateOrderCode();
+            int totalAmountVnd = amount.intValueExact();
 
             CreatePaymentLinkRequest request = CreatePaymentLinkRequest.builder()
                     .orderCode(orderCode)
@@ -55,6 +58,10 @@ public class PaymentService {
 
             CreatePaymentLinkResponse response = payOS.paymentRequests().create(request);
 
+            OrderEntity order = OrderEntity.create(userId, totalAmountVnd, "VND", "payos", String.valueOf(orderCode));
+            order.setIdempotencyKey(idempotencyKey);
+            orderRepo.save(order);
+
             return new PayOSPaymentLinkResponse(
                     response.getCheckoutUrl(),
                     response.getQrCode(),
@@ -63,6 +70,16 @@ public class PaymentService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to create payment link: " + e.getMessage(), e);
         }
+    }
+
+    static long generateOrderCode() {
+        return Math.abs(UUID.randomUUID().getMostSignificantBits());
+    }
+
+    String buildIdempotencyKey(UUID userId, BigDecimal amount, String returnUrl, String cancelUrl, String description) {
+        String raw = userId + "|" + amount.toPlainString() + "|" + returnUrl + "|" + cancelUrl + "|"
+                + (description == null ? "" : description);
+        return UUID.nameUUIDFromBytes(raw.getBytes(StandardCharsets.UTF_8)).toString();
     }
 
     @Transactional
@@ -143,7 +160,7 @@ public class PaymentService {
     }
 
     private long calculatePointsEarned(OrderEntity order, Optional<PaymentEntity> paymentOpt) {
-        if (paymentOpt.isPresent() && "succeeded".equals(paymentOpt.get().getStatus())) {
+        if (paymentOpt.isPresent() && "paid".equals(paymentOpt.get().getStatus())) {
             return order.getTotalCents() / 100;
         }
         return 0;
@@ -174,5 +191,4 @@ public class PaymentService {
         OrderEntity order = getOrderByCode(orderCode);
         confirmOrder(order, orderCode);
     }
-
 }

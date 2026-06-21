@@ -61,7 +61,7 @@ public class PaymentEntity {
     }
 
     public void markPaid(Instant paidAt) {
-        this.status = "succeeded";
+        this.status = "paid";
         this.paidAt = paidAt;
     }
 

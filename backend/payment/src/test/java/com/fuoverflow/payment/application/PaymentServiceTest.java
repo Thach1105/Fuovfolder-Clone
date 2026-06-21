@@ -8,15 +8,19 @@ import com.fuoverflow.payment.persistence.PaymentEntity;
 import com.fuoverflow.payment.persistence.PaymentRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import vn.payos.PayOS;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -33,7 +37,7 @@ class PaymentServiceTest {
     @Mock
     private PaymentRepository paymentRepo;
 
-    @Mock
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private PayOS payOS;
 
     @Mock
@@ -137,6 +141,40 @@ class PaymentServiceTest {
 
         PaymentStatusResponse response = paymentService.getPaymentStatus("order-1", userId, false);
 
-        org.assertj.core.api.Assertions.assertThat(response.providerOrderId()).isEqualTo("order-1");
+        assertThat(response.providerOrderId()).isEqualTo("order-1");
+    }
+
+    @Test
+    void createPaymentLink_shouldReuseExistingOrderByIdempotencyKey() {
+        UUID userId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(userId, 10000, "VND", "payos", "existing-order");
+        String idempotencyKey = paymentService.buildIdempotencyKey(
+                userId,
+                new BigDecimal("1000"),
+                "http://localhost/return",
+                "http://localhost/cancel",
+                "deposit"
+        );
+
+        when(orderRepo.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(order));
+
+        var response = paymentService.createPaymentLink(
+                new BigDecimal("1000"),
+                "deposit",
+                "http://localhost/return",
+                "http://localhost/cancel",
+                userId
+        );
+
+        assertThat(response.orderCode()).isEqualTo("existing-order");
+        assertThat(response.checkoutUrl()).isNull();
+        verify(orderRepo, never()).save(any(OrderEntity.class));
+    }
+
+    @Test
+    void generateOrderCode_shouldReturnPositiveValue() {
+        long orderCode = PaymentService.generateOrderCode();
+
+        assertThat(orderCode).isPositive();
     }
 }
