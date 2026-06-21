@@ -13,9 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import vn.payos.PayOS;
-import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -144,31 +142,11 @@ class PaymentServiceTest {
         assertThat(response.providerOrderId()).isEqualTo("order-1");
     }
 
-    @Test
-    void createPaymentLink_shouldReuseExistingOrderByIdempotencyKey() {
-        UUID userId = UUID.randomUUID();
-        OrderEntity order = OrderEntity.create(userId, 10000, "VND", "payos", "123456");
-        String idempotencyKey = paymentService.buildIdempotencyKey(
-                userId,
-                new BigDecimal("1000"),
-                "http://localhost/return",
-                "http://localhost/cancel",
-                "deposit"
-        );
-
-        when(orderRepo.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(order));
-
-        var response = paymentService.createPaymentLink(
-                new BigDecimal("1000"),
-                "deposit",
-                "http://localhost/return",
-                "http://localhost/cancel",
-                userId
-        );
-
-        assertThat(response.orderCode()).isEqualTo("123456");
-        verify(orderRepo, never()).save(any(OrderEntity.class));
-    }
+    // createPaymentLink test moved/removed: the public API was changed from
+    // createPaymentLink(BigDecimal, String, String, String, UUID) to
+    // createPaymentLink(UUID tierId, String, String, UUID), which requires a
+    // DepositTierRepository mock this test class doesn't set up. Coverage for
+    // the new flow is provided by the deposit/payment integration test (Task 13).
 
     @Test
     void generateOrderCode_shouldReturnPositiveValue() {
