@@ -83,6 +83,7 @@ export default function PointsPage() {
             ? err.message
             : "Không tải được lịch sử FUO Point.",
         );
+        setPage(ledger.page);
       })
       .finally(() => {
         if (!cancelled) setPageLoading(false);
