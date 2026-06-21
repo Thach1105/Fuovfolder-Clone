@@ -78,7 +78,8 @@ public class PayOSWebhookController {
         } catch (PayOSException e) {
             log.warn("Invalid PayOS webhook signature: {}", e.getMessage());
             String invalidEventId = invalidEventId(body);
-            if (webhookRepo.findByProviderAndProviderEventId("payos", invalidEventId).isEmpty()) {
+            if (webhookRepo.findByProviderAndProviderEventId("payos", invalidEventId).isEmpty()
+                    && isJsonPayload(body)) {
                 PaymentWebhookEventEntity event = PaymentWebhookEventEntity.create(
                         "payos", invalidEventId, "payment.invalid", body, false);
                 webhookRepo.save(event);
@@ -88,6 +89,19 @@ public class PayOSWebhookController {
             log.error("Failed to process PayOS webhook", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error");
         }
+    }
+
+    static boolean isJsonPayload(String body) {
+        if (body == null) {
+            return false;
+        }
+        String trimmed = body.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        char first = trimmed.charAt(0);
+        char last = trimmed.charAt(trimmed.length() - 1);
+        return (first == '{' && last == '}') || (first == '[' && last == ']');
     }
 
     static String deriveProviderEventId(WebhookData webhookData) {

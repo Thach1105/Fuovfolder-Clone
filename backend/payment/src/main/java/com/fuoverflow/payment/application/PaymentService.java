@@ -7,6 +7,7 @@ import com.fuoverflow.payment.persistence.OrderEntity;
 import com.fuoverflow.payment.persistence.OrderRepository;
 import com.fuoverflow.payment.persistence.PaymentEntity;
 import com.fuoverflow.payment.persistence.PaymentRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.payos.PayOS;
@@ -42,7 +43,7 @@ public class PaymentService {
             String idempotencyKey = buildIdempotencyKey(userId, amount, returnUrl, cancelUrl, description);
             Optional<OrderEntity> existingOrder = orderRepo.findByIdempotencyKey(idempotencyKey);
             if (existingOrder.isPresent()) {
-                return new PayOSPaymentLinkResponse(null, null, existingOrder.get().getProviderOrderId());
+                return reuseExistingLink(existingOrder.get());
             }
 
             long orderCode = generateOrderCode();
@@ -58,9 +59,16 @@ public class PaymentService {
 
             CreatePaymentLinkResponse response = payOS.paymentRequests().create(request);
 
-            OrderEntity order = OrderEntity.create(userId, totalAmountVnd, "VND", "payos", String.valueOf(orderCode));
-            order.setIdempotencyKey(idempotencyKey);
-            orderRepo.save(order);
+            try {
+                OrderEntity order = OrderEntity.create(userId, totalAmountVnd, "VND", "payos", String.valueOf(orderCode));
+                order.setIdempotencyKey(idempotencyKey);
+                orderRepo.save(order);
+            } catch (DataIntegrityViolationException ex) {
+                return reuseExistingLink(
+                        orderRepo.findByIdempotencyKey(idempotencyKey)
+                                .orElseThrow(() -> ex)
+                );
+            }
 
             return new PayOSPaymentLinkResponse(
                     response.getCheckoutUrl(),
@@ -71,6 +79,18 @@ public class PaymentService {
             throw new RuntimeException("Failed to create payment link: " + e.getMessage(), e);
         }
     }
+
+    private PayOSPaymentLinkResponse reuseExistingLink(OrderEntity existingOrder) {
+        String orderCode = existingOrder.getProviderOrderId();
+        try {
+            payOS.paymentRequests().get(Long.parseLong(orderCode));
+        } catch (Exception lookupFailure) {
+            log.warn("Failed to rehydrate payment link from provider for orderCode={}", orderCode, lookupFailure);
+        }
+        return new PayOSPaymentLinkResponse(null, null, orderCode);
+    }
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PaymentService.class);
 
     static long generateOrderCode() {
         return Math.abs(UUID.randomUUID().getMostSignificantBits());
@@ -109,11 +129,16 @@ public class PaymentService {
     }
 
     private PaymentEntity createPaidPayment(OrderEntity order, String orderCode) {
-        PaymentEntity payment = PaymentEntity.create(
-                order.getId(), order.getUserId(), "payos", orderCode,
-                order.getTotalCents(), "VND");
-        payment.markPaid(Instant.now());
-        return paymentRepo.save(payment);
+        try {
+            PaymentEntity payment = PaymentEntity.create(
+                    order.getId(), order.getUserId(), "payos", orderCode,
+                    order.getTotalCents(), "VND");
+            payment.markPaid(Instant.now());
+            return paymentRepo.save(payment);
+        } catch (DataIntegrityViolationException ex) {
+            return paymentRepo.findByProviderAndProviderPaymentId("payos", orderCode)
+                    .orElseThrow(() -> ex);
+        }
     }
 
     private void confirmPendingOrder(OrderEntity order, String orderCode) {

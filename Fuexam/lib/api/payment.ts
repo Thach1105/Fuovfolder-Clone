@@ -8,8 +8,8 @@ export interface CreatePaymentLinkRequest {
 }
 
 export interface PayOSPaymentLinkResponse {
-  checkoutUrl: string;
-  qrCode: string;
+  checkoutUrl?: string | null;
+  qrCode?: string | null;
   orderCode: string;
 }
 
@@ -20,7 +20,7 @@ export interface PaymentStatusResponse {
   currency: string;
   pointsEarned: number;
   provider: string;
-  checkoutUrl: string;
+  providerOrderId: string;
 }
 
 export function createPaymentLink(payload: CreatePaymentLinkRequest) {

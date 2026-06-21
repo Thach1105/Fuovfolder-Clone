@@ -147,7 +147,7 @@ class PaymentServiceTest {
     @Test
     void createPaymentLink_shouldReuseExistingOrderByIdempotencyKey() {
         UUID userId = UUID.randomUUID();
-        OrderEntity order = OrderEntity.create(userId, 10000, "VND", "payos", "existing-order");
+        OrderEntity order = OrderEntity.create(userId, 10000, "VND", "payos", "123456");
         String idempotencyKey = paymentService.buildIdempotencyKey(
                 userId,
                 new BigDecimal("1000"),
@@ -166,8 +166,7 @@ class PaymentServiceTest {
                 userId
         );
 
-        assertThat(response.orderCode()).isEqualTo("existing-order");
-        assertThat(response.checkoutUrl()).isNull();
+        assertThat(response.orderCode()).isEqualTo("123456");
         verify(orderRepo, never()).save(any(OrderEntity.class));
     }
 

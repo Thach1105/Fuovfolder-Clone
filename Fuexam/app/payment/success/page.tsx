@@ -59,7 +59,7 @@ function SuccessInner() {
           </div>
           <h1 className="mb-2 text-2xl font-bold text-slate-100">Thanh toán thành công</h1>
           <p className="mb-1 text-sm text-slate-400">
-            Số tiền: {(status.amountCents / 100).toLocaleString("vi-VN")} {status.currency}
+            Số tiền: {status.amountCents.toLocaleString("vi-VN")} {status.currency}
           </p>
           <p className="mb-6 text-lg font-semibold text-emerald-400">
             +{status.pointsEarned} điểm

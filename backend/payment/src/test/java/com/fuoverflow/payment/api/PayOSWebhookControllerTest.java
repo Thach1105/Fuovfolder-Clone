@@ -41,4 +41,17 @@ class PayOSWebhookControllerTest {
         assertThat(first).isEqualTo(second);
         assertThat(first).startsWith("invalid-");
     }
+
+    @Test
+    void isJsonPayload_shouldRecognizeObjectAndArrayBodies() {
+        assertThat(PayOSWebhookController.isJsonPayload("{\"a\":1}")).isTrue();
+        assertThat(PayOSWebhookController.isJsonPayload("[1,2]")).isTrue();
+    }
+
+    @Test
+    void isJsonPayload_shouldRejectEmptyOrNonJson() {
+        assertThat(PayOSWebhookController.isJsonPayload("")).isFalse();
+        assertThat(PayOSWebhookController.isJsonPayload("not json")).isFalse();
+        assertThat(PayOSWebhookController.isJsonPayload(null)).isFalse();
+    }
 }
