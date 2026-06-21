@@ -197,3 +197,16 @@ export interface MembershipStatusResponse {
   expiresAt: string | null;
   active: boolean;
 }
+
+export interface AdminDepositTierResponse {
+  id: string;
+  label: string;
+  amountVnd: number;
+  points: number;
+  bonusPercent: number;
+  totalPoints: number;
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}

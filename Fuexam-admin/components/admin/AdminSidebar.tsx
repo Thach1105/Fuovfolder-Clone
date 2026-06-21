@@ -88,6 +88,12 @@ const NAV: NavSection[] = [
         icon: CreditCard,
         permission: "membership.admin:read",
       },
+      {
+        href: "/deposit/tiers",
+        label: "Deposit — Mệnh giá nạp",
+        icon: CreditCard,
+        permission: "deposit.admin:read",
+      },
     ],
   },
   {
