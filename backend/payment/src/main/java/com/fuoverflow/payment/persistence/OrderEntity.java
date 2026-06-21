@@ -43,6 +43,15 @@ public class OrderEntity {
     @Column(name = "idempotency_key", length = 255)
     private String idempotencyKey;
 
+    @Column(name = "tier_id")
+    private UUID tierId;
+
+    @Column(name = "points_awarded")
+    private Integer pointsAwarded;
+
+    @Column(name = "tier_label_snapshot", length = 120)
+    private String tierLabelSnapshot;
+
     @Version
     @Column(name = "lock_version", nullable = false)
     private int lockVersion;
@@ -71,6 +80,26 @@ public class OrderEntity {
         order.provider = provider;
         order.providerOrderId = providerOrderId;
         order.lockVersion = 0;
+        return order;
+    }
+
+    public static OrderEntity createFromTier(UUID userId, int totalCents, com.fuoverflow.deposit.persistence.DepositTierEntity tier,
+                                             String provider, String providerOrderId) {
+        OrderEntity order = new OrderEntity();
+        order.id = UUID.randomUUID();
+        order.userId = userId;
+        order.status = "pending";
+        order.subtotalCents = totalCents;
+        order.discountCents = 0;
+        order.taxCents = 0;
+        order.totalCents = totalCents;
+        order.currency = "VND";
+        order.provider = provider;
+        order.providerOrderId = providerOrderId;
+        order.lockVersion = 0;
+        order.tierId = tier.getId();
+        order.pointsAwarded = (int) Math.min(Integer.MAX_VALUE, tier.totalPoints());
+        order.tierLabelSnapshot = tier.getLabel();
         return order;
     }
 
@@ -127,9 +156,17 @@ public class OrderEntity {
         return idempotencyKey;
     }
 
+    public UUID getTierId() { return tierId; }
+    public Integer getPointsAwarded() { return pointsAwarded; }
+    public String getTierLabelSnapshot() { return tierLabelSnapshot; }
+
     public void setIdempotencyKey(String idempotencyKey) {
         this.idempotencyKey = idempotencyKey;
     }
+
+    public void setTierId(UUID tierId) { this.tierId = tierId; }
+    public void setPointsAwarded(Integer pointsAwarded) { this.pointsAwarded = pointsAwarded; }
+    public void setTierLabelSnapshot(String tierLabelSnapshot) { this.tierLabelSnapshot = tierLabelSnapshot; }
 
     public int getLockVersion() {
         return lockVersion;
