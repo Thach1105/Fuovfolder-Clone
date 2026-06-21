@@ -1,5 +1,6 @@
 package com.fuoverflow.payment.api;
 
+import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.payment.application.PaymentService;
 import com.fuoverflow.payment.persistence.PaymentWebhookEventEntity;
 import com.fuoverflow.payment.persistence.PaymentWebhookEventRepository;
@@ -65,7 +66,7 @@ public class PayOSWebhookController {
                     return ResponseEntity.ok("OK");
                 }
                 if (paid) {
-                    paymentService.confirmPaymentByOrderCode(orderCode);
+                    confirmOrLogUnknownOrder(orderCode);
                 }
                 existing.get().markProcessed(Instant.now());
                 webhookRepo.save(existing.get());
@@ -78,7 +79,7 @@ public class PayOSWebhookController {
             log.info("PayOS webhook event saved: id={} providerEventId={}", event.getId(), providerEventId);
 
             if (paid) {
-                paymentService.confirmPaymentByOrderCode(orderCode);
+                confirmOrLogUnknownOrder(orderCode);
             }
 
             event.markProcessed(Instant.now());
@@ -112,6 +113,22 @@ public class PayOSWebhookController {
         char first = trimmed.charAt(0);
         char last = trimmed.charAt(trimmed.length() - 1);
         return (first == '{' && last == '}') || (first == '[' && last == ']');
+    }
+
+    /**
+     * PayOS sends a sample payload (orderCode=123, amount=3000, description=VQRIO123, ...)
+     * as a connectivity check when the merchant saves the webhook URL.
+     * We must acknowledge with 2XX but obviously have no matching order in our DB.
+     * Treat the unknown order as a no-op and keep the event row for audit.
+     */
+    private void confirmOrLogUnknownOrder(String orderCode) {
+        try {
+            paymentService.confirmPaymentByOrderCode(orderCode);
+            log.info("PayOS payment confirmed for orderCode={}", orderCode);
+        } catch (NotFoundException e) {
+            log.warn("PayOS webhook for unknown orderCode={} (likely PayOS connectivity test or stale event). " +
+                    "Acknowledging with 200; webhook event row kept for audit.", orderCode);
+        }
     }
 
     static String deriveProviderEventId(WebhookData webhookData) {
