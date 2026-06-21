@@ -1,10 +1,18 @@
 import { apiFetch } from "@/lib/api/client";
 
+export interface DepositTier {
+  id: string;
+  label: string;
+  amountVnd: number;
+  totalPoints: number;
+  bonusPercent: number;
+  sortOrder: number;
+}
+
 export interface CreatePaymentLinkRequest {
-  amount: number;
+  tierId: string;
   returnUrl: string;
   cancelUrl: string;
-  description?: string;
 }
 
 export interface PayOSPaymentLinkResponse {
@@ -21,6 +29,10 @@ export interface PaymentStatusResponse {
   pointsEarned: number;
   provider: string;
   providerOrderId: string;
+}
+
+export function listDepositTiers() {
+  return apiFetch<DepositTier[]>("/api/v1/deposit/tiers");
 }
 
 export function createPaymentLink(payload: CreatePaymentLinkRequest) {
