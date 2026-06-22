@@ -25,10 +25,10 @@ export function AppHeader() {
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4">
         <Link href="/" className="group flex shrink-0 items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink-900 text-sm font-bold text-ink-50 transition-transform duration-300 group-hover:-rotate-6">
-            FUO
+            Fuexam
           </span>
           <span className="hidden font-display text-xl text-ink-900 sm:inline">
-            FUExam
+            Fuexam
           </span>
         </Link>
 

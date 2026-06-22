@@ -60,7 +60,7 @@ insert into permissions (slug, module, resource, action, description) values
 ('member.document:read', 'member', 'document', 'read', 'Xem tài liệu thành viên'),
 ('member.document:download', 'member', 'document', 'download', 'Tải tài liệu thành viên'),
 ('badge:read', 'badge', 'badge', 'read', 'Xem danh hiệu'),
-('points:earn_answer', 'points', 'answer', 'earn', 'Nhận FUO khi trả lời'),
+('points:earn_answer', 'points', 'answer', 'earn', 'Nhận Fuexam khi trả lời'),
 ('ui.username_color', 'ui', 'username', 'color', 'Màu username đặc biệt'),
 ('ui.username_effect', 'ui', 'username', 'effect', 'Hiệu ứng username'),
 ('ui.avatar_effect', 'ui', 'avatar', 'effect', 'Hiệu ứng avatar'),
@@ -72,7 +72,7 @@ insert into permissions (slug, module, resource, action, description) values
 ('notification.preference:update', 'notification', 'preference', 'update', 'Cập nhật cài đặt thông báo'),
 ('push.subscription:create', 'push', 'subscription', 'create', 'Đăng ký push'),
 ('push.subscription:delete', 'push', 'subscription', 'delete', 'Hủy push'),
-('points:read', 'points', 'wallet', 'read', 'Xem số dư FUO'),
+('points:read', 'points', 'wallet', 'read', 'Xem số dư Fuexam'),
 ('source.catalog:read', 'source', 'catalog', 'read', 'Xem catalog Suộc'),
 ('source.question:read', 'source', 'question', 'read', 'Xem câu hỏi Suộc'),
 ('source.purchase:create', 'source', 'purchase', 'create', 'Mua tài liệu Suộc'),
@@ -102,7 +102,7 @@ insert into permissions (slug, module, resource, action, description) values
 ('coursera.catalog.admin:delete', 'coursera', 'catalog.admin', 'delete', 'Admin: xóa catalog Coursera'),
 ('coursera.request.admin:read', 'coursera', 'request.admin', 'read', 'Admin: xem yêu cầu'),
 ('coursera.request.admin:update', 'coursera', 'request.admin', 'update', 'Admin: cập nhật trạng thái'),
-('points.admin:update', 'points', 'wallet.admin', 'update', 'Admin: điều chỉnh FUO'),
+('points.admin:update', 'points', 'wallet.admin', 'update', 'Admin: điều chỉnh Fuexam'),
 ('auth.token:generate', 'auth', 'token', 'generate', 'Sinh token cho user'),
 ('rbac.role:read', 'rbac', 'role', 'read', 'Xem role và permission'),
 ('rbac.role:update', 'rbac', 'role', 'update', 'Sửa role và permission'),
@@ -123,17 +123,17 @@ select 'a0000000-0000-4000-8000-000000000004'::uuid, 'SUPER_ADMIN', 'Super Admin
 where not exists (select 1 from roles where slug = 'SUPER_ADMIN');
 
 insert into roles (id, slug, name, scope, permissions_json, role_type, parent_role_id, is_system, is_editable)
-select 'a0000000-0000-4000-8000-000000000005'::uuid, 'FUO_MEMBER', 'FUO Member', 'global', '[]'::jsonb,
+select 'a0000000-0000-4000-8000-000000000005'::uuid, 'FUO_MEMBER', 'Fuexam Member', 'global', '[]'::jsonb,
        'MEMBERSHIP', 'a0000000-0000-4000-8000-000000000003'::uuid, true, true
 where not exists (select 1 from roles where slug = 'FUO_MEMBER');
 
 insert into roles (id, slug, name, scope, permissions_json, role_type, parent_role_id, is_system, is_editable)
-select 'a0000000-0000-4000-8000-000000000006'::uuid, 'FUO_VIP', 'FUO VIP', 'global', '[]'::jsonb,
+select 'a0000000-0000-4000-8000-000000000006'::uuid, 'FUO_VIP', 'Fuexam VIP', 'global', '[]'::jsonb,
        'MEMBERSHIP', 'a0000000-0000-4000-8000-000000000005'::uuid, true, true
 where not exists (select 1 from roles where slug = 'FUO_VIP');
 
 insert into roles (id, slug, name, scope, permissions_json, role_type, parent_role_id, is_system, is_editable)
-select 'a0000000-0000-4000-8000-000000000007'::uuid, 'FUO_NOVA', 'FUO Nova', 'global', '[]'::jsonb,
+select 'a0000000-0000-4000-8000-000000000007'::uuid, 'FUO_NOVA', 'Fuexam Nova', 'global', '[]'::jsonb,
        'MEMBERSHIP', 'a0000000-0000-4000-8000-000000000006'::uuid, true, true
 where not exists (select 1 from roles where slug = 'FUO_NOVA');
 
@@ -225,19 +225,19 @@ on conflict (user_id) do nothing;
 
 -- Seed membership plans
 insert into membership_plans (id, slug, name, description, price_cents, currency, billing_interval, status, features_json)
-select 'b0000000-0000-4000-8000-000000000001'::uuid, 'fuo-member', 'FUO MEMBER',
+select 'b0000000-0000-4000-8000-000000000001'::uuid, 'fuo-member', 'Fuexam MEMBER',
        'Gói thành viên 1 tháng', 48000, 'VND', 'month', 'active',
        '{"role_slug":"FUO_MEMBER","duration_days":30}'::jsonb
 where not exists (select 1 from membership_plans where slug = 'fuo-member');
 
 insert into membership_plans (id, slug, name, description, price_cents, currency, billing_interval, status, features_json)
-select 'b0000000-0000-4000-8000-000000000002'::uuid, 'fuo-vip', 'FUO VIP',
+select 'b0000000-0000-4000-8000-000000000002'::uuid, 'fuo-vip', 'Fuexam VIP',
        'Gói VIP 8 tháng', 200000, 'VND', 'month', 'active',
        '{"role_slug":"FUO_VIP","duration_days":240}'::jsonb
 where not exists (select 1 from membership_plans where slug = 'fuo-vip');
 
 insert into membership_plans (id, slug, name, description, price_cents, currency, billing_interval, status, features_json)
-select 'b0000000-0000-4000-8000-000000000003'::uuid, 'fuo-nova', 'FUO NOVA',
+select 'b0000000-0000-4000-8000-000000000003'::uuid, 'fuo-nova', 'Fuexam NOVA',
        'Gói Nova 4 năm', 650000, 'VND', 'year', 'active',
        '{"role_slug":"FUO_NOVA","duration_days":1460}'::jsonb
 where not exists (select 1 from membership_plans where slug = 'fuo-nova');

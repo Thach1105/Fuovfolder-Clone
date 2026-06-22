@@ -198,7 +198,7 @@ export function PostItem({ post, index, threadId, nested = false, onChanged }: P
             rel="noopener noreferrer"
             className="mt-2 inline-block text-xs text-fuo-600 hover:underline"
           >
-            Xem trên FUExam.com →
+            Xem trên Fuexam.com →
           </a>
         )}
       </div>

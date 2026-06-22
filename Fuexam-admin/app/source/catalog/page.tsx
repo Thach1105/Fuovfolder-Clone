@@ -221,7 +221,7 @@ export default function AdminSourceCatalogPage() {
   return (
     <AdminShell
       title="Source — Tài liệu"
-      description="Quản lý mã môn, giá FUO Point và thời hạn truy cập"
+      description="Quản lý mã môn, giá Fuexam Point và thời hạn truy cập"
     >
       <div className="mb-4 max-w-md">
         <Input
@@ -287,7 +287,7 @@ export default function AdminSourceCatalogPage() {
                 />
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="price">Giá (FUO Point)</Label>
+                    <Label htmlFor="price">Giá (Fuexam Point)</Label>
                     <Input
                       id="price"
                       type="number"

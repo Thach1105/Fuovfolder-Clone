@@ -34,7 +34,7 @@ const ACTIVE_COLOR: Record<string, string> = {
 };
 
 const formatVnd = (n: number) => `${n.toLocaleString("vi-VN")} ₫`;
-const formatPoints = (n: number) => `${n.toLocaleString("vi-VN")} FUO`;
+const formatPoints = (n: number) => `${n.toLocaleString("vi-VN")} Fuexam`;
 
 export default function AdminDepositTiersPage() {
   const { user } = useAuth();
@@ -165,7 +165,7 @@ export default function AdminDepositTiersPage() {
   return (
     <AdminShell
       title="Deposit — Mệnh giá nạp"
-      description="Cấu hình các gói nạp VND cố định và số FUO Point thưởng tương ứng"
+      description="Cấu hình các gói nạp VND cố định và số Fuexam Point thưởng tương ứng"
     >
       {!canUpdate && (
         <p className="mb-4 text-xs text-amber-500">
@@ -217,7 +217,7 @@ export default function AdminDepositTiersPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="points">FUO Point cơ bản</Label>
+                      <Label htmlFor="points">Fuexam Point cơ bản</Label>
                       <Input
                         id="points"
                         type="number"

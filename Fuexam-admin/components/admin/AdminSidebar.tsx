@@ -133,7 +133,7 @@ export function AdminSidebar() {
             FX
           </span>
           <div>
-            <p className="text-sm font-semibold text-foreground">FUExam Admin</p>
+            <p className="text-sm font-semibold text-foreground">Fuexam Admin</p>
             <p className="text-xs text-muted-foreground">Bảng điều khiển</p>
           </div>
         </Link>

@@ -53,7 +53,7 @@ public class PasswordResetEmailSender {
             MimeMessageHelper message = new MimeMessageHelper(mimeMessage, false, StandardCharsets.UTF_8.name());
             message.setFrom(config.from());
             message.setTo(email);
-            message.setSubject(StringUtils.hasText(config.subject()) ? config.subject() : "Reset your FuOverflow password");
+            message.setSubject(StringUtils.hasText(config.subject()) ? config.subject() : "Reset your Fuexam password");
             message.setText(renderHtml(displayName, token, config.resetUrlBase(), config.tokenTtl()), true);
             mailSender.send(mimeMessage);
         } catch (MessagingException exception) {
@@ -65,7 +65,7 @@ public class PasswordResetEmailSender {
 
     private String renderHtml(String displayName, String token, String resetUrlBase, Duration tokenTtl) {
         Context context = new Context(Locale.ENGLISH);
-        context.setVariable("displayName", StringUtils.hasText(displayName) ? displayName : "FuOverflow user");
+        context.setVariable("displayName", StringUtils.hasText(displayName) ? displayName : "Fuexam user");
         context.setVariable("resetLink", PasswordResetLinks.buildLink(
                 resetUrlBase, corsProperties.allowedOrigins(), token));
         context.setVariable("expiresIn", formatTtl(tokenTtl == null ? Duration.ofHours(1) : tokenTtl));

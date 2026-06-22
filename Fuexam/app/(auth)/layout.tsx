@@ -8,7 +8,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <AppBackdrop />
       <header className="px-6 py-6">
         <Link href="/" className="font-display text-xl tracking-tight">
-          FUExam
+          Fuexam
         </Link>
       </header>
       <main className="flex flex-1 items-center justify-center px-4 pb-16">

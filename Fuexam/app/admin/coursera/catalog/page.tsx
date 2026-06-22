@@ -98,7 +98,7 @@ export default function AdminCourseraCatalogPage() {
   }
 
   return (
-    <AdminShell title="Coursera — Danh mục khóa học" description="Quản lý mã khóa và giá FUO Point">
+    <AdminShell title="Coursera — Danh mục khóa học" description="Quản lý mã khóa và giá Fuexam Point">
       <div className="grid gap-8 lg:grid-cols-2">
         <form onSubmit={handleSubmit} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white">
@@ -128,7 +128,7 @@ export default function AdminCourseraCatalogPage() {
             className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
             type="number"
             min={0}
-            placeholder="Giá FUO Point"
+            placeholder="Giá Fuexam Point"
             value={form.pricePoints}
             onChange={(e) => setForm({ ...form, pricePoints: e.target.value })}
             required

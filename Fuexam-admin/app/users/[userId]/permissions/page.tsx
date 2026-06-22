@@ -215,7 +215,7 @@ export default function AdminUserPermissionsPage() {
       actions={
         canAdjustPoints ? (
           <Button variant="outline" size="sm" onClick={() => setPointsOpen(true)}>
-            Điều chỉnh điểm FUO
+            Điều chỉnh điểm Fuexam
           </Button>
         ) : undefined
       }
@@ -389,7 +389,7 @@ export default function AdminUserPermissionsPage() {
       <Dialog open={pointsOpen} onOpenChange={setPointsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Điều chỉnh điểm FUO</DialogTitle>
+            <DialogTitle>Điều chỉnh điểm Fuexam</DialogTitle>
             <DialogDescription>
               Nhập số dương để cộng, số âm để trừ. Hành động này được ghi vào sổ điểm.
             </DialogDescription>

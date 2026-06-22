@@ -52,7 +52,7 @@ public class VerificationEmailSender {
             MimeMessageHelper message = new MimeMessageHelper(mimeMessage, false, StandardCharsets.UTF_8.name());
             message.setFrom(config.from());
             message.setTo(email);
-            message.setSubject(StringUtils.hasText(config.subject()) ? config.subject() : "Verify your FuOverflow email");
+            message.setSubject(StringUtils.hasText(config.subject()) ? config.subject() : "Verify your Fuexam email");
             message.setText(renderHtml(displayName, token, config.verificationUrlBase()), true);
             mailSender.send(mimeMessage);
         } catch (MessagingException exception) {
@@ -64,7 +64,7 @@ public class VerificationEmailSender {
 
     private String renderHtml(String displayName, String token, String verificationUrlBase) {
         Context context = new Context(Locale.ENGLISH);
-        context.setVariable("displayName", StringUtils.hasText(displayName) ? displayName : "FuOverflow user");
+        context.setVariable("displayName", StringUtils.hasText(displayName) ? displayName : "Fuexam user");
         context.setVariable("verificationLink", EmailVerificationLinks.buildLink(
                 verificationUrlBase, corsProperties.allowedOrigins(), token));
         context.setVariable("expiresIn", "24 hours");

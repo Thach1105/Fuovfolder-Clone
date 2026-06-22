@@ -90,7 +90,7 @@ public class PushNotificationSender {
                     "url", threadUrl,
                     "threadId", payload.threadId().toString()));
         } catch (Exception ex) {
-            return "{\"title\":\"FuOverflow\",\"body\":\"Có thông báo mới\"}";
+            return "{\"title\":\"Fuexam\",\"body\":\"Có thông báo mới\"}";
         }
     }
 

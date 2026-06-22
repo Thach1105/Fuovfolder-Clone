@@ -123,7 +123,7 @@ export default function AdminSourceCatalogPage() {
   }, [items, search]);
 
   return (
-    <AdminShell title="Source — Danh mục tài liệu" description="Quản lý mã môn, giá FUO Point và thời hạn">
+    <AdminShell title="Source — Danh mục tài liệu" description="Quản lý mã môn, giá Fuexam Point và thời hạn">
       <div className="mb-4">
         <input
           className={`${inputClass} max-w-md`}
@@ -164,7 +164,7 @@ export default function AdminSourceCatalogPage() {
           />
           <div className="grid grid-cols-2 gap-3">
             <label className="text-xs text-slate-400">
-              Giá FUO Point
+              Giá Fuexam Point
               <input
                 className={`${inputClass} mt-1`}
                 type="number"

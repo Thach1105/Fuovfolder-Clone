@@ -40,7 +40,7 @@ public class PointsWalletService {
         requireUserExists(userId);
         long balance = ledgerRepository.sumDeltaByUserId(userId);
         if (balance < amount) {
-            throw new ConflictException("INSUFFICIENT_POINTS", "Insufficient FUO Point balance");
+            throw new ConflictException("INSUFFICIENT_POINTS", "Insufficient Fuexam Point balance");
         }
         return persist(userId, -amount, reason, sourceType, sourceId);
     }

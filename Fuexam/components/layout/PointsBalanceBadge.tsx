@@ -24,7 +24,7 @@ export function PointsBalanceBadge() {
   return (
     <span
       className="hidden items-center gap-1 rounded-lg border border-fuo-200 bg-fuo-50 px-2.5 py-1 text-xs font-semibold text-fuo-800 lg:inline-flex"
-      title="Số dư FUO Point"
+      title="Số dư Fuexam Point"
     >
       <WalletIcon />
       {formatPoints(balance)}

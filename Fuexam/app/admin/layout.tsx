@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "FUExam Admin",
-  description: "Bảng điều khiển quản trị FUExam",
+  title: "Fuexam Admin",
+  description: "Bảng điều khiển quản trị Fuexam",
 };
 
 export default function AdminRootLayout({

@@ -103,7 +103,7 @@ export default function MembershipPage() {
             <h2 className="text-xl font-bold text-white">{plan.name}</h2>
             <p className="mt-2 text-3xl font-bold text-amber-300">
               {plan.pricePoints.toLocaleString("vi-VN")}{" "}
-              <span className="text-sm font-normal text-slate-400">FUO</span>
+              <span className="text-sm font-normal text-slate-400">Fuexam</span>
             </p>
             <p className="mt-1 text-xs text-slate-500">{plan.durationDays} ngày · Role {plan.roleSlug}</p>
             {plan.description && <p className="mt-4 text-sm text-slate-400">{plan.description}</p>}
@@ -119,16 +119,16 @@ export default function MembershipPage() {
                   ? "Đang xử lý..."
                   : status?.active
                     ? "Đã có gói active"
-                    : "Đăng ký bằng FUO"}
+                    : "Đăng ký bằng Fuexam Point"}
             </button>
           </article>
         ))}
       </div>
 
       <p className="mt-10 text-center text-xs text-slate-500">
-        Tỷ giá: 1.000 FUO = 1.000 VND ·{" "}
+        Tỷ giá: 1.000 Fuexam = 1.000 VND ·{" "}
         <Link href="/me/points" className="text-amber-400 hover:underline">
-          Nạp FUO Point
+          Nạp Fuexam Point
         </Link>
       </p>
     </div>

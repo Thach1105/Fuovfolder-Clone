@@ -15,7 +15,7 @@ values (
     'fuoverflow_import',
     'import@fuoverflow.local',
     'import@fuoverflow.local',
-    'FuOverflow Import',
+    'Fuexam Import',
     'ACTIVE',
     now(),
     now(),

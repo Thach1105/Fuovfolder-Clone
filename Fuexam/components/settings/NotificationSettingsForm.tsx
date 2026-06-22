@@ -128,7 +128,7 @@ export function NotificationSettingsForm() {
       <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
         <h3 className="font-medium text-slate-800">Push trình duyệt</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Nhận thông báo ngay cả khi không mở tab FUExam. Cần cấu hình VAPID trên server.
+          Nhận thông báo ngay cả khi không mở tab Fuexam. Cần cấu hình VAPID trên server.
         </p>
         {!pushAvailable && (
           <p className="mt-2 text-xs text-amber-700">

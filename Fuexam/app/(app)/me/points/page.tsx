@@ -52,7 +52,7 @@ export default function PointsPage() {
         setError(
           err instanceof ApiError
             ? err.message
-            : "Không tải được dữ liệu FUO Point.",
+            : "Không tải được dữ liệu Fuexam Point.",
         );
       })
       .finally(() => {
@@ -81,7 +81,7 @@ export default function PointsPage() {
         setError(
           err instanceof ApiError
             ? err.message
-            : "Không tải được lịch sử FUO Point.",
+            : "Không tải được lịch sử Fuexam Point.",
         );
         setPage(ledger.page);
       })
@@ -99,7 +99,7 @@ export default function PointsPage() {
   if (authLoading || (!user && !error)) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-10">
-        <h1 className="text-3xl font-bold text-slate-100">FUO Point của tôi</h1>
+        <h1 className="text-3xl font-bold text-slate-100">Fuexam Point của tôi</h1>
         <p className="mt-2 text-sm text-slate-400">Đang tải...</p>
       </div>
     );
@@ -108,9 +108,9 @@ export default function PointsPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-slate-100">FUO Point của tôi</h1>
+        <h1 className="text-3xl font-bold text-slate-100">Fuexam Point của tôi</h1>
         <p className="mt-2 text-sm text-slate-400">
-          Theo dõi số dư hiện tại và lịch sử giao dịch FUO Point của bạn.
+          Theo dõi số dư hiện tại và lịch sử giao dịch Fuexam Point của bạn.
         </p>
       </div>
 
@@ -137,7 +137,7 @@ export default function PointsPage() {
             href="/deposit"
             className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500"
           >
-            Nạp thêm FUO
+            Nạp thêm Fuexam
           </Link>
         </div>
       </section>
@@ -154,7 +154,7 @@ export default function PointsPage() {
           <p className="text-sm text-slate-400">Đang tải lịch sử...</p>
         ) : entries.length === 0 ? (
           <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-8 text-center text-sm text-slate-400">
-            Chưa có giao dịch FUO Point nào.
+            Chưa có giao dịch Fuexam Point nào.
           </div>
         ) : (
           <>
@@ -185,7 +185,7 @@ export default function PointsPage() {
                       }
                     >
                       {entry.delta > 0 ? "+" : ""}
-                      {entry.delta.toLocaleString("vi-VN")} FUO
+                      {entry.delta.toLocaleString("vi-VN")} Fuexam
                     </span>
                     <span className="text-xs text-slate-500">
                       {formatDateTime(entry.createdAt)}

@@ -38,7 +38,7 @@ export function AppHeader() {
         )}
       >
         <Link href="/" className="group flex shrink-0 items-center gap-2">
-          <span className="font-display text-xl tracking-tight">FUExam</span>
+          <span className="font-display text-xl tracking-tight">Fuexam</span>
           <span className="mt-1 font-mono text-[10px] text-muted-foreground">FPT</span>
         </Link>
 

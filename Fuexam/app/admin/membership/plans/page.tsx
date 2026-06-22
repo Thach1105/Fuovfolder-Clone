@@ -139,7 +139,7 @@ export default function AdminMembershipPlansPage() {
   return (
     <AdminShell
       title="Membership — Gói bán"
-      description="Cấu hình giá FUO Point, role gắn kèm và thời hạn từng gói"
+      description="Cấu hình giá Fuexam Point, role gắn kèm và thời hạn từng gói"
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-slate-400">
@@ -206,7 +206,7 @@ export default function AdminMembershipPlansPage() {
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="text-xs text-slate-400">
-                  Giá FUO Point
+                  Giá Fuexam Point
                   <input
                     className={`${inputClass} mt-1`}
                     type="number"
@@ -319,7 +319,7 @@ export default function AdminMembershipPlansPage() {
                 <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-400">
                   <div>
                     <dt>Giá</dt>
-                    <dd className="text-amber-300">{plan.pricePoints.toLocaleString("vi-VN")} FUO</dd>
+                    <dd className="text-amber-300">{plan.pricePoints.toLocaleString("vi-VN")} Fuexam</dd>
                   </div>
                   <div>
                     <dt>Thời hạn</dt>

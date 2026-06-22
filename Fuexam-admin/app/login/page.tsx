@@ -53,7 +53,7 @@ function LoginForm() {
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground">
             FX
           </div>
-          <CardTitle className="text-xl">FUExam Admin</CardTitle>
+          <CardTitle className="text-xl">Fuexam Admin</CardTitle>
           <CardDescription>Đăng nhập để vào bảng điều khiển quản trị</CardDescription>
         </CardHeader>
         <CardContent>

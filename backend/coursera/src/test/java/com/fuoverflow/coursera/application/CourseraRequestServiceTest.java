@@ -128,7 +128,7 @@ class CourseraRequestServiceTest {
                 catalogId, "WOU203C", "UX Course", null, 250000, true, true, 1, Instant.now());
         when(catalogRepository.findByIdAndDeletedAtIsNull(catalogId)).thenReturn(Optional.of(catalog));
         when(walletService.debit(any(), anyInt(), anyString(), anyString(), any()))
-                .thenThrow(new ConflictException("INSUFFICIENT_POINTS", "Insufficient FUO Point balance"));
+                .thenThrow(new ConflictException("INSUFFICIENT_POINTS", "Insufficient Fuexam Point balance"));
 
         var body = new CreateCourseraRequestBody(catalogId, "user@coursera.org", "secret", null);
         assertThrows(ConflictException.class, () -> service.create(userId, body, null));

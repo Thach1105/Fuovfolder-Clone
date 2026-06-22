@@ -142,7 +142,7 @@ export default function SuocPage() {
         </h1>
         <div className="flex flex-wrap items-center gap-4">
           <p className="max-w-xl text-lg text-muted-foreground">
-            Tài liệu ôn thi theo mã môn, luyện câu hỏi tương tác, thanh toán bằng FUO Point.
+            Tài liệu ôn thi theo mã môn, luyện câu hỏi tương tác, thanh toán bằng Fuexam Point.
           </p>
           <div className="ml-auto flex items-center gap-3">
             {balance !== null && (

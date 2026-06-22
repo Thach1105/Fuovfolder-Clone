@@ -80,7 +80,7 @@ export default function AdminDashboardPage() {
             <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/50 p-6">
               <h2 className="text-sm font-semibold text-slate-300">Gói Membership</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Cấu hình giá FUO Point, role gắn kèm và thời hạn từng gói bán.
+                Cấu hình giá Fuexam Point, role gắn kèm và thời hạn từng gói bán.
               </p>
               <Link
                 href="/admin/membership/plans"

@@ -220,7 +220,7 @@
   }
 }
 
-/* ===== Compat layer for ported FuOverflow pages (Tailwind v3 utilities -> v4) ===== */
+/* ===== Compat layer for ported Fuexam pages (Tailwind v3 utilities -> v4) ===== */
 @theme inline {
   --color-fuo-50: #eef6ff;
   --color-fuo-100: #d9ebff;

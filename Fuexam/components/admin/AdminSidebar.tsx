@@ -69,7 +69,7 @@ export function AdminSidebar() {
             ADM
           </span>
           <div>
-            <p className="text-sm font-semibold text-white">FUExam Admin</p>
+            <p className="text-sm font-semibold text-white">Fuexam Admin</p>
             <p className="text-xs text-slate-500">Bảng điều khiển</p>
           </div>
         </Link>

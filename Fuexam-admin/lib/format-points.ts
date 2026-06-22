@@ -1,5 +1,5 @@
 export function formatPoints(n: number) {
-  return `${n.toLocaleString("vi-VN")} FUO Point`;
+  return `${n.toLocaleString("vi-VN")} Fuexam Point`;
 }
 
 export const REQUEST_STATUS_LABELS: Record<string, string> = {

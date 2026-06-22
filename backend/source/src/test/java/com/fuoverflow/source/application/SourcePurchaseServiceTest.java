@@ -91,7 +91,7 @@ class SourcePurchaseServiceTest {
         when(purchaseRepository.findFirstByUserIdAndCatalogItemIdAndStatusOrderByEndsAtDesc(userId, catalogId, "active"))
                 .thenReturn(Optional.empty());
         when(walletService.debit(any(), anyInt(), anyString(), anyString(), any()))
-                .thenThrow(new ConflictException("INSUFFICIENT_POINTS", "Insufficient FUO Point balance"));
+                .thenThrow(new ConflictException("INSUFFICIENT_POINTS", "Insufficient Fuexam Point balance"));
 
         assertThrows(ConflictException.class, () -> service.purchase(userId, catalogId, null));
         verify(purchaseRepository, never()).saveAndFlush(any());

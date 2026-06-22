@@ -107,12 +107,12 @@ fuoverflow:
       email: ${FUO_ADMIN_EMAIL:admin@fuoverflow.local}
       username: ${FUO_ADMIN_USERNAME:fuoverflow-admin}
       password: ${FUO_ADMIN_PASSWORD:}
-      display-name: ${FUO_ADMIN_DISPLAY_NAME:FuOverflow Administrator}
+      display-name: ${FUO_ADMIN_DISPLAY_NAME:Fuexam Administrator}
   notification:
     email:
       enabled: ${NOTIFICATION_EMAIL_ENABLED:true}
       from: ${NOTIFICATION_EMAIL_FROM:${MAIL_FROM:${spring.mail.username:}}}
-      subject: ${NOTIFICATION_EMAIL_SUBJECT:FuOverflow - Trả lời mới trong chủ đề bạn theo dõi}
+      subject: ${NOTIFICATION_EMAIL_SUBJECT:Fuexam - Trả lời mới trong chủ đề bạn theo dõi}
       thread-url-base: ${NOTIFICATION_THREAD_URL_BASE:http://localhost:3000/threads}
     push:
       enabled: ${NOTIFICATION_PUSH_ENABLED:false}

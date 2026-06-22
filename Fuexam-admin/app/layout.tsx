@@ -10,8 +10,8 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "FUExam Admin",
-  description: "Bảng điều khiển quản trị FUExam",
+  title: "Fuexam Admin",
+  description: "Bảng điều khiển quản trị Fuexam",
 };
 
 export default function RootLayout({

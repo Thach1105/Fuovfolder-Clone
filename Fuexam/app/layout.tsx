@@ -22,9 +22,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'FUExam — Cộng đồng sinh viên FPT',
+  title: 'Fuexam — Cộng đồng sinh viên FPT',
   description: 'Diễn đàn, tài liệu ôn thi (Source) và khóa học cho sinh viên FPT.',
-  generator: 'FUExam',
+  generator: 'Fuexam',
 }
 
 export default function RootLayout({

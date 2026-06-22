@@ -62,7 +62,7 @@ export function PostReactions({ postId }: PostReactionsProps) {
           ? "bg-rose-50 text-rose-700"
           : "bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
       }`}
-      title={canReact ? "Thích bài viết" : "Cần gói FUO MEMBER để thích bài viết"}
+      title={canReact ? "Thích bài viết" : "Cần gói Fuexam Member để thích bài viết"}
     >
       ♥ {count}
     </button>

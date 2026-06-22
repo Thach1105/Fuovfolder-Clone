@@ -12,7 +12,7 @@ const ACTION_COPY: Record<
 > = {
   in_progress: {
     title: "Bắt đầu xử lý đơn",
-    description: "Đơn sẽ chuyển sang trạng thái Đang thực hiện. FUO Point của user không thay đổi.",
+    description: "Đơn sẽ chuyển sang trạng thái Đang thực hiện. Fuexam Point của user không thay đổi.",
     confirmLabel: "Bắt đầu xử lý",
   },
   completed: {
@@ -96,7 +96,7 @@ export function ConfirmStatusDialog({
                   User sẽ được hoàn <strong className="text-amber-300">{formatPoints(totalPoints)}</strong>.
                 </>
               ) : (
-                <> Không hoàn FUO Point (đã hoàn trước đó hoặc không có thanh toán).</>
+                <> Không hoàn Fuexam Point (đã hoàn trước đó hoặc không có thanh toán).</>
               )}
             </>
           ) : (

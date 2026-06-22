@@ -202,7 +202,7 @@ export default function CourseraPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Coursera Pro Service</h1>
-          <p className="text-sm text-slate-600">Tạo yêu cầu nhanh — thanh toán bằng FUO Point</p>
+          <p className="text-sm text-slate-600">Tạo yêu cầu nhanh — thanh toán bằng Fuexam Point</p>
         </div>
         <Link href="/coursera/orders" className="text-sm font-medium text-fuo-600 hover:underline">
           Đơn của tôi →
@@ -406,7 +406,7 @@ export default function CourseraPage() {
               disabled
               title="Module nạp tiền sẽ có sau"
             >
-              + Nạp thêm FUO Point (sắp có)
+              + Nạp thêm Fuexam Point (sắp có)
             </button>
           </div>
           <div className="card p-4 text-sm text-slate-600">
@@ -414,7 +414,7 @@ export default function CourseraPage() {
             <ol className="mt-2 list-decimal space-y-1 pl-4">
               <li>Chọn khóa học Coursera cần hỗ trợ.</li>
               <li>Nhập email và mật khẩu Coursera.</li>
-              <li>Thanh toán bằng FUO Point và chờ xử lý.</li>
+              <li>Thanh toán bằng Fuexam Point và chờ xử lý.</li>
               <li>Theo dõi trạng thái tại Lịch sử yêu cầu.</li>
             </ol>
           </div>

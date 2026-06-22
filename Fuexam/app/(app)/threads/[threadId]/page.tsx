@@ -123,7 +123,7 @@ export default function ThreadDetailPage() {
               rel="noopener noreferrer"
               className="btn-secondary text-xs"
             >
-              Mở trên FUExam.com
+              Mở trên Fuexam.com
             </a>
           )}
         </div>
@@ -169,7 +169,7 @@ export default function ThreadDetailPage() {
           <div className="border-t border-slate-100 px-4 py-4 text-sm text-slate-600">
             Trả lời yêu cầu gói{" "}
             <Link href="/membership" className="font-medium text-fuo-600 hover:underline">
-              FUO MEMBER
+              Fuexam Member
             </Link>
             .
           </div>

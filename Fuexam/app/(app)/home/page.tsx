@@ -61,7 +61,7 @@ export default function HomePage() {
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="text-xl font-bold text-slate-900">FUExam Community</h1>
+              <h1 className="text-xl font-bold text-slate-900">Fuexam Community</h1>
               {user && (
                 <p className="text-sm text-slate-500">Xin chào, {user.displayName}</p>
               )}

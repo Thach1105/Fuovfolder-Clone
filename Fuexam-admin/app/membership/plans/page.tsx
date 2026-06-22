@@ -160,7 +160,7 @@ export default function AdminMembershipPlansPage() {
   return (
     <AdminShell
       title="Membership — Gói"
-      description="Cấu hình giá FUO Point, vai trò gắn kèm và thời hạn từng gói"
+      description="Cấu hình giá Fuexam Point, vai trò gắn kèm và thời hạn từng gói"
     >
       {!canUpdate && (
         <p className="mb-4 text-xs text-amber-500">
@@ -228,7 +228,7 @@ export default function AdminMembershipPlansPage() {
                   />
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="price">Giá (FUO Point)</Label>
+                      <Label htmlFor="price">Giá (Fuexam Point)</Label>
                       <Input
                         id="price"
                         type="number"
@@ -341,7 +341,7 @@ export default function AdminMembershipPlansPage() {
                   <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     <div>
                       <dt>Giá</dt>
-                      <dd className="text-primary">{plan.pricePoints.toLocaleString("vi-VN")} FUO</dd>
+                      <dd className="text-primary">{plan.pricePoints.toLocaleString("vi-VN")} Fuexam</dd>
                     </div>
                     <div>
                       <dt>Thời hạn</dt>

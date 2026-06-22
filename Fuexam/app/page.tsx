@@ -42,7 +42,7 @@ const STEPS = [
   {
     number: "II",
     title: "Chọn Source theo mã môn",
-    desc: "Tìm tài liệu ôn thi theo mã môn (MLN111, CSI106...), xem tỉ lệ trùng lặp đề và mở khóa bằng FUO Point.",
+    desc: "Tìm tài liệu ôn thi theo mã môn (MLN111, CSI106...), xem tỉ lệ trùng lặp đề và mở khóa bằng Fuexam Point.",
   },
   {
     number: "III",
@@ -55,9 +55,9 @@ const PLANS = [
   {
     name: "Miễn phí",
     price: "0",
-    unit: "FUO Point",
+    unit: "Fuexam Point",
     description: "Bắt đầu với cộng đồng và tài liệu cơ bản.",
-    features: ["Truy cập diễn đàn", "Xem tài liệu công khai", "Tích điểm FUO Point"],
+    features: ["Truy cập diễn đàn", "Xem tài liệu công khai", "Tích điểm Fuexam Point"],
     cta: "Tạo tài khoản",
     href: "/register",
     popular: false,
@@ -100,7 +100,7 @@ export default function Home() {
       <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4">
         <nav className="mx-auto flex h-14 max-w-[1200px] items-center gap-6 rounded-2xl border border-foreground/10 bg-background/70 px-5 backdrop-blur-xl">
           <Link href="/" className="flex items-center gap-2">
-            <span className="font-display text-xl tracking-tight">FUExam</span>
+            <span className="font-display text-xl tracking-tight">Fuexam</span>
             <span className="mt-1 font-mono text-[10px] text-muted-foreground">FPT</span>
           </Link>
           <div className="ml-auto flex items-center gap-3">
@@ -237,7 +237,7 @@ export default function Home() {
               Bắt đầu miễn phí,<br /><span className="text-stroke">mở khóa khi cần</span>
             </h2>
             <p className="mt-5 max-w-xl text-muted-foreground">
-              Dùng FUO Point để mở Source theo môn hoặc nâng cấp membership. Không phí ẩn.
+              Dùng Fuexam Point để mở Source theo môn hoặc nâng cấp membership. Không phí ẩn.
             </p>
           </div>
 
@@ -281,7 +281,7 @@ export default function Home() {
             Sẵn sàng cho kỳ thi tiếp theo?
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-muted-foreground">
-            Tham gia cùng cộng đồng sinh viên FPT trên FUExam ngay hôm nay.
+            Tham gia cùng cộng đồng sinh viên FPT trên Fuexam ngay hôm nay.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Button asChild size="lg" className="group h-14 rounded-full bg-foreground px-8 text-base text-background hover:bg-foreground/90">
@@ -301,10 +301,10 @@ export default function Home() {
       <footer className="border-t border-foreground/10 py-10">
         <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-4 px-6 text-sm text-muted-foreground sm:flex-row lg:px-12">
           <div className="flex items-center gap-2">
-            <span className="font-display text-lg tracking-tight text-foreground">FUExam</span>
+            <span className="font-display text-lg tracking-tight text-foreground">Fuexam</span>
             <span className="font-mono text-[10px]">FPT</span>
           </div>
-          <p>© {new Date().getFullYear()} FUExam — Cộng đồng sinh viên FPT.</p>
+          <p>© {new Date().getFullYear()} Fuexam — Cộng đồng sinh viên FPT.</p>
           <div className="flex gap-4">
             <Link href="/suoc" className="hover:text-foreground">Source</Link>
             <Link href="/forums" className="hover:text-foreground">Diễn đàn</Link>

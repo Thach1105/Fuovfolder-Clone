@@ -29,7 +29,7 @@ export default function AwardsPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
       <h1 className="text-3xl font-bold text-slate-900">Danh hiệu</h1>
-      <p className="mt-2 text-slate-600">Các huy hiệu và thành tích trên FUExam.</p>
+      <p className="mt-2 text-slate-600">Các huy hiệu và thành tích trên Fuexam.</p>
 
       {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
       {loading && <p className="mt-6 text-sm text-slate-500">Đang tải...</p>}

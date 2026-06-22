@@ -137,7 +137,7 @@ export default function AdminCourseraCatalogPage() {
   }
 
   return (
-    <AdminShell title="Coursera — Khóa học" description="Quản lý mã khóa học và giá FUO Point">
+    <AdminShell title="Coursera — Khóa học" description="Quản lý mã khóa học và giá Fuexam Point">
       <div className="grid gap-6 lg:grid-cols-2">
         {canWrite && (
           <Card>
@@ -189,7 +189,7 @@ export default function AdminCourseraCatalogPage() {
                 />
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="price">Giá (FUO Point)</Label>
+                    <Label htmlFor="price">Giá (Fuexam Point)</Label>
                     <Input
                       id="price"
                       type="number"

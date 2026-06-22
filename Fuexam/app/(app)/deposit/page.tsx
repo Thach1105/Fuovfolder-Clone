@@ -11,7 +11,7 @@ import {
 } from "@/lib/api/payment";
 
 const formatVnd = (n: number) => `${n.toLocaleString("vi-VN")} ₫`;
-const formatPoints = (n: number) => `${n.toLocaleString("vi-VN")} FUO`;
+const formatPoints = (n: number) => `${n.toLocaleString("vi-VN")} Fuexam`;
 
 export default function DepositPage() {
   const router = useRouter();
@@ -60,9 +60,9 @@ export default function DepositPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-slate-100">Nạp FUO Point</h1>
+        <h1 className="text-3xl font-bold text-slate-100">Nạp Fuexam Point</h1>
         <p className="mt-2 text-sm text-slate-400">
-          Chọn mệnh giá cố định, thanh toán qua PayOS và nhận FUO Point tương ứng.
+          Chọn mệnh giá cố định, thanh toán qua PayOS và nhận Fuexam Point tương ứng.
         </p>
       </div>
 

@@ -87,7 +87,7 @@ export default function AdminSourcePurchasesPage() {
   }
 
   return (
-    <AdminShell title="Source — Đơn mua" description="Theo dõi giao dịch và hoàn tiền FUO Point">
+    <AdminShell title="Source — Đơn mua" description="Theo dõi giao dịch và hoàn tiền Fuexam Point">
       {overview && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <OverviewCard label="Tổng đơn" value={overview.totalPurchases} />
