@@ -118,10 +118,10 @@ Decision tree:
   - Use `name` from Google, trimmed, cap 120 chars.
   - Fallback to email local part if `name` is null/blank.
 - `password_hash` = `null`.
-- `status` = new enum value `PENDING_PROFILE` (see §6).
+- `status` = `PENDING_PROFILE` (new enum value, see §5).
 - `avatar_url` stored in `user_oauth_accounts` (not on `users`) — keeps `users.avatar_url` for user-uploaded avatars.
 
-`RegisterUserCommand` already exists; we extend it to accept `password=null, emailVerified=true, status=PENDING_PROFILE` (no new path, just one new optional field on the command).
+`RegisterUserCommand` already exists; we extend it to accept `password=null, emailVerified=true, status=PENDING_PROFILE` (no new optional fields; `status` is already part of the command for password registration).
 
 ### F4 — Session issuance (`OAuthSessionIssuer.issue(userId, ClientContext)`)
 
@@ -190,10 +190,10 @@ New Flyway migration `V30__add_google_oauth_user_fields.sql`:
 --    Keep email_verified_at for legacy reasons (not removed).
 alter table users add column email_verified boolean not null default false;
 
--- 2) users.status: extend check constraint to allow PENDING_PROFILE.
+-- 2) users.status: extend check constraint to allow `pending_profile`.
 alter table users drop constraint if exists users_status_check;
 alter table users add constraint users_status_check
-  check (status in ('active','pending','banned','deleted','PENDING_PROFILE'));
+  check (status in ('active','pending','banned','deleted','pending_profile'));
 
 -- 3) user_oauth_accounts: enrich row with profile snapshot + updated_at.
 alter table user_oauth_accounts
