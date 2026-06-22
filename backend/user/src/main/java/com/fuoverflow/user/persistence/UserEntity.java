@@ -62,6 +62,9 @@ public class UserEntity {
     @Column(name = "email_verified_at")
     private Instant emailVerifiedAt;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
@@ -93,6 +96,7 @@ public class UserEntity {
         entity.displayName = displayName;
         entity.campus = campus;
         entity.status = UserStatus.PENDING_EMAIL_VERIFICATION;
+        entity.emailVerified = false;
         entity.rolesJson = rolesJson(UserRole.USER);
         entity.createdAt = now;
         entity.updatedAt = now;
@@ -114,6 +118,7 @@ public class UserEntity {
         entity.status = UserStatus.ACTIVE;
         entity.rolesJson = rolesJson(UserRole.SUPER_ADMIN);
         entity.emailVerifiedAt = now;
+        entity.emailVerified = true;
         entity.passwordChangedAt = now;
         entity.createdAt = now;
         entity.updatedAt = now;
@@ -149,6 +154,7 @@ public class UserEntity {
     public UserStatus getStatus() { return status; }
     public String getRolesJson() { return rolesJson; }
     public Instant getEmailVerifiedAt() { return emailVerifiedAt; }
+    public boolean isEmailVerified() { return emailVerified; }
     public Instant getLastLoginAt() { return lastLoginAt; }
     public Instant getPasswordChangedAt() { return passwordChangedAt; }
     public Instant getCreatedAt() { return createdAt; }
@@ -156,6 +162,7 @@ public class UserEntity {
 
     public void markEmailVerified(Instant at) {
         this.emailVerifiedAt = at;
+        this.emailVerified = true;
         this.status = UserStatus.ACTIVE;
         this.updatedAt = at;
     }
