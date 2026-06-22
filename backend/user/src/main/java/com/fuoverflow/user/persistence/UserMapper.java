@@ -30,6 +30,7 @@ public class UserMapper {
                 effective.permVersion(),
                 effective.permissions(),
                 effective.superAdmin(),
+                entity.isEmailVerified(),
                 entity.getEmailVerifiedAt(),
                 entity.getPasswordChangedAt(),
                 entity.getDeletedAt()

@@ -44,8 +44,15 @@ public class UserRegistrationService {
         }
         Instant now = Instant.now();
         String campus = command.campus() == null || command.campus().isBlank() ? null : command.campus().trim();
-        UserEntity entity = UserEntity.pending(UUID.randomUUID(), command.email().trim(), normalizedEmail,
-                command.username().trim(), normalizedUsername, command.passwordHash(), command.displayName().trim(), campus, now);
+        UserEntity entity;
+        if (command.status() == null) {
+            entity = UserEntity.pending(UUID.randomUUID(), command.email().trim(), normalizedEmail,
+                    command.username().trim(), normalizedUsername, command.passwordHash(), command.displayName().trim(), campus, now);
+        } else {
+            entity = UserEntity.oauthUser(UUID.randomUUID(), command.email().trim(), normalizedEmail,
+                    command.username().trim(), normalizedUsername, command.passwordHash(), command.displayName().trim(),
+                    campus, command.emailVerified(), command.status(), now);
+        }
         try {
             UserEntity saved = repository.save(entity);
             roleAssignments.ensureDefaultUserRole(saved.getId());

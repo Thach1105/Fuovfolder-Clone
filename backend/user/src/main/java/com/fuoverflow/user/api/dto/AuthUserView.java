@@ -17,11 +17,9 @@ public record AuthUserView(
         long permVersion,
         List<String> permissions,
         boolean superAdmin,
+        boolean emailVerified,
         Instant emailVerifiedAt,
         Instant passwordChangedAt,
         Instant deletedAt
 ) {
-    public boolean emailVerified() {
-        return emailVerifiedAt != null;
-    }
 }

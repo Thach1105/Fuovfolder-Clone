@@ -126,6 +126,27 @@ public class UserEntity {
         return entity;
     }
 
+    public static UserEntity oauthUser(UUID id, String email, String normalizedEmail, String username, String usernameNormalized,
+                                       String passwordHash, String displayName, String campus, boolean emailVerified,
+                                       UserStatus status, Instant now) {
+        UserEntity entity = new UserEntity();
+        entity.id = id;
+        entity.email = email;
+        entity.normalizedEmail = normalizedEmail;
+        entity.username = username;
+        entity.usernameNormalized = usernameNormalized;
+        entity.passwordHash = passwordHash;
+        entity.displayName = displayName;
+        entity.campus = campus;
+        entity.emailVerified = emailVerified;
+        entity.status = status;
+        entity.rolesJson = rolesJson(UserRole.USER);
+        entity.createdAt = now;
+        entity.updatedAt = now;
+        entity.lockVersion = 0;
+        return entity;
+    }
+
     public static String rolesJson(UserRole... roles) {
         if (roles == null || roles.length == 0) {
             return "[\"USER\"]";
