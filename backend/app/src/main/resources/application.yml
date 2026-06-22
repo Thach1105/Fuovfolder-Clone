@@ -7,6 +7,7 @@ spring:
     name: fuoverflow-backend
   profiles:
     default: local
+    include: oauth2
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/fuoverflow}
     username: ${DB_USERNAME:fuoverflow}

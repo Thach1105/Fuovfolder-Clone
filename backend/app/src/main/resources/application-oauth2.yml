@@ -1,0 +1,16 @@
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${OAUTH_GOOGLE_CLIENT_ID:}
+            client-secret: ${OAUTH_GOOGLE_CLIENT_SECRET:}
+            scope: openid,email,profile
+            redirect-uri: "{baseUrl}/login/oauth2/code/google"
+
+app:
+  oauth2:
+    success-redirect: ${OAUTH_SUCCESS_REDIRECT:http://localhost:5173/auth/callback}
+    error-redirect: ${OAUTH_ERROR_REDIRECT:http://localhost:5173/auth/error}
+    frontend-base-url: ${OAUTH_FRONTEND_BASE_URL:http://localhost:5173}
