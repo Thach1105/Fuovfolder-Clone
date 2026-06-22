@@ -80,4 +80,94 @@ class UserEntityTest {
         assertThat(user.getEmailVerifiedAt()).isEqualTo(verifiedAt);
         assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
     }
+
+    @Test
+    void oauthUser_shouldCreateWithEmailVerifiedTrue() {
+        // Given
+        UUID id = UUID.randomUUID();
+        String email = "oauth@gmail.com";
+        String normalizedEmail = "oauth@gmail.com";
+        String username = "oauthuser";
+        String usernameNormalized = "oauthuser";
+        String passwordHash = "";
+        String displayName = "OAuth User";
+        String campus = "HCM";
+        boolean emailVerified = true;
+        UserStatus status = UserStatus.ACTIVE;
+        Instant now = Instant.now();
+
+        // When
+        UserEntity user = UserEntity.oauthUser(
+            id, email, normalizedEmail, username, usernameNormalized,
+            passwordHash, displayName, campus, emailVerified, status, now
+        );
+
+        // Then
+        assertThat(user.getId()).isEqualTo(id);
+        assertThat(user.getEmail()).isEqualTo(email);
+        assertThat(user.isEmailVerified()).isTrue();
+        assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(user.getRolesJson()).isEqualTo("[\"USER\"]");
+        assertThat(user.getCreatedAt()).isEqualTo(now);
+    }
+
+    @Test
+    void oauthUser_shouldCreateWithEmailVerifiedFalse() {
+        // Given
+        UUID id = UUID.randomUUID();
+        String email = "unverified.oauth@example.com";
+        String normalizedEmail = "unverified.oauth@example.com";
+        String username = "unverifiedoauth";
+        String usernameNormalized = "unverifiedoauth";
+        String passwordHash = "";
+        String displayName = "Unverified OAuth";
+        String campus = null;
+        boolean emailVerified = false;
+        UserStatus status = UserStatus.ACTIVE;
+        Instant now = Instant.now();
+
+        // When
+        UserEntity user = UserEntity.oauthUser(
+            id, email, normalizedEmail, username, usernameNormalized,
+            passwordHash, displayName, campus, emailVerified, status, now
+        );
+
+        // Then
+        assertThat(user.isEmailVerified()).isFalse();
+        assertThat(user.getEmailVerifiedAt()).isNull();
+        assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+    }
+
+    @Test
+    void oauthUser_shouldRespectProvidedStatus() {
+        // Given
+        UUID id = UUID.randomUUID();
+        Instant now = Instant.now();
+        UserStatus customStatus = UserStatus.ACTIVE;
+
+        // When
+        UserEntity user = UserEntity.oauthUser(
+            id, "test@example.com", "test@example.com", "user", "user",
+            "", "User", "HCM", true, customStatus, now
+        );
+
+        // Then
+        assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+    }
+
+    @Test
+    void oauthUser_shouldHaveUserRoleByDefault() {
+        // Given
+        UUID id = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        // When
+        UserEntity user = UserEntity.oauthUser(
+            id, "oauth@example.com", "oauth@example.com", "oauthuser", "oauthuser",
+            "", "OAuth User", null, true, UserStatus.ACTIVE, now
+        );
+
+        // Then
+        assertThat(user.getRolesJson()).isEqualTo("[\"USER\"]");
+    }
 }
