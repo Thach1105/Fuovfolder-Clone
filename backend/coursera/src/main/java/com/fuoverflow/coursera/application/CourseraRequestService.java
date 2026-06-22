@@ -82,13 +82,17 @@ public class CourseraRequestService {
         int totalPoints = catalog.getPricePoints();
         Instant now = Instant.now();
         UUID requestId = UUID.randomUUID();
+        UUID paymentLedgerId = null;
 
-        PointsLedgerEntity payment = walletService.debit(
-                userId,
-                totalPoints,
-                "Coursera service: " + catalog.getCode(),
-                PointsWalletService.SOURCE_COURSERA_REQUEST,
-                requestId);
+        if (totalPoints > 0) {
+            PointsLedgerEntity payment = walletService.debit(
+                    userId,
+                    totalPoints,
+                    "Coursera service: " + catalog.getCode(),
+                    PointsWalletService.SOURCE_COURSERA_REQUEST,
+                    requestId);
+            paymentLedgerId = payment.getId();
+        }
 
         CourseraServiceRequestEntity request = CourseraServiceRequestEntity.createPending(
                 requestId,
@@ -97,7 +101,7 @@ public class CourseraRequestService {
                 body.userNotes(),
                 idempotencyKey != null && !idempotencyKey.isBlank() ? idempotencyKey.trim() : null,
                 now);
-        request.setPaymentLedgerId(payment.getId());
+        request.setPaymentLedgerId(paymentLedgerId);
         requestRepository.save(request);
 
         itemRepository.save(CourseraRequestItemEntity.create(

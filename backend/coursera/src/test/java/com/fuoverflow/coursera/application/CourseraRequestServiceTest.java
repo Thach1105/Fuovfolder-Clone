@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -94,6 +95,30 @@ class CourseraRequestServiceTest {
         verify(walletService).debit(eq(userId), eq(250000), anyString(), eq(PointsWalletService.SOURCE_COURSERA_REQUEST), any(UUID.class));
         verify(requestRepository).save(any(CourseraServiceRequestEntity.class));
         verify(credentialRepository).save(any());
+    }
+
+    @Test
+    void create_skipsDebitForFreeCatalogItem() {
+        stubActiveUser();
+        CourseraCatalogItemEntity catalog = CourseraCatalogItemEntity.create(
+                catalogId, "FREE-1", "Free Course", null, 0, true, true, 1, Instant.now());
+        when(catalogRepository.findByIdAndDeletedAtIsNull(catalogId)).thenReturn(Optional.of(catalog));
+        when(encryptionService.encrypt("secret")).thenReturn("cipher");
+        when(encryptionService.keyId()).thenReturn("default");
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var body = new CreateCourseraRequestBody(catalogId, "user@coursera.org", "secret", "note");
+        service.create(userId, body, null);
+
+        verify(walletService, never()).debit(any(), anyInt(), anyString(), anyString(), any());
+        ArgumentCaptor<CourseraServiceRequestEntity> requestCaptor = ArgumentCaptor.forClass(CourseraServiceRequestEntity.class);
+        verify(requestRepository).save(requestCaptor.capture());
+        CourseraServiceRequestEntity saved = requestCaptor.getValue();
+        assertEquals(0, saved.getTotalPoints());
+        assertNull(saved.getPaymentLedgerId());
+        verify(itemRepository).save(any());
+        verify(credentialRepository).save(any());
+        verify(eventRepository).save(any());
     }
 
     @Test
