@@ -19,6 +19,12 @@ import java.util.UUID;
 
 @Service
 public class OAuthIdentityLinker {
+    // Username generation: base36 encoding of 6-char random suffix gives ~2.1B possibilities
+    private static final long BASE36_MODULO = 2176782336L; // 36^6
+    private static final int USERNAME_BASE_MAX_LENGTH = 60;
+    // Display name truncation limit to fit database column constraint
+    private static final int DISPLAY_NAME_MAX_LENGTH = 120;
+
     private final UserOAuthAccountRepository oauthAccounts;
     private final UserLookupService users;
     private final UserRegistrationService registrations;
@@ -55,8 +61,9 @@ public class OAuthIdentityLinker {
 
         // Case C: new user
         String username = generateUsername(profile.email());
-        String displayName = profile.displayName() != null && !profile.displayName().isBlank()
-                ? profile.displayName().trim().substring(0, Math.min(120, profile.displayName().trim().length()))
+        String trimmed = profile.displayName() != null ? profile.displayName().trim() : "";
+        String displayName = !trimmed.isBlank()
+                ? trimmed.substring(0, Math.min(DISPLAY_NAME_MAX_LENGTH, trimmed.length()))
                 : profile.email().split("@")[0];
 
         RegisterUserCommand command = new RegisterUserCommand(
@@ -77,10 +84,20 @@ public class OAuthIdentityLinker {
     private String generateUsername(String email) {
         String localPart = email.split("@")[0];
         String slugified = localPart.toLowerCase().replaceAll("[^a-z0-9_-]", "");
-        if (slugified.length() > 60) {
-            slugified = slugified.substring(0, 60);
+
+        // Guard: if email local part contained only special chars, use fallback
+        if (slugified.isEmpty()) {
+            slugified = "user";
         }
-        String base36 = Long.toString(System.nanoTime() % 2176782336L, 36);
+
+        if (slugified.length() > USERNAME_BASE_MAX_LENGTH) {
+            slugified = slugified.substring(0, USERNAME_BASE_MAX_LENGTH);
+        }
+
+        // TODO: Username collision risk - 36^6 random suffix provides ~2.1B possibilities,
+        //  but collisions are possible with high user volume. Future: implement retry logic
+        //  with incremental suffix or database unique constraint + conflict handling.
+        String base36 = Long.toString(System.nanoTime() % BASE36_MODULO, 36);
         return slugified + "_" + base36;
     }
 }
