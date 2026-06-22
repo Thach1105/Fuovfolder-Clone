@@ -11,6 +11,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 
@@ -30,7 +31,9 @@ public class OAuthAuthenticationFailureHandler implements AuthenticationFailureH
         String code = determineErrorCode(exception);
         log.warn("OAUTH_LOGIN_FAILURE code={} provider=google", code);
 
-        String redirectUrl = oauth2Properties.errorRedirect() + "?code=" + code;
+        String redirectUrl = UriComponentsBuilder.fromHttpUrl(oauth2Properties.errorRedirect())
+                .queryParam("code", code)
+                .build().toUriString();
         response.sendRedirect(redirectUrl);
     }
 
