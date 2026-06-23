@@ -6,15 +6,11 @@ import com.fuoverflow.auth.config.AuthProperties;
 import com.fuoverflow.auth.config.CookieAuthenticationFilter;
 import com.fuoverflow.auth.config.OAuth2Properties;
 import com.fuoverflow.auth.config.SecurityConfig;
-import com.fuoverflow.auth.exception.OAuthEmailNotVerifiedException;
 import com.fuoverflow.auth.oauth2.GoogleOAuth2UserService;
 import com.fuoverflow.auth.oauth2.OAuthAuthenticationFailureHandler;
 import com.fuoverflow.auth.oauth2.OAuthAuthenticationSuccessHandler;
 import com.fuoverflow.auth.support.TokenGenerator;
 import com.fuoverflow.auth.support.TokenHashing;
-import com.fuoverflow.common.exception.ForbiddenException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -24,17 +20,10 @@ import org.springframework.boot.autoconfigure.thymeleaf.ThymeleafAutoConfigurati
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.web.authentication.AuthenticationFailureHandler;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
 import java.time.Duration;
 
 @SpringBootConfiguration
@@ -51,38 +40,6 @@ import java.time.Duration;
         OAuthAuthenticationFailureHandler.class
 })
 public class OAuth2TestApplication {
-
-    @RestController
-    static class TestOAuthController {
-        private final AuthenticationSuccessHandler successHandler;
-        private final AuthenticationFailureHandler failureHandler;
-
-        TestOAuthController(OAuthAuthenticationSuccessHandler successHandler,
-                            OAuthAuthenticationFailureHandler failureHandler) {
-            this.successHandler = successHandler;
-            this.failureHandler = failureHandler;
-        }
-
-        @GetMapping("/__test/oauth/success")
-        void success(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, jakarta.servlet.ServletException {
-            successHandler.onAuthenticationSuccess(request, response, authentication);
-        }
-
-        @GetMapping("/__test/oauth/failure/email-not-verified")
-        void failureEmailNotVerified(HttpServletRequest request, HttpServletResponse response) throws IOException, jakarta.servlet.ServletException {
-            failureHandler.onAuthenticationFailure(request, response, authException(new OAuthEmailNotVerifiedException("OAuth provider email_verified is false")));
-        }
-
-        @GetMapping("/__test/oauth/failure/user-blocked")
-        void failureUserBlocked(HttpServletRequest request, HttpServletResponse response) throws IOException, jakarta.servlet.ServletException {
-            failureHandler.onAuthenticationFailure(request, response, authException(new ForbiddenException("USER_DISABLED", "User cannot authenticate")));
-        }
-
-        private AuthenticationException authException(RuntimeException cause) {
-            return new AuthenticationException("test-auth-failure", cause) {
-            };
-        }
-    }
 
     @Bean
     @Primary

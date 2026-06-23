@@ -11,33 +11,31 @@ import com.fuoverflow.auth.exception.OAuthEmailNotVerifiedException;
 import com.fuoverflow.common.exception.ForbiddenException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.util.UUID;
 
-import static org.hamcrest.Matchers.containsString;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(classes = OAuth2TestApplication.class)
-@AutoConfigureMockMvc
 @ActiveProfiles("test")
 class OAuth2LoginFlowIT {
 
     @Autowired
-    private MockMvc mockMvc;
+    private OAuthAuthenticationSuccessHandler successHandler;
+
+    @Autowired
+    private OAuthAuthenticationFailureHandler failureHandler;
 
     @MockBean
     private OAuthIdentityLinker identityLinker;
@@ -46,58 +44,66 @@ class OAuth2LoginFlowIT {
     private OAuthSessionIssuer sessionIssuer;
 
     @Test
-    void oauthAuthenticatedRequest_newUser_setsCookiesAndRedirectsWithNewTrue() throws Exception {
+    void success_newUser_setsCookiesAndRedirectsWithNewTrue() throws Exception {
         UUID userId = UUID.randomUUID();
         when(identityLinker.link(any(ProviderProfile.class))).thenReturn(new LinkedIdentity(userId, true, false));
         when(sessionIssuer.issue(eq(userId), any())).thenReturn(bundle());
 
-        mockMvc.perform(get("/__test/oauth/success")
-                        .with(authentication(auth(true))))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(cookie().exists("fuoverflow_at"))
-                .andExpect(cookie().exists("fuoverflow_rt"))
-                .andExpect(header().string("Location", containsString("provider=google")))
-                .andExpect(header().string("Location", containsString("new=true")))
-                .andExpect(header().string("Location", containsString(userId.toString())));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        successHandler.onAuthenticationSuccess(request(), response, auth(true));
+
+        assertThat(response.getStatus()).isEqualTo(302);
+        assertThat(response.getHeaders("Set-Cookie")).anyMatch(v -> v.contains("fuoverflow_at="));
+        assertThat(response.getHeaders("Set-Cookie")).anyMatch(v -> v.contains("fuoverflow_rt="));
+        assertThat(response.getRedirectedUrl()).contains("provider=google", "new=true", userId.toString());
     }
 
     @Test
-    void oauthAuthenticatedRequest_existingUser_setsCookiesAndRedirectsWithNewFalse() throws Exception {
+    void success_existingUser_setsCookiesAndRedirectsWithNewFalse() throws Exception {
         UUID userId = UUID.randomUUID();
         when(identityLinker.link(any(ProviderProfile.class))).thenReturn(new LinkedIdentity(userId, false, false));
         when(sessionIssuer.issue(eq(userId), any())).thenReturn(bundle());
 
-        mockMvc.perform(get("/__test/oauth/success")
-                        .with(authentication(auth(false))))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(cookie().exists("fuoverflow_at"))
-                .andExpect(cookie().exists("fuoverflow_rt"))
-                .andExpect(header().string("Location", containsString("new=false")))
-                .andExpect(header().string("Location", containsString(userId.toString())));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        successHandler.onAuthenticationSuccess(request(), response, auth(false));
+
+        assertThat(response.getStatus()).isEqualTo(302);
+        assertThat(response.getHeaders("Set-Cookie")).anyMatch(v -> v.contains("fuoverflow_at="));
+        assertThat(response.getHeaders("Set-Cookie")).anyMatch(v -> v.contains("fuoverflow_rt="));
+        assertThat(response.getRedirectedUrl()).contains("provider=google", "new=false", userId.toString());
     }
 
     @Test
-    void oauthAuthenticatedRequest_emailNotVerified_redirectsToErrorPage() throws Exception {
-        when(identityLinker.link(any(ProviderProfile.class)))
-                .thenThrow(new OAuthEmailNotVerifiedException("OAuth provider email_verified is false"));
+    void failure_emailNotVerified_redirectsWithStableCode() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        failureHandler.onAuthenticationFailure(
+                request(),
+                response,
+                authException(new OAuthEmailNotVerifiedException("OAuth provider email_verified is false"))
+        );
 
-        mockMvc.perform(get("/__test/oauth/failure/email-not-verified")
-                        .with(authentication(auth(false))))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(header().string("Location", containsString("code=OAUTH_EMAIL_NOT_VERIFIED")));
+        assertThat(response.getStatus()).isEqualTo(302);
+        assertThat(response.getRedirectedUrl()).contains("code=OAUTH_EMAIL_NOT_VERIFIED");
     }
 
     @Test
-    void oauthAuthenticatedRequest_userBlocked_redirectsToErrorPage() throws Exception {
-        UUID userId = UUID.randomUUID();
-        when(identityLinker.link(any(ProviderProfile.class))).thenReturn(new LinkedIdentity(userId, false, false));
-        when(sessionIssuer.issue(eq(userId), any()))
-                .thenThrow(new ForbiddenException("USER_DISABLED", "User cannot authenticate"));
+    void failure_userBlocked_redirectsWithStableCode() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        failureHandler.onAuthenticationFailure(
+                request(),
+                response,
+                authException(new ForbiddenException("USER_DISABLED", "User cannot authenticate"))
+        );
 
-        mockMvc.perform(get("/__test/oauth/failure/user-blocked")
-                        .with(authentication(auth(false))))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(header().string("Location", containsString("code=OAUTH_USER_BLOCKED")));
+        assertThat(response.getStatus()).isEqualTo(302);
+        assertThat(response.getRedirectedUrl()).contains("code=OAUTH_USER_BLOCKED");
+    }
+
+    private MockHttpServletRequest request() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
+        request.addHeader("User-Agent", "JUnit");
+        return request;
     }
 
     private TestingAuthenticationToken auth(boolean isNew) {
@@ -118,6 +124,11 @@ class OAuth2LoginFlowIT {
                         isNew ? "New User" : "Existing User", "https://example.com/avatar.jpg")
         );
         return new TestingAuthenticationToken(principal, null, "ROLE_USER");
+    }
+
+    private AuthenticationException authException(RuntimeException cause) {
+        return new AuthenticationException("test-auth-failure", cause) {
+        };
     }
 
     private AuthService.AuthTokenBundle bundle() {
