@@ -7,7 +7,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
-import { ImageUploader } from "@/components/admin/ImageUploader";
+import { MultiImageUploader } from "@/components/admin/MultiImageUploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,7 +54,7 @@ export default function AdminSourceQuestionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [questionText, setQuestionText] = useState("");
-  const [questionImageUrl, setQuestionImageUrl] = useState<string | null>(null);
+  const [questionImageUrls, setQuestionImageUrls] = useState<string[]>([]);
   const [explanation, setExplanation] = useState("");
   const [options, setOptions] = useState<LocalOption[]>([EMPTY_OPTION(), EMPTY_OPTION()]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -85,7 +85,7 @@ export default function AdminSourceQuestionsPage() {
   function resetForm() {
     setEditingId(null);
     setQuestionText("");
-    setQuestionImageUrl(null);
+    setQuestionImageUrls([]);
     setExplanation("");
     setOptions([EMPTY_OPTION(), EMPTY_OPTION()]);
   }
@@ -93,7 +93,7 @@ export default function AdminSourceQuestionsPage() {
   function startEdit(question: AdminQuestion) {
     setEditingId(question.id);
     setQuestionText(question.questionText ?? "");
-    setQuestionImageUrl(question.questionImageUrl);
+    setQuestionImageUrls(question.questionImageUrls ?? []);
     setExplanation(question.explanation ?? "");
     setOptions(
       question.options.map((o) => ({
@@ -122,7 +122,7 @@ export default function AdminSourceQuestionsPage() {
   function buildBody(): QuestionBody {
     return {
       questionText: questionText.trim() || undefined,
-      questionImageUrl: questionImageUrl ?? undefined,
+      questionImageUrls: questionImageUrls.length > 0 ? questionImageUrls : undefined,
       explanation: explanation.trim() || undefined,
       options: options.map((o, index) => ({
         optionText: o.optionText?.trim() || undefined,
@@ -153,7 +153,7 @@ export default function AdminSourceQuestionsPage() {
       toast.error(msg);
       return;
     }
-    if (!questionText.trim() && !questionImageUrl) {
+    if (!questionText.trim() && questionImageUrls.length === 0) {
       const msg = "Câu hỏi cần có nội dung hoặc ảnh.";
       setError(msg);
       toast.error(msg);
@@ -248,11 +248,11 @@ export default function AdminSourceQuestionsPage() {
                 value={questionText}
                 onChange={(e) => setQuestionText(e.target.value)}
               />
-              <ImageUploader
-                label="Ảnh câu hỏi"
+              <MultiImageUploader
+                label="Anh cau hoi"
                 purpose="source_question"
-                value={questionImageUrl}
-                onChange={setQuestionImageUrl}
+                value={questionImageUrls}
+                onChange={setQuestionImageUrls}
               />
               <Textarea
                 placeholder="Giải thích (hiện sau khi kiểm tra)"
@@ -399,13 +399,20 @@ export default function AdminSourceQuestionsPage() {
 
                     {expanded && (
                       <div className="space-y-4 border-t border-border bg-muted/20 px-4 py-4 pl-10">
-                        {questionImage && (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
-                            src={questionImage}
-                            alt=""
-                            className="max-h-48 rounded-lg border border-border"
-                          />
+                        {q.questionImageUrls && q.questionImageUrls.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2">
+                            {q.questionImageUrls.map((url, idx) => {
+                              const imgUrl = sourceMediaUrl(url);
+                              return (
+                                <img
+                                  key={`${url}-${idx}`}
+                                  src={imgUrl}
+                                  alt={`Anh ${idx + 1}`}
+                                  className="max-h-32 rounded-lg border border-border object-cover"
+                                />
+                              );
+                            })}
+                          </div>
                         )}
                         {q.explanation && (
                           <div>
