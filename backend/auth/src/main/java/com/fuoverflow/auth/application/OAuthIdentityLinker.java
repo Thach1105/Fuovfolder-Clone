@@ -64,7 +64,7 @@ public class OAuthIdentityLinker {
         String trimmed = profile.displayName() != null ? profile.displayName().trim() : "";
         String displayName = !trimmed.isBlank()
                 ? trimmed.substring(0, Math.min(DISPLAY_NAME_MAX_LENGTH, trimmed.length()))
-                : profile.email().split("@")[0];
+                : (profile.email().contains("@") ? profile.email().split("@")[0] : "User");
 
         RegisterUserCommand command = new RegisterUserCommand(
                 profile.email(), username, null, displayName, null, true, UserStatus.PENDING_PROFILE);
@@ -82,7 +82,8 @@ public class OAuthIdentityLinker {
     }
 
     private String generateUsername(String email) {
-        String localPart = email.split("@")[0];
+        // Defensive: handle malformed email without '@' symbol
+        String localPart = email.contains("@") ? email.split("@")[0] : "user";
         String slugified = localPart.toLowerCase().replaceAll("[^a-z0-9_-]", "");
 
         // Guard: if email local part contained only special chars, use fallback

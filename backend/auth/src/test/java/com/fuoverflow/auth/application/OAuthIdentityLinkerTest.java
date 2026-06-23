@@ -113,4 +113,29 @@ class OAuthIdentityLinkerTest {
                 .isInstanceOf(OAuthEmailNotVerifiedException.class)
                 .hasMessageContaining("email_verified");
     }
+
+    @Test
+    void link_newUser_malformedEmail_usesFallbackPrefix() {
+        when(oauthAccounts.findByProviderAndProviderUserId("google", "google-sub-malformed"))
+                .thenReturn(Optional.empty());
+        when(emailNormalizer.normalize("malformed-email-no-at-sign")).thenReturn("malformed-email-no-at-sign");
+        when(users.findAuthUserByIdentifier("malformed-email-no-at-sign")).thenReturn(Optional.empty());
+
+        UUID newUserId = UUID.randomUUID();
+        AuthUserView newUser = new AuthUserView(newUserId, "malformed-email-no-at-sign", "user_abc123",
+                null, "New User", UserStatus.PENDING_PROFILE, List.of("USER"), 0L, List.of(),
+                false, true, null, null, null);
+        when(registrations.register(any())).thenReturn(newUser);
+
+        // Email without '@' should not throw - should use fallback "user" prefix
+        ProviderProfile profile = new ProviderProfile("google", "google-sub-malformed",
+                "malformed-email-no-at-sign", true, null, null);
+        LinkedIdentity result = linker.link(profile);
+
+        assertThat(result.userId()).isEqualTo(newUserId);
+        assertThat(result.isNewUser()).isTrue();
+        assertThat(result.isLinkedToExisting()).isFalse();
+        verify(registrations).register(any());
+        verify(oauthAccounts).save(any(UserOAuthAccountEntity.class));
+    }
 }

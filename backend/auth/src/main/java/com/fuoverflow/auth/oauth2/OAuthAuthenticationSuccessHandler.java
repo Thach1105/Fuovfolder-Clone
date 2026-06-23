@@ -52,7 +52,6 @@ public class OAuthAuthenticationSuccessHandler implements AuthenticationSuccessH
         String redirectUrl = UriComponentsBuilder.fromHttpUrl(oauth2Properties.successRedirect())
                 .queryParam("provider", "google")
                 .queryParam("new", linked.isNewUser())
-                .queryParam("userId", linked.userId())
                 .build().toUriString();
 
         response.sendRedirect(redirectUrl);

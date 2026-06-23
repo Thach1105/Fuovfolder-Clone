@@ -55,7 +55,7 @@ class OAuth2LoginFlowIT {
         assertThat(response.getStatus()).isEqualTo(302);
         assertThat(response.getHeaders("Set-Cookie")).anyMatch(v -> v.contains("fuoverflow_at="));
         assertThat(response.getHeaders("Set-Cookie")).anyMatch(v -> v.contains("fuoverflow_rt="));
-        assertThat(response.getRedirectedUrl()).contains("provider=google", "new=true", userId.toString());
+        assertThat(response.getRedirectedUrl()).contains("provider=google", "new=true");
     }
 
     @Test
@@ -70,7 +70,7 @@ class OAuth2LoginFlowIT {
         assertThat(response.getStatus()).isEqualTo(302);
         assertThat(response.getHeaders("Set-Cookie")).anyMatch(v -> v.contains("fuoverflow_at="));
         assertThat(response.getHeaders("Set-Cookie")).anyMatch(v -> v.contains("fuoverflow_rt="));
-        assertThat(response.getRedirectedUrl()).contains("provider=google", "new=false", userId.toString());
+        assertThat(response.getRedirectedUrl()).contains("provider=google", "new=false");
     }
 
     @Test

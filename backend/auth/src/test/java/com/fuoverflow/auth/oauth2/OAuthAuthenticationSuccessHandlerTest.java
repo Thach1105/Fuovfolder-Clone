@@ -79,7 +79,6 @@ class OAuthAuthenticationSuccessHandlerTest {
         assertThat(redirectUrl).contains("http://localhost:3000/oauth/callback");
         assertThat(redirectUrl).contains("provider=google");
         assertThat(redirectUrl).contains("new=true");
-        assertThat(redirectUrl).contains("userId=" + userId);
     }
 
     @Test
