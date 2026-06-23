@@ -17,14 +17,33 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.fuoverflow.auth.oauth2.GoogleOAuth2UserService;
+import com.fuoverflow.auth.oauth2.OAuthAuthenticationSuccessHandler;
+import com.fuoverflow.auth.oauth2.OAuthAuthenticationFailureHandler;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 @EnableAspectJAutoProxy
 @EnableConfigurationProperties({AuthProperties.class, OAuth2Properties.class})
 public class SecurityConfig {
+    private final CookieAuthenticationFilter cookieAuthenticationFilter;
+    private final GoogleOAuth2UserService googleOAuth2UserService;
+    private final OAuthAuthenticationSuccessHandler oauthSuccessHandler;
+    private final OAuthAuthenticationFailureHandler oauthFailureHandler;
+
+    public SecurityConfig(CookieAuthenticationFilter cookieAuthenticationFilter,
+                         GoogleOAuth2UserService googleOAuth2UserService,
+                         OAuthAuthenticationSuccessHandler oauthSuccessHandler,
+                         OAuthAuthenticationFailureHandler oauthFailureHandler) {
+        this.cookieAuthenticationFilter = cookieAuthenticationFilter;
+        this.googleOAuth2UserService = googleOAuth2UserService;
+        this.oauthSuccessHandler = oauthSuccessHandler;
+        this.oauthFailureHandler = oauthFailureHandler;
+    }
+
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, CookieAuthenticationFilter cookieAuthenticationFilter) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
@@ -40,6 +59,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/password/forgot",
                                 "/api/v1/auth/password/reset",
                                 "/api/v1/auth/introspect",
+                                "/oauth2/authorization/google",
+                                "/login/oauth2/code/google",
                                 "/api/v1/payment/payos/webhook",
                                 "/actuator/health",
                                 "/actuator/health/**"
@@ -60,6 +81,11 @@ public class SecurityConfig {
                         .permitAll()
                         .anyRequest().authenticated()
                 )
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .oidcUserService(googleOAuth2UserService))
+                        .successHandler(oauthSuccessHandler)
+                        .failureHandler(oauthFailureHandler))
                 .addFilterBefore(cookieAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
