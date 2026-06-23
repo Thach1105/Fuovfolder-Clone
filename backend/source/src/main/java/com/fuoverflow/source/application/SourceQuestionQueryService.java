@@ -38,9 +38,13 @@ public class SourceQuestionQueryService {
         SourceCatalogItemEntity item = resolveActive(idOrCode);
         accessGuard.requireActiveAccess(userId, item.getId());
         return questionRepository.findByCatalogItemIdAndDeletedAtIsNullOrderBySortOrderAsc(item.getId()).stream()
-                .map(q -> urlResolver.resolvePublic(SourceQuestionMapper.toPublic(
-                        q,
-                        optionRepository.findByQuestionIdOrderBySortOrderAsc(q.getId()))))
+                .map(q -> {
+                    List<String> questionImageUrls = deserializeImageUrls(q.getQuestionImageUrls());
+                    return urlResolver.resolvePublic(SourceQuestionMapper.toPublic(
+                            q,
+                            questionImageUrls,
+                            optionRepository.findByQuestionIdOrderBySortOrderAsc(q.getId())));
+                })
                 .toList();
     }
 

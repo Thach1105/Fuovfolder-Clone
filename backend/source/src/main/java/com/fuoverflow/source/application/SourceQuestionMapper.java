@@ -15,12 +15,14 @@ public final class SourceQuestionMapper {
 
     public static AdminQuestionResponse toAdmin(
             SourceQuestionEntity question,
+            List<String> questionImageUrls,
             List<SourceQuestionOptionEntity> options) {
         return new AdminQuestionResponse(
                 question.getId(),
                 question.getCatalogItemId(),
                 question.getQuestionText(),
                 question.getQuestionImageUrl(),
+                questionImageUrls,
                 question.getExplanation(),
                 question.isMultipleCorrect(),
                 question.getSortOrder(),
@@ -40,11 +42,13 @@ public final class SourceQuestionMapper {
 
     public static PublicQuestionResponse toPublic(
             SourceQuestionEntity question,
+            List<String> questionImageUrls,
             List<SourceQuestionOptionEntity> options) {
         return new PublicQuestionResponse(
                 question.getId(),
                 question.getQuestionText(),
                 question.getQuestionImageUrl(),
+                questionImageUrls,
                 question.getExplanation(),
                 question.isMultipleCorrect(),
                 question.getSortOrder(),

@@ -30,6 +30,7 @@ public class SourceMediaUrlResolver {
                 response.catalogItemId(),
                 response.questionText(),
                 objectStorage.resolvePublicUrl(response.questionImageUrl()),
+                resolveImageUrls(response.questionImageUrls()),
                 response.explanation(),
                 response.multipleCorrect(),
                 response.sortOrder(),
@@ -43,6 +44,7 @@ public class SourceMediaUrlResolver {
                 response.id(),
                 response.questionText(),
                 objectStorage.resolvePublicUrl(response.questionImageUrl()),
+                resolveImageUrls(response.questionImageUrls()),
                 response.explanation(),
                 response.multipleCorrect(),
                 response.sortOrder(),
@@ -67,6 +69,15 @@ public class SourceMediaUrlResolver {
                         option.optionText(),
                         objectStorage.resolvePublicUrl(option.optionImageUrl()),
                         option.isCorrect()))
+                .toList();
+    }
+
+    private List<String> resolveImageUrls(List<String> imageUrls) {
+        if (imageUrls == null || imageUrls.isEmpty()) {
+            return List.of();
+        }
+        return imageUrls.stream()
+                .map(objectStorage::resolvePublicUrl)
                 .toList();
     }
 }

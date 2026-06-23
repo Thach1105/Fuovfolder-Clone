@@ -1,7 +1,11 @@
 package com.fuoverflow.source.application;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuoverflow.common.exception.BadRequestException;
 import com.fuoverflow.common.exception.NotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fuoverflow.source.api.dto.AdminQuestionResponse;
 import com.fuoverflow.source.api.dto.CreateQuestionRequest;
 import com.fuoverflow.source.api.dto.QuestionOptionRequest;
@@ -25,23 +29,28 @@ import java.util.UUID;
 
 @Service
 public class SourceQuestionAdminService {
+    private static final Logger log = LoggerFactory.getLogger(SourceQuestionAdminService.class);
+
     private final SourceQuestionRepository questionRepository;
     private final SourceQuestionOptionRepository optionRepository;
     private final SourceCatalogItemRepository catalogRepository;
     private final SourceMediaService mediaService;
     private final SourceMediaUrlResolver urlResolver;
+    private final ObjectMapper objectMapper;
 
     public SourceQuestionAdminService(
             SourceQuestionRepository questionRepository,
             SourceQuestionOptionRepository optionRepository,
             SourceCatalogItemRepository catalogRepository,
             SourceMediaService mediaService,
-            SourceMediaUrlResolver urlResolver) {
+            SourceMediaUrlResolver urlResolver,
+            ObjectMapper objectMapper) {
         this.questionRepository = questionRepository;
         this.optionRepository = optionRepository;
         this.catalogRepository = catalogRepository;
         this.mediaService = mediaService;
         this.urlResolver = urlResolver;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional(readOnly = true)
@@ -66,6 +75,9 @@ public class SourceQuestionAdminService {
                 request.questionImageUrl(),
                 request.options());
 
+        String serializedImageUrls = serializeImageUrls(request.questionImageUrls());
+        validateImageCount(request.questionImageUrls());
+
         Instant now = Instant.now();
         int sortOrder = request.sortOrder() != null
                 ? request.sortOrder()
@@ -77,6 +89,7 @@ public class SourceQuestionAdminService {
                 catalogItemId,
                 validated.questionText(),
                 validated.questionImageUrl(),
+                serializedImageUrls,
                 blankToNull(request.explanation()),
                 validated.multipleCorrect(),
                 sortOrder,
@@ -99,6 +112,9 @@ public class SourceQuestionAdminService {
                 request.questionImageUrl(),
                 request.options());
 
+        String serializedImageUrls = serializeImageUrls(request.questionImageUrls());
+        validateImageCount(request.questionImageUrls());
+
         cleanupReplacedImages(
                 question.getQuestionImageUrl(),
                 urlResolver.normalizeForStorage(request.questionImageUrl()),
@@ -108,6 +124,7 @@ public class SourceQuestionAdminService {
         Instant now = Instant.now();
         question.setQuestionText(validated.questionText());
         question.setQuestionImageUrl(validated.questionImageUrl());
+        question.setQuestionImageUrls(serializedImageUrls);
         question.setExplanation(blankToNull(request.explanation()));
         question.setMultipleCorrect(validated.multipleCorrect());
         if (request.sortOrder() != null) {
@@ -264,8 +281,10 @@ public class SourceQuestionAdminService {
     }
 
     private AdminQuestionResponse toAdminResponse(SourceQuestionEntity question) {
+        List<String> questionImageUrls = deserializeImageUrls(question.getQuestionImageUrls());
         return urlResolver.resolveAdmin(SourceQuestionMapper.toAdmin(
                 question,
+                questionImageUrls,
                 optionRepository.findByQuestionIdOrderBySortOrderAsc(question.getId())));
     }
 
@@ -288,5 +307,36 @@ public class SourceQuestionAdminService {
             String optionImageUrl,
             boolean correct,
             Integer sortOrder) {
+    }
+
+    private String serializeImageUrls(List<String> urls) {
+        if (urls == null || urls.isEmpty()) {
+            return "[]";
+        }
+        try {
+            return objectMapper.writeValueAsString(urls);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize image URLs", e);
+            return "[]";
+        }
+    }
+
+    private List<String> deserializeImageUrls(String json) {
+        if (json == null || json.isBlank() || "[]".equals(json)) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(json,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+        } catch (JsonProcessingException e) {
+            log.error("Failed to deserialize image URLs", e);
+            return List.of();
+        }
+    }
+
+    private void validateImageCount(List<String> urls) {
+        if (urls != null && urls.size() > 20) {
+            log.warn("Question has {} images, which exceeds recommended limit of 20", urls.size());
+        }
     }
 }
