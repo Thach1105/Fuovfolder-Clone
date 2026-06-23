@@ -24,6 +24,9 @@ public class SourceQuestionEntity {
     @Column(name = "question_image_url", length = 500)
     private String questionImageUrl;
 
+    @Column(name = "question_image_urls", columnDefinition = "jsonb")
+    private String questionImageUrls; // JSON array string: ["url1", "url2"]
+
     @Column(columnDefinition = "text")
     private String explanation;
 
@@ -50,6 +53,7 @@ public class SourceQuestionEntity {
     public UUID getCatalogItemId() { return catalogItemId; }
     public String getQuestionText() { return questionText; }
     public String getQuestionImageUrl() { return questionImageUrl; }
+    public String getQuestionImageUrls() { return questionImageUrls; }
     public String getExplanation() { return explanation; }
     public boolean isMultipleCorrect() { return multipleCorrect; }
     public int getSortOrder() { return sortOrder; }
@@ -60,6 +64,7 @@ public class SourceQuestionEntity {
 
     public void setQuestionText(String questionText) { this.questionText = questionText; }
     public void setQuestionImageUrl(String questionImageUrl) { this.questionImageUrl = questionImageUrl; }
+    public void setQuestionImageUrls(String questionImageUrls) { this.questionImageUrls = questionImageUrls; }
     public void setExplanation(String explanation) { this.explanation = explanation; }
     public void setMultipleCorrect(boolean multipleCorrect) { this.multipleCorrect = multipleCorrect; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
@@ -71,6 +76,7 @@ public class SourceQuestionEntity {
             UUID catalogItemId,
             String questionText,
             String questionImageUrl,
+            String questionImageUrls,
             String explanation,
             boolean multipleCorrect,
             int sortOrder,
@@ -80,6 +86,7 @@ public class SourceQuestionEntity {
         e.catalogItemId = catalogItemId;
         e.questionText = questionText;
         e.questionImageUrl = questionImageUrl;
+        e.questionImageUrls = questionImageUrls;
         e.explanation = explanation;
         e.multipleCorrect = multipleCorrect;
         e.sortOrder = sortOrder;

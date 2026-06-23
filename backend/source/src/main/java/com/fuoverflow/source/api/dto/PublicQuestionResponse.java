@@ -7,6 +7,7 @@ public record PublicQuestionResponse(
         UUID id,
         String questionText,
         String questionImageUrl,
+        List<String> questionImageUrls,
         String explanation,
         boolean multipleCorrect,
         int sortOrder,

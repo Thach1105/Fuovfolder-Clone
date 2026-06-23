@@ -9,6 +9,7 @@ public record AdminQuestionResponse(
         UUID catalogItemId,
         String questionText,
         String questionImageUrl,
+        List<String> questionImageUrls,
         String explanation,
         boolean multipleCorrect,
         int sortOrder,
