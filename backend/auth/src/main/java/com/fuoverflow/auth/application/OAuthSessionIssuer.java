@@ -37,8 +37,9 @@ public class OAuthSessionIssuer {
         AuthUserView user = users.findAuthUserById(userId)
                 .orElseThrow(() -> new UnauthorizedException("USER_NOT_FOUND", "User not found"));
 
-        // Allow ACTIVE and PENDING_PROFILE for OAuth users
-        if (user.status() == UserStatus.DISABLED || user.status() == UserStatus.DELETED) {
+        // PENDING_PROFILE users authenticate to complete profile bootstrap.
+        // Disabled/DELETED rejection is handled centrally via canAuthenticate().
+        if (!user.status().canAuthenticate()) {
             throw new ForbiddenException("USER_DISABLED", "User cannot authenticate");
         }
 

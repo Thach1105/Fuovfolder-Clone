@@ -139,6 +139,9 @@ public class UserEntity {
         entity.displayName = displayName;
         entity.campus = campus;
         entity.emailVerified = emailVerified;
+        if (emailVerified) {
+            entity.emailVerifiedAt = now;
+        }
         entity.status = status;
         entity.rolesJson = rolesJson(UserRole.USER);
         entity.createdAt = now;

@@ -1,10 +1,10 @@
 -- Add email_verified boolean to users
 alter table users add column email_verified boolean not null default false;
 
--- Extend users.status check constraint to allow pending_profile
+-- Extend users.status check constraint to allow pending_profile (uppercase enum values)
 alter table users drop constraint if exists users_status_check;
 alter table users add constraint users_status_check
-  check (status in ('active','pending','banned','deleted','pending_profile'));
+  check (status in ('PENDING_EMAIL_VERIFICATION','ACTIVE','DISABLED','DELETED','PENDING_PROFILE'));
 
 -- Enrich user_oauth_accounts with profile snapshot
 alter table user_oauth_accounts

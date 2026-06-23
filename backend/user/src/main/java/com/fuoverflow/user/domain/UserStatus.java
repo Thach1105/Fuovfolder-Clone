@@ -8,6 +8,6 @@ public enum UserStatus {
     PENDING_PROFILE;
 
     public boolean canAuthenticate() {
-        return this == ACTIVE;
+        return this == ACTIVE || this == PENDING_PROFILE;
     }
 }
