@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -24,8 +26,9 @@ public class SourceQuestionEntity {
     @Column(name = "question_image_url", length = 500)
     private String questionImageUrl;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "question_image_urls", columnDefinition = "jsonb")
-    private String questionImageUrls; // JSON array string: ["url1", "url2"]
+    private String questionImageUrls;
 
     @Column(columnDefinition = "text")
     private String explanation;
