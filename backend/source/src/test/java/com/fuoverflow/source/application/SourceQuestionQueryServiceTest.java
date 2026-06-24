@@ -1,5 +1,6 @@
 package com.fuoverflow.source.application;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuoverflow.common.exception.ForbiddenException;
 import com.fuoverflow.source.persistence.SourceCatalogItemEntity;
 import com.fuoverflow.source.persistence.SourceCatalogItemRepository;
@@ -31,6 +32,8 @@ class SourceQuestionQueryServiceTest {
     private SourceAccessGuard accessGuard;
     @Mock
     private SourceMediaUrlResolver urlResolver;
+    @Mock
+    private ObjectMapper objectMapper;
 
     private SourceQuestionQueryService queryService;
     private UUID userId;
@@ -43,7 +46,8 @@ class SourceQuestionQueryServiceTest {
                 optionRepository,
                 catalogRepository,
                 accessGuard,
-                urlResolver);
+                urlResolver,
+                objectMapper);
         userId = UUID.randomUUID();
         catalogId = UUID.randomUUID();
     }

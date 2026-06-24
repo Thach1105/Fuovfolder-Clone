@@ -1,5 +1,6 @@
 package com.fuoverflow.source.application;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuoverflow.common.exception.BadRequestException;
 import com.fuoverflow.source.api.dto.CreateQuestionRequest;
 import com.fuoverflow.source.api.dto.QuestionOptionRequest;
@@ -41,6 +42,8 @@ class SourceQuestionAdminServiceTest {
     private SourceMediaService mediaService;
     @Mock
     private SourceMediaUrlResolver urlResolver;
+    @Mock
+    private ObjectMapper objectMapper;
 
     private SourceQuestionAdminService adminService;
     private UUID catalogId;
@@ -52,7 +55,8 @@ class SourceQuestionAdminServiceTest {
                 optionRepository,
                 catalogRepository,
                 mediaService,
-                urlResolver);
+                urlResolver,
+                objectMapper);
         catalogId = UUID.randomUUID();
         lenient().when(urlResolver.normalizeForStorage(any())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(urlResolver.resolveAdmin(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -74,6 +78,7 @@ class SourceQuestionAdminServiceTest {
                             "Q?",
                             null,
                             null,
+                            null,
                             true,
                             0,
                             Instant.now());
@@ -87,6 +92,7 @@ class SourceQuestionAdminServiceTest {
         var response = adminService.create(catalogId, new CreateQuestionRequest(
                 "Q?",
                 null,
+                List.of(),
                 null,
                 null,
                 List.of(
@@ -107,6 +113,7 @@ class SourceQuestionAdminServiceTest {
         assertThrows(BadRequestException.class, () -> adminService.create(catalogId, new CreateQuestionRequest(
                 "Q?",
                 null,
+                List.of(),
                 null,
                 null,
                 List.of(new QuestionOptionRequest("A", null, true, 0)))));
