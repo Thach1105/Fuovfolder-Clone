@@ -31,15 +31,18 @@ public class SecurityConfig {
     private final GoogleOAuth2UserService googleOAuth2UserService;
     private final OAuthAuthenticationSuccessHandler oauthSuccessHandler;
     private final OAuthAuthenticationFailureHandler oauthFailureHandler;
+    private final AuthProperties authProperties;
 
     public SecurityConfig(CookieAuthenticationFilter cookieAuthenticationFilter,
                          GoogleOAuth2UserService googleOAuth2UserService,
                          OAuthAuthenticationSuccessHandler oauthSuccessHandler,
-                         OAuthAuthenticationFailureHandler oauthFailureHandler) {
+                         OAuthAuthenticationFailureHandler oauthFailureHandler,
+                         AuthProperties authProperties) {
         this.cookieAuthenticationFilter = cookieAuthenticationFilter;
         this.googleOAuth2UserService = googleOAuth2UserService;
         this.oauthSuccessHandler = oauthSuccessHandler;
         this.oauthFailureHandler = oauthFailureHandler;
+        this.authProperties = authProperties;
     }
 
     @Bean
@@ -82,6 +85,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(auth -> auth
+                                .authorizationRequestRepository(
+                                        new CookieOAuth2AuthorizationRequestRepository(authProperties)))
                         .userInfoEndpoint(userInfo -> userInfo
                                 .oidcUserService(googleOAuth2UserService))
                         .successHandler(oauthSuccessHandler)
