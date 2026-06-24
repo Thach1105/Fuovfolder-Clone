@@ -11,6 +11,6 @@ spring:
 
 app:
   oauth2:
-    success-redirect: ${OAUTH_SUCCESS_REDIRECT:http://localhost:5173/auth/callback}
-    error-redirect: ${OAUTH_ERROR_REDIRECT:http://localhost:5173/auth/error}
-    frontend-base-url: ${OAUTH_FRONTEND_BASE_URL:http://localhost:5173}
+    success-redirect: ${OAUTH_SUCCESS_REDIRECT:http://localhost:3336/auth/callback}
+    error-redirect: ${OAUTH_ERROR_REDIRECT:http://localhost:3336/auth/error}
+    frontend-base-url: ${OAUTH_FRONTEND_BASE_URL:http://localhost:3336}
