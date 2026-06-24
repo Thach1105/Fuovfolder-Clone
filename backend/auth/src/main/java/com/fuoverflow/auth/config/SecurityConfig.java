@@ -49,6 +49,10 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
+                // CSRF disabled: access token sent via Authorization header or HttpOnly cookie with SameSite=Lax.
+                // SameSite=Lax prevents cross-origin POST requests from sending cookies.
+                // All state-change operations use POST/PUT/DELETE (never GET).
+                // If SameSite is changed to None, CSRF protection MUST be re-enabled.
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex
