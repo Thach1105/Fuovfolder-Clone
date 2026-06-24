@@ -50,7 +50,10 @@ public class OAuthIdentityLinker {
             return new LinkedIdentity(existing.get().getUserId(), false, false);
         }
 
-        // Case B: verified email matches existing user
+        // Case B: verified email matches existing user.
+        // SECURITY: Auto-linking by verified email is safe for Google (Google verifies email ownership).
+        // If adding providers that don't strictly verify email (GitHub private email, Facebook),
+        // require explicit user confirmation before linking to prevent account takeover.
         String normalizedEmail = emailNormalizer.normalize(profile.email());
         var userByEmail = users.findAuthUserByIdentifier(normalizedEmail);
         if (userByEmail.isPresent()) {
