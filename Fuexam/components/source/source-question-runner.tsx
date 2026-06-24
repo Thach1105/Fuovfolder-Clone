@@ -65,7 +65,10 @@ export function SourceQuestionRunner({ questions }: Props) {
   const question = questions[currentIndex];
   const state = answers[question.id] ?? { selected: new Set<string>(), checked: false, correct: false };
   const { selected, checked } = state;
-  const questionImage = sourceMediaUrl(question.questionImageUrl);
+  const questionImages = (question.questionImageUrls && question.questionImageUrls.length > 0)
+    ? question.questionImageUrls.map(sourceMediaUrl).filter(Boolean) as string[]
+    : question.questionImageUrl ? [sourceMediaUrl(question.questionImageUrl)].filter(Boolean) as string[]
+    : [];
   const progress = Math.round(((currentIndex + 1) / total) * 100);
 
   function setState(updater: (prev: AnswerState) => AnswerState) {
@@ -140,9 +143,13 @@ export function SourceQuestionRunner({ questions }: Props) {
       <div className="space-y-3">
         {question.multipleCorrect && <Badge variant="secondary">Nhiều đáp án</Badge>}
         {question.questionText && <p className="text-base font-medium">{question.questionText}</p>}
-        {questionImage && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={questionImage} alt="" className="max-h-64 rounded-xl border border-foreground/10" />
+        {questionImages.length > 0 && (
+          <div className={questionImages.length > 1 ? "grid grid-cols-2 gap-2" : ""}>
+            {questionImages.map((url, idx) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={`${url}-${idx}`} src={url} alt="" className="max-h-64 rounded-xl border border-foreground/10 object-cover" />
+            ))}
+          </div>
         )}
 
         <div className="space-y-2">

@@ -151,6 +151,7 @@ export interface PublicQuestion {
   id: string;
   questionText: string | null;
   questionImageUrl: string | null;
+  questionImageUrls: string[] | null;
   explanation: string | null;
   multipleCorrect: boolean;
   sortOrder: number;
