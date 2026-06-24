@@ -27,6 +27,17 @@ import {
   updateQuestion,
 } from "@/lib/api/source";
 import { ApiError } from "@/lib/api/client";
+import { useDuplicateCheck, type DuplicateResult } from "@/hooks/useDuplicateCheck";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 /** Option with a stable client-side key so React keeps row state aligned on add/remove. */
 type LocalOption = QuestionOptionBody & { _key: string };
@@ -61,6 +72,9 @@ export default function AdminSourceQuestionsPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [duplicateResult, setDuplicateResult] = useState<DuplicateResult | null>(null);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const { checkDuplicates } = useDuplicateCheck(questions);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -161,6 +175,17 @@ export default function AdminSourceQuestionsPage() {
       return;
     }
 
+    const result = checkDuplicates(buildBody(), editingId ?? undefined);
+    if (result.hasDuplicates) {
+      setDuplicateResult(result);
+      setShowDuplicateWarning(true);
+      return;
+    }
+
+    await saveQuestion();
+  }
+
+  async function saveQuestion() {
     setSaving(true);
     try {
       if (editingId) {
@@ -179,6 +204,12 @@ export default function AdminSourceQuestionsPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleForceSubmit() {
+    setShowDuplicateWarning(false);
+    setDuplicateResult(null);
+    await saveQuestion();
   }
 
   async function confirmDelete() {
@@ -479,6 +510,64 @@ export default function AdminSourceQuestionsPage() {
         onConfirm={confirmDelete}
         onOpenChange={(o) => !o && setDeleteId(null)}
       />
+
+      <AlertDialog
+        open={showDuplicateWarning}
+        onOpenChange={(o) => {
+          if (!o) {
+            setShowDuplicateWarning(false);
+            setDuplicateResult(null);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-h-[80vh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Phát hiện nội dung trùng lặp</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                {duplicateResult?.questionMatches.length ? (
+                  <div>
+                    <p className="font-semibold text-foreground">Câu hỏi trùng:</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-5">
+                      {duplicateResult.questionMatches.map((m, i) => {
+                        const idx = questions.findIndex((q) => q.id === m.existingQuestion.id) + 1;
+                        const preview = (m.existingQuestion.questionText ?? "").slice(0, 60);
+                        return (
+                          <li key={i}>
+                            Giống {Math.round(m.similarity * 100)}% với câu #{idx}:
+                            &ldquo;{preview}{(m.existingQuestion.questionText?.length ?? 0) > 60 ? "…" : ""}&rdquo;
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
+                {duplicateResult?.optionMatches.length ? (
+                  <div>
+                    <p className="font-semibold text-foreground">Đáp án trùng:</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-5">
+                      {duplicateResult.optionMatches.map((m, i) => {
+                        const idx = questions.findIndex((q) => q.id === m.existingQuestion.id) + 1;
+                        return (
+                          <li key={i}>
+                            Đáp án &ldquo;{m.newOptionText.slice(0, 40)}&rdquo; giống{" "}
+                            {Math.round(m.similarity * 100)}% với đáp án &ldquo;
+                            {m.existingOptionText.slice(0, 40)}&rdquo; trong câu #{idx}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Quay lại sửa</AlertDialogCancel>
+            <AlertDialogAction onClick={handleForceSubmit}>Vẫn tạo</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminShell>
   );
 }
