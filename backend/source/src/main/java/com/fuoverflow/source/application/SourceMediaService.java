@@ -7,6 +7,7 @@ import com.fuoverflow.material.domain.UploadPurpose;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -24,5 +25,12 @@ public class SourceMediaService {
 
     public void deleteStoredReference(String objectKeyOrLegacyReference) {
         uploadService.deleteByStorageReference(objectKeyOrLegacyReference);
+    }
+
+    public void deleteStoredReferences(List<String> references) {
+        if (references == null) return;
+        for (String ref : references) {
+            deleteStoredReference(ref);
+        }
     }
 }

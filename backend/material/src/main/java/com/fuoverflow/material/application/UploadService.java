@@ -165,7 +165,7 @@ public class UploadService {
 
     private static boolean autoLinkOnUpload(UploadPurpose purpose) {
         return switch (purpose) {
-            case FORUM_IMAGE, SOURCE_QUESTION -> true;
+            case FORUM_IMAGE, SOURCE_QUESTION, SOURCE_COVER -> true;
             default -> false;
         };
     }

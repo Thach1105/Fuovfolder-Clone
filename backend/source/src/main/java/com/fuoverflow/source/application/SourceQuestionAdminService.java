@@ -115,9 +115,12 @@ public class SourceQuestionAdminService {
         String serializedImageUrls = serializeImageUrls(request.questionImageUrls());
         validateImageCount(request.questionImageUrls());
 
+        List<String> oldImageUrls = deserializeImageUrls(question.getQuestionImageUrls());
         cleanupReplacedImages(
                 question.getQuestionImageUrl(),
                 urlResolver.normalizeForStorage(request.questionImageUrl()),
+                oldImageUrls,
+                request.questionImageUrls(),
                 existingOptions,
                 validated.options());
 
@@ -146,6 +149,7 @@ public class SourceQuestionAdminService {
                 optionRepository.findByQuestionIdOrderBySortOrderAsc(questionId);
 
         mediaService.deleteStoredReference(question.getQuestionImageUrl());
+        mediaService.deleteStoredReferences(deserializeImageUrls(question.getQuestionImageUrls()));
         for (SourceQuestionOptionEntity option : options) {
             mediaService.deleteStoredReference(option.getOptionImageUrl());
         }
@@ -261,11 +265,23 @@ public class SourceQuestionAdminService {
     private void cleanupReplacedImages(
             String oldQuestionImage,
             String newQuestionImage,
+            List<String> oldImageUrls,
+            List<String> newImageUrls,
             List<SourceQuestionOptionEntity> oldOptions,
             List<ValidatedOption> newOptions) {
         if (oldQuestionImage != null && !oldQuestionImage.equals(newQuestionImage)) {
             mediaService.deleteStoredReference(oldQuestionImage);
         }
+
+        Set<String> retainedUrls = new HashSet<>(newImageUrls != null ? newImageUrls : List.of());
+        if (oldImageUrls != null) {
+            for (String oldUrl : oldImageUrls) {
+                if (oldUrl != null && !retainedUrls.contains(oldUrl)) {
+                    mediaService.deleteStoredReference(oldUrl);
+                }
+            }
+        }
+
         Set<String> retainedOptionImages = new HashSet<>();
         for (ValidatedOption option : newOptions) {
             if (option.optionImageUrl() != null) {

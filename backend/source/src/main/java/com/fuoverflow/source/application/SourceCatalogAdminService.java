@@ -23,12 +23,15 @@ public class SourceCatalogAdminService {
 
     private final SourceCatalogItemRepository catalogRepository;
     private final SourceRelatedItemRepository relatedRepository;
+    private final SourceMediaService mediaService;
 
     public SourceCatalogAdminService(
             SourceCatalogItemRepository catalogRepository,
-            SourceRelatedItemRepository relatedRepository) {
+            SourceRelatedItemRepository relatedRepository,
+            SourceMediaService mediaService) {
         this.catalogRepository = catalogRepository;
         this.relatedRepository = relatedRepository;
+        this.mediaService = mediaService;
     }
 
     @Transactional(readOnly = true)
@@ -103,7 +106,12 @@ public class SourceCatalogAdminService {
             entity.setCardColor(request.cardColor());
         }
         if (request.coverImageUrl() != null) {
-            entity.setCoverImageUrl(blankToNull(request.coverImageUrl()));
+            String oldCover = entity.getCoverImageUrl();
+            String newCover = blankToNull(request.coverImageUrl());
+            if (oldCover != null && !oldCover.equals(newCover)) {
+                mediaService.deleteStoredReference(oldCover);
+            }
+            entity.setCoverImageUrl(newCover);
         }
         if (request.categorySlug() != null) {
             entity.setCategorySlug(request.categorySlug());
@@ -124,6 +132,7 @@ public class SourceCatalogAdminService {
     @Transactional
     public void delete(UUID id) {
         SourceCatalogItemEntity entity = requireItem(id);
+        mediaService.deleteStoredReference(entity.getCoverImageUrl());
         Instant now = Instant.now();
         entity.setDeletedAt(now);
         entity.setActive(false);
