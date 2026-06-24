@@ -12,6 +12,8 @@ RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN mkdir -p public
+ARG NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL
+ENV NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL=$NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 

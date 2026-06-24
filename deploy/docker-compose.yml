@@ -131,6 +131,8 @@ services:
     build:
       context: ../Fuexam-admin
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL: ${FUEXAM_ADMIN_NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL:-${FUEXAM_NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL:-}}
     image: fuoverflow-fuexam-admin:latest
     container_name: fuoverflow-fuexam-admin
     restart: unless-stopped
