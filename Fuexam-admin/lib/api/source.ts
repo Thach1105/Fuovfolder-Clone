@@ -133,6 +133,7 @@ export interface AdminQuestion {
   catalogItemId: string;
   questionText: string | null;
   questionImageUrl: string | null;
+  questionImageUrls: string[] | null;
   explanation: string | null;
   multipleCorrect: boolean;
   sortOrder: number;
@@ -168,6 +169,7 @@ export interface QuestionOptionBody {
 export interface QuestionBody {
   questionText?: string;
   questionImageUrl?: string;
+  questionImageUrls?: string[];
   explanation?: string;
   sortOrder?: number;
   options: QuestionOptionBody[];

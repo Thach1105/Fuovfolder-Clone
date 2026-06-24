@@ -7,6 +7,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { ImageUploader } from "@/components/admin/ImageUploader";
 import { MultiImageUploader } from "@/components/admin/MultiImageUploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -406,7 +407,7 @@ export default function AdminSourceQuestionsPage() {
                               return (
                                 <img
                                   key={`${url}-${idx}`}
-                                  src={imgUrl}
+                                  src={imgUrl ?? undefined}
                                   alt={`Anh ${idx + 1}`}
                                   className="max-h-32 rounded-lg border border-border object-cover"
                                 />

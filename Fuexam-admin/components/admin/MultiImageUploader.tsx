@@ -124,7 +124,7 @@ export function MultiImageUploader({
                 </div>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={previewUrl}
+                  src={previewUrl ?? undefined}
                   alt={`Anh ${index + 1}`}
                   className="h-24 w-full rounded-lg object-cover"
                 />
