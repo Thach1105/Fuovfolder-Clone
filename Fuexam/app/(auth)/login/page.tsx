@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/PasswordInput";
-import { ApiError } from "@/lib/api/client";
+import { API_BASE, ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { GoogleIcon } from "@/components/icons/GoogleIcon";
 
 function LoginInner() {
   const router = useRouter();
@@ -44,7 +45,27 @@ function LoginInner() {
       </div>
 
       <div className="rounded-2xl border border-foreground/10 bg-background/70 p-6 shadow-lg backdrop-blur-xl sm:p-8">
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-5">
+          <button
+            type="button"
+            onClick={() => {
+              if (nextPath) sessionStorage.setItem("oauth_next", nextPath);
+              window.location.href = `${API_BASE}/oauth2/authorization/google`;
+            }}
+            className="flex h-11 w-full items-center justify-center gap-3 rounded-full border border-foreground/15 bg-background text-sm font-medium transition-colors hover:bg-foreground/5"
+          >
+            <GoogleIcon className="size-5" />
+            Đăng nhập bằng Google
+          </button>
+
+          <div className="flex items-center gap-4">
+            <div className="h-px flex-1 bg-foreground/10" />
+            <span className="text-xs text-foreground/40">hoặc</span>
+            <div className="h-px flex-1 bg-foreground/10" />
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-5 space-y-5">
           {error && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {error}
