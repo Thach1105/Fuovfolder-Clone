@@ -33,6 +33,22 @@ public class OAuthAuthenticationSuccessHandler implements AuthenticationSuccessH
         this.sessionIssuer = sessionIssuer;
         this.cookieService = cookieService;
         this.oauth2Properties = oauth2Properties;
+        validateRedirectUrls(oauth2Properties);
+    }
+
+    private static void validateRedirectUrls(OAuth2Properties props) {
+        String base = props.frontendBaseUrl();
+        if (base == null || base.isBlank()) {
+            throw new IllegalStateException("app.oauth2.frontend-base-url must be set");
+        }
+        if (!props.successRedirect().startsWith(base)) {
+            throw new IllegalStateException(
+                    "app.oauth2.success-redirect must start with frontend-base-url: " + base);
+        }
+        if (!props.errorRedirect().startsWith(base)) {
+            throw new IllegalStateException(
+                    "app.oauth2.error-redirect must start with frontend-base-url: " + base);
+        }
     }
 
     @Override

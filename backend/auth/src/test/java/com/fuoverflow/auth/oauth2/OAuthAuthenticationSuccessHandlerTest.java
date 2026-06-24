@@ -45,10 +45,12 @@ class OAuthAuthenticationSuccessHandlerTest {
 
     @BeforeEach
     void setUp() {
+        when(oauth2Properties.successRedirect()).thenReturn("http://localhost:3000/oauth/callback");
+        when(oauth2Properties.errorRedirect()).thenReturn("http://localhost:3000/oauth/error");
+        when(oauth2Properties.frontendBaseUrl()).thenReturn("http://localhost:3000");
         handler = new OAuthAuthenticationSuccessHandler(identityLinker, sessionIssuer, cookieService, oauth2Properties);
         when(request.getRemoteAddr()).thenReturn("127.0.0.1");
         when(request.getHeader("User-Agent")).thenReturn("Test Browser");
-        when(oauth2Properties.successRedirect()).thenReturn("http://localhost:3000/oauth/callback");
     }
 
     @Test
