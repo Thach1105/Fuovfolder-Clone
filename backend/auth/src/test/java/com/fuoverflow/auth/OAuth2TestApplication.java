@@ -12,6 +12,7 @@ import com.fuoverflow.auth.oauth2.OAuthAuthenticationSuccessHandler;
 import com.fuoverflow.auth.support.TokenGenerator;
 import com.fuoverflow.auth.support.TokenHashing;
 import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
@@ -69,7 +70,7 @@ public class OAuth2TestApplication {
                 Duration.ofDays(30),
                 "test-pepper",
                 new AuthProperties.Cookie(false, "Lax", "fuoverflow_at", "fuoverflow_rt"),
-                new AuthProperties.Jwt("test-key"),
+                new AuthProperties.Jwt("test-key", "classpath:keys/test-private.pem", "classpath:keys/test-public.pem"),
                 new AuthProperties.EmailVerification(false, null, null, null),
                 new AuthProperties.PasswordReset(false, null, null, null, Duration.ofHours(1))
         );
@@ -87,9 +88,9 @@ public class OAuth2TestApplication {
 
     @Bean
     @Primary
-    JwtService jwtService() {
+    JwtService jwtService(ResourceLoader resourceLoader) {
         try {
-            return new JwtService(authProperties(), new TokenGenerator(), new TokenHashing(authProperties()));
+            return new JwtService(authProperties(), new TokenGenerator(), new TokenHashing(authProperties()), resourceLoader);
         } catch (Exception exception) {
             throw new IllegalStateException("Failed to create test JwtService", exception);
         }
@@ -103,7 +104,7 @@ public class OAuth2TestApplication {
 
     @Bean
     @Primary
-    CookieAuthenticationFilter cookieAuthenticationFilter() {
-        return new CookieAuthenticationFilter(authProperties(), jwtService());
+    CookieAuthenticationFilter cookieAuthenticationFilter(JwtService jwtService) {
+        return new CookieAuthenticationFilter(authProperties(), jwtService);
     }
 }

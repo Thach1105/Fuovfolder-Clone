@@ -134,6 +134,8 @@ auth:
     refresh-name: ${AUTH_REFRESH_COOKIE_NAME:fuoverflow_rt}
   jwt:
     key-id: ${AUTH_JWT_KEY_ID:local-dev-key-1}
+    private-key-location: ${AUTH_JWT_PRIVATE_KEY:classpath:keys/dev-private.pem}
+    public-key-location: ${AUTH_JWT_PUBLIC_KEY:classpath:keys/dev-public.pem}
 payos:
   client-id: ${PAYOS_CLIENT_ID:}
   api-key: ${PAYOS_API_KEY:}

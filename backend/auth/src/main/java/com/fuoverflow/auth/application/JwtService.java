@@ -9,6 +9,8 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import org.springframework.core.io.ResourceLoader;
+import org.springframework.security.converter.RsaKeyConverters;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -19,10 +21,11 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.stereotype.Service;
 
-import java.security.KeyPairGenerator;
+import java.io.InputStream;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -33,20 +36,27 @@ public class JwtService {
     private final JwtEncoder encoder;
     private final JwtDecoder decoder;
 
-    public JwtService(AuthProperties properties, TokenGenerator generator, TokenHashing hashing) throws Exception {
+    public JwtService(AuthProperties properties, TokenGenerator generator, TokenHashing hashing,
+                      ResourceLoader resourceLoader) throws Exception {
         this.properties = properties;
         this.generator = generator;
         this.hashing = hashing;
-        var keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-        keyPairGenerator.initialize(2048);
-        var keyPair = keyPairGenerator.generateKeyPair();
-        var rsaKey = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-                .privateKey((RSAPrivateKey) keyPair.getPrivate())
+
+        RSAPublicKey publicKey;
+        RSAPrivateKey privateKey;
+        try (InputStream pubStream = resourceLoader.getResource(properties.jwt().publicKeyLocation()).getInputStream();
+             InputStream privStream = resourceLoader.getResource(properties.jwt().privateKeyLocation()).getInputStream()) {
+            publicKey = RsaKeyConverters.x509().convert(pubStream);
+            privateKey = RsaKeyConverters.pkcs8().convert(privStream);
+        }
+
+        RSAKey rsaKey = new RSAKey.Builder(publicKey)
+                .privateKey(privateKey)
                 .keyID(properties.jwt().keyId())
                 .build();
         JWKSource<SecurityContext> jwkSource = new ImmutableJWKSet<>(new com.nimbusds.jose.jwk.JWKSet(rsaKey));
         this.encoder = new NimbusJwtEncoder(jwkSource);
-        this.decoder = NimbusJwtDecoder.withPublicKey((RSAPublicKey) keyPair.getPublic()).build();
+        this.decoder = NimbusJwtDecoder.withPublicKey(publicKey).build();
     }
 
     public TokenPair generate(AuthUserView user, UUID sessionId, Instant now) {
@@ -56,7 +66,7 @@ public class JwtService {
         Instant refreshExpiresAt = now.plus(properties.refreshTokenTtl());
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer(properties.issuer())
-                .audience(java.util.List.of(properties.audience()))
+                .audience(List.of(properties.audience()))
                 .subject(user.id().toString())
                 .issuedAt(now)
                 .notBefore(now)

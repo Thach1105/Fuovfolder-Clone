@@ -17,7 +17,7 @@ public record AuthProperties(
         PasswordReset passwordReset
 ) {
     public record Cookie(boolean secure, String sameSite, String accessName, String refreshName) {}
-    public record Jwt(String keyId) {}
+    public record Jwt(String keyId, String privateKeyLocation, String publicKeyLocation) {}
     public record EmailVerification(boolean enabled, String from, String verificationUrlBase, String subject) {}
     public record PasswordReset(boolean enabled, String from, String resetUrlBase, String subject, Duration tokenTtl) {}
 }
