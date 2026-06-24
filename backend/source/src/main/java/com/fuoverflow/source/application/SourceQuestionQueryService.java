@@ -1,5 +1,7 @@
 package com.fuoverflow.source.application;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.source.api.dto.PublicQuestionResponse;
 import com.fuoverflow.source.persistence.SourceCatalogItemEntity;
@@ -19,18 +21,21 @@ public class SourceQuestionQueryService {
     private final SourceCatalogItemRepository catalogRepository;
     private final SourceAccessGuard accessGuard;
     private final SourceMediaUrlResolver urlResolver;
+    private final ObjectMapper objectMapper;
 
     public SourceQuestionQueryService(
             SourceQuestionRepository questionRepository,
             SourceQuestionOptionRepository optionRepository,
             SourceCatalogItemRepository catalogRepository,
             SourceAccessGuard accessGuard,
-            SourceMediaUrlResolver urlResolver) {
+            SourceMediaUrlResolver urlResolver,
+            ObjectMapper objectMapper) {
         this.questionRepository = questionRepository;
         this.optionRepository = optionRepository;
         this.catalogRepository = catalogRepository;
         this.accessGuard = accessGuard;
         this.urlResolver = urlResolver;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional(readOnly = true)
@@ -62,6 +67,18 @@ public class SourceQuestionQueryService {
             return java.util.Optional.of(UUID.fromString(value.trim()));
         } catch (IllegalArgumentException ex) {
             return java.util.Optional.empty();
+        }
+    }
+
+    private List<String> deserializeImageUrls(String json) {
+        if (json == null || json.isBlank() || "[]".equals(json)) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(json,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+        } catch (JsonProcessingException e) {
+            return List.of();
         }
     }
 }
