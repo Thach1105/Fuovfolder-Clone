@@ -19,9 +19,9 @@ import java.util.UUID;
 
 @Service
 public class OAuthIdentityLinker {
-    // Username generation: base36 encoding of 6-char random suffix gives ~2.1B possibilities
-    private static final long BASE36_MODULO = 2176782336L; // 36^6
     private static final int USERNAME_BASE_MAX_LENGTH = 60;
+    private static final int USERNAME_SUFFIX_LENGTH = 6;
+    private static final java.security.SecureRandom SECURE_RANDOM = new java.security.SecureRandom();
     // Display name truncation limit to fit database column constraint
     private static final int DISPLAY_NAME_MAX_LENGTH = 120;
 
@@ -98,10 +98,11 @@ public class OAuthIdentityLinker {
             slugified = slugified.substring(0, USERNAME_BASE_MAX_LENGTH);
         }
 
-        // TODO: Username collision risk - 36^6 random suffix provides ~2.1B possibilities,
-        //  but collisions are possible with high user volume. Future: implement retry logic
-        //  with incremental suffix or database unique constraint + conflict handling.
-        String base36 = Long.toString(System.nanoTime() % BASE36_MODULO, 36);
-        return slugified + "_" + base36;
+        byte[] bytes = new byte[4];
+        SECURE_RANDOM.nextBytes(bytes);
+        String suffix = Integer.toUnsignedString(
+                ((bytes[0] & 0xFF) << 24) | ((bytes[1] & 0xFF) << 16) |
+                ((bytes[2] & 0xFF) << 8) | (bytes[3] & 0xFF), 36);
+        return slugified + "_" + suffix;
     }
 }
