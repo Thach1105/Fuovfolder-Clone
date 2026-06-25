@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { AlertTriangle, MailCheck } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import * as authApi from "@/lib/api/auth";
 
@@ -18,9 +19,7 @@ function VerifyEmailContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
+    if (!token) return;
 
     const verifyToken = token;
     let cancelled = false;
@@ -30,20 +29,12 @@ function VerifyEmailContent() {
       setError(null);
       try {
         const user = await authApi.verifyEmail(verifyToken);
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
         setDisplayName(user.displayName);
         setState("success");
       } catch (err) {
-        if (cancelled) {
-          return;
-        }
-        if (err instanceof ApiError) {
-          setError(err.message);
-        } else {
-          setError("Xác minh thất bại. Liên kết có thể đã hết hạn hoặc không hợp lệ.");
-        }
+        if (cancelled) return;
+        setError(err instanceof ApiError ? err.message : "Xác minh thất bại. Liên kết có thể đã hết hạn hoặc không hợp lệ.");
         setState("error");
       }
     }
@@ -68,8 +59,7 @@ function VerifyEmailContent() {
     return (
       <div className="space-y-5 text-center">
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Email đã được xác minh thành công
-          {displayName ? ` cho ${displayName}` : ""}. Bạn có thể đăng nhập ngay.
+          Email đã được xác minh thành công{displayName ? ` cho ${displayName}` : ""}. Bạn có thể đăng nhập ngay.
         </div>
         <Link href="/login" className="btn-primary inline-block w-full">
           Đăng nhập
@@ -97,13 +87,30 @@ function VerifyEmailContent() {
   if (sent) {
     return (
       <div className="space-y-4 text-center">
-        <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-          Chúng tôi đã gửi email xác minh đến hộp thư của bạn. Nhấn vào liên kết trong email để kích hoạt tài
-          khoản.
+        <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-4 text-left text-sm text-sky-900">
+          <div className="flex gap-3">
+            <MailCheck className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
+            <div>
+              <p className="font-semibold">Email xác thực đã được gửi.</p>
+              <p className="mt-1 text-sky-800/80">
+                Mở hộp thư email bạn vừa đăng ký, rồi bấm vào liên kết xác thực để kích hoạt tài khoản.
+              </p>
+            </div>
+          </div>
         </div>
-        <p className="text-sm text-slate-500">
-          Không thấy email? Kiểm tra thư mục spam hoặc đợi vài phút rồi thử lại.
-        </p>
+
+        <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-4 text-left text-sm text-amber-950 shadow-sm">
+          <div className="flex gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <p className="font-bold uppercase tracking-wide">Quan trọng: kiểm tra Spam / Junk</p>
+              <p className="mt-1">
+                Nếu không thấy email trong hộp thư chính, hãy mở thư mục <span className="font-bold">Spam</span>, <span className="font-bold">Junk</span> hoặc <span className="font-bold">Quảng cáo</span>. Email có thể mất vài phút để tới.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <Link href="/login" className="font-medium text-fuo-600 hover:underline">
           Về trang đăng nhập
         </Link>
@@ -114,9 +121,11 @@ function VerifyEmailContent() {
   return (
     <div className="space-y-4 text-center">
       <p className="text-sm text-slate-600">
-        Mở liên kết xác minh trong email để kích hoạt tài khoản. Trang này sẽ tự động xác minh khi bạn nhấn vào
-        liên kết.
+        Mở liên kết xác minh trong email để kích hoạt tài khoản. Trang này sẽ tự động xác minh khi bạn bấm vào liên kết.
       </p>
+      <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        Không thấy email? Kiểm tra thư mục <strong>Spam / Junk</strong> trước khi thử lại.
+      </div>
       <Link href="/login" className="font-medium text-fuo-600 hover:underline">
         Về trang đăng nhập
       </Link>

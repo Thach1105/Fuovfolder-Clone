@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
 import { getPaymentStatus, type PaymentStatusResponse } from "@/lib/api/payment";
+import { requestPointsBalanceRefresh } from "@/lib/api/points";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 function SuccessInner() {
@@ -32,6 +33,7 @@ function SuccessInner() {
           }
           if (data.status === "paid" && !refreshedAfterPaid.current) {
             refreshedAfterPaid.current = true;
+            requestPointsBalanceRefresh();
             void refreshUser();
           }
           setLoading(false);
@@ -42,7 +44,7 @@ function SuccessInner() {
         });
     };
     poll();
-  }, [orderCode]);
+  }, [orderCode, refreshUser]);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-4 py-12">
@@ -62,7 +64,7 @@ function SuccessInner() {
       {!loading && status && status.status === "paid" && (
         <div className="w-full text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-3xl">
-            ✅
+            ✓
           </div>
           <h1 className="mb-2 text-2xl font-bold text-slate-100">Thanh toán thành công</h1>
           <p className="mb-1 text-sm text-slate-400">
@@ -83,11 +85,11 @@ function SuccessInner() {
       {!loading && status && status.status === "failed" && (
         <div className="w-full text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-3xl">
-            ❌
+            ×
           </div>
           <h1 className="mb-2 text-2xl font-bold text-slate-100">Thanh toán thất bại</h1>
           <Link
-            href="/"
+            href="/deposit"
             className="mt-4 inline-block rounded-lg bg-slate-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-slate-600"
           >
             Thử lại

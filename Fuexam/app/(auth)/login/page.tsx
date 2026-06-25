@@ -6,6 +6,7 @@ import { type FormEvent, Suspense, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
@@ -25,8 +26,7 @@ function LoginInner() {
     setSubmitting(true);
     try {
       await login({ identifier, password });
-      const destination =
-        nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/suoc";
+      const destination = nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/suoc";
       router.push(destination);
       router.refresh();
     } catch (err) {
@@ -69,9 +69,8 @@ function LoginInner() {
                 Quên mật khẩu?
               </Link>
             </div>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               required
               autoComplete="current-password"
               value={password}

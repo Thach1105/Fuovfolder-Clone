@@ -21,6 +21,13 @@ export interface PointsLedgerPage {
   totalPages: number;
 }
 
+export const POINTS_BALANCE_REFRESH_EVENT = "fuexam:points-refresh";
+
+export function requestPointsBalanceRefresh() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(POINTS_BALANCE_REFRESH_EVENT));
+}
+
 export function getPointsBalance() {
   return apiFetch<PointsBalance>("/api/v1/me/points/balance");
 }

@@ -2,41 +2,115 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 import { ApiError } from "@/lib/api/client";
+import { FPT_CAMPUSES } from "@/lib/fpt-campuses";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { cn } from "@/lib/utils";
+
+type RegisterFormState = {
+  email: string;
+  username: string;
+  password: string;
+  confirmPassword: string;
+  campus: string;
+  displayName: string;
+};
+
+type FieldName = keyof RegisterFormState;
+type FieldErrors = Partial<Record<FieldName, string>>;
+
+const USERNAME_PATTERN = /^[a-z0-9_]+$/;
+
+function validate(form: RegisterFormState): FieldErrors {
+  const errors: FieldErrors = {};
+  const email = form.email.trim();
+  const username = form.username.trim();
+  const displayName = form.displayName.trim();
+
+  if (!email) errors.email = "Nhập email của bạn.";
+  else if (!/^\S+@\S+\.\S+$/.test(email)) errors.email = "Email chưa đúng định dạng. Ví dụ: name@domain.com.";
+
+  if (!username) errors.username = "Nhập tên đăng nhập.";
+  else if (username.length < 3) errors.username = "Tên đăng nhập cần ít nhất 3 ký tự.";
+  else if (username.length > 32) errors.username = "Tên đăng nhập tối đa 32 ký tự.";
+  else if (username !== username.toLowerCase()) errors.username = "Tên đăng nhập chỉ dùng chữ thường, viết liền, không dấu.";
+  else if (!USERNAME_PATTERN.test(username)) {
+    errors.username = "Tên đăng nhập viết liền, không dấu; chỉ dùng a-z, 0-9 và dấu gạch dưới (_).";
+  }
+
+  if (!form.password) errors.password = "Nhập mật khẩu.";
+  else if (form.password.length < 8) errors.password = "Mật khẩu cần ít nhất 8 ký tự.";
+  else if (/^\s+$/.test(form.password)) errors.password = "Mật khẩu không được chỉ gồm khoảng trắng.";
+
+  if (!form.confirmPassword) errors.confirmPassword = "Nhập lại mật khẩu để xác nhận.";
+  else if (form.confirmPassword !== form.password) errors.confirmPassword = "Mật khẩu nhập lại chưa khớp.";
+
+  if (!form.campus) errors.campus = "Chọn campus của bạn.";
+
+  if (!displayName) errors.displayName = "Nhập tên hiển thị.";
+  else if (displayName.length < 2) errors.displayName = "Tên hiển thị cần ít nhất 2 ký tự.";
+  else if (displayName.length > 80) errors.displayName = "Tên hiển thị tối đa 80 ký tự.";
+
+  return errors;
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="text-xs font-medium text-destructive">{message}</p>;
+}
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuth();
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<RegisterFormState>({
     email: "",
     username: "",
     password: "",
-    displayName: "",
+    confirmPassword: "",
     campus: "",
+    displayName: "",
   });
+  const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>({});
+  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  function update(field: keyof typeof form, value: string) {
+  const errors = useMemo(() => validate(form), [form]);
+
+  function visibleError(field: FieldName) {
+    return touched[field] || submitted ? errors[field] : undefined;
+  }
+
+  function update(field: FieldName, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  }
+
+  function markTouched(field: FieldName) {
+    setTouched((prev) => ({ ...prev, [field]: true }));
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setSubmitted(true);
     setError(null);
+
+    const nextErrors = validate(form);
+    if (Object.keys(nextErrors).length > 0) return;
+
     setSubmitting(true);
     try {
       await register({
-        email: form.email,
-        username: form.username,
+        email: form.email.trim(),
+        username: form.username.trim(),
         password: form.password,
-        displayName: form.displayName,
-        campus: form.campus || undefined,
+        displayName: form.displayName.trim(),
+        campus: form.campus,
       });
       router.push("/verify-email?sent=1");
     } catch (err) {
@@ -46,15 +120,18 @@ export default function RegisterPage() {
     }
   }
 
+  const fieldClass = (field: FieldName) => cn(visibleError(field) && "border-destructive focus-visible:ring-destructive/20");
+
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-lg">
       <div className="mb-8 space-y-2 text-center">
         <p className="app-eyebrow">Tham gia cộng đồng</p>
         <h1 className="font-display text-4xl leading-tight">Tạo tài khoản</h1>
+        <p className="text-sm text-muted-foreground">Điền đúng thông tin để nhận email xác thực và kích hoạt tài khoản.</p>
       </div>
 
       <div className="rounded-2xl border border-foreground/10 bg-background/70 p-6 shadow-lg backdrop-blur-xl sm:p-8">
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {error && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {error}
@@ -63,28 +140,101 @@ export default function RegisterPage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" required autoComplete="email" value={form.email} onChange={(e) => update("email", e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="username">Tên đăng nhập</Label>
-              <Input id="username" required minLength={3} maxLength={64} autoComplete="username" value={form.username} onChange={(e) => update("username", e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="displayName">Tên hiển thị</Label>
-              <Input id="displayName" required value={form.displayName} onChange={(e) => update("displayName", e.target.value)} />
-            </div>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={form.email}
+              onBlur={() => markTouched("email")}
+              onChange={(e) => update("email", e.target.value)}
+              aria-invalid={Boolean(visibleError("email"))}
+              className={fieldClass("email")}
+              placeholder="name@domain.com"
+            />
+            <FieldError message={visibleError("email")} />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="campus">Campus (tuỳ chọn)</Label>
-            <Input id="campus" value={form.campus} onChange={(e) => update("campus", e.target.value)} />
+            <Label htmlFor="username">Tên đăng nhập</Label>
+            <Input
+              id="username"
+              autoComplete="username"
+              value={form.username}
+              onBlur={() => markTouched("username")}
+              onChange={(e) => update("username", e.target.value)}
+              aria-invalid={Boolean(visibleError("username"))}
+              className={fieldClass("username")}
+              placeholder="nguyen_van_a"
+            />
+            <p className="text-xs text-muted-foreground">Viết liền, không dấu. Chỉ dùng chữ thường a-z, số 0-9 và dấu gạch dưới.</p>
+            <FieldError message={visibleError("username")} />
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="password">Mật khẩu</Label>
-            <Input id="password" type="password" required minLength={8} autoComplete="new-password" value={form.password} onChange={(e) => update("password", e.target.value)} />
+            <PasswordInput
+              id="password"
+              minLength={8}
+              autoComplete="new-password"
+              value={form.password}
+              onBlur={() => markTouched("password")}
+              onChange={(e) => update("password", e.target.value)}
+              aria-invalid={Boolean(visibleError("password"))}
+              className={fieldClass("password")}
+            />
+            <p className="text-xs text-muted-foreground">Ít nhất 8 ký tự. Bấm biểu tượng mắt để xem mật khẩu.</p>
+            <FieldError message={visibleError("password")} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="confirmPassword">Nhập lại mật khẩu</Label>
+            <PasswordInput
+              id="confirmPassword"
+              minLength={8}
+              autoComplete="new-password"
+              value={form.confirmPassword}
+              onBlur={() => markTouched("confirmPassword")}
+              onChange={(e) => update("confirmPassword", e.target.value)}
+              aria-invalid={Boolean(visibleError("confirmPassword"))}
+              className={fieldClass("confirmPassword")}
+            />
+            <FieldError message={visibleError("confirmPassword")} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="campus">Campus</Label>
+            <select
+              id="campus"
+              value={form.campus}
+              onBlur={() => markTouched("campus")}
+              onChange={(e) => update("campus", e.target.value)}
+              aria-invalid={Boolean(visibleError("campus"))}
+              className={cn(
+                "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+                fieldClass("campus"),
+              )}
+            >
+              <option value="">Chọn campus</option>
+              {FPT_CAMPUSES.map((campus) => (
+                <option key={campus} value={campus}>{campus}</option>
+              ))}
+            </select>
+            <FieldError message={visibleError("campus")} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="displayName">Tên hiển thị</Label>
+            <Input
+              id="displayName"
+              value={form.displayName}
+              onBlur={() => markTouched("displayName")}
+              onChange={(e) => update("displayName", e.target.value)}
+              aria-invalid={Boolean(visibleError("displayName"))}
+              className={fieldClass("displayName")}
+              placeholder="Nguyễn Văn A"
+            />
+            <p className="text-xs text-muted-foreground">Tên này hiển thị trên diễn đàn và hồ sơ.</p>
+            <FieldError message={visibleError("displayName")} />
           </div>
 
           <Button type="submit" disabled={submitting} className="h-11 w-full rounded-full bg-foreground text-background hover:bg-foreground/90">
