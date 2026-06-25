@@ -135,7 +135,7 @@ public class AuthController {
             return null;
         }
         return Arrays.stream(request.getCookies())
-                .filter(cookie -> "fuoverflow_rt".equals(cookie.getName()))
+                .filter(cookie -> authProperties.cookie().refreshName().equals(cookie.getName()))
                 .map(Cookie::getValue)
                 .findFirst()
                 .orElse(null);

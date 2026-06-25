@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, refreshAuthSession } from "@/lib/api/client";
 import type {
   AuthTokenResponse,
   AuthenticatedUserResponse,
@@ -48,7 +48,5 @@ export function logout() {
 }
 
 export function refreshSession() {
-  return apiFetch<AuthTokenResponse>("/api/v1/auth/refresh", {
-    method: "POST",
-  });
+  return refreshAuthSession();
 }

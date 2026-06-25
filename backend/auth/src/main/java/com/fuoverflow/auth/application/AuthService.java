@@ -75,6 +75,9 @@ public class AuthService {
         UserSessionEntity oldSession = sessions.findByRefreshTokenHash(jwt.hashRefresh(rawRefreshToken))
                 .orElseThrow(() -> new UnauthorizedException("TOKEN_INVALID", "Refresh token is invalid"));
         if (oldSession.getRevokedAt() != null) {
+            if ("ROTATED".equals(oldSession.getRevokedReason()) && oldSession.getRevokedAt().plusSeconds(10).isAfter(now)) {
+                throw new UnauthorizedException("TOKEN_INVALID", "Refresh token was already rotated");
+            }
             sessions.revokeFamily(oldSession.getRefreshTokenFamilyId(), "REFRESH_REUSE_DETECTED", now);
             throw new UnauthorizedException("REFRESH_REUSE_DETECTED", "Refresh token reuse detected");
         }
