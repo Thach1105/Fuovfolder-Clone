@@ -1,4 +1,5 @@
 import type { ApiEnvelope } from "@/types/api";
+import { translateApiError, translateFieldMessage } from "@/lib/api/error-messages";
 
 /**
  * Base URL for API calls.
@@ -23,7 +24,7 @@ export class ApiError extends Error {
     public readonly status: number,
     public readonly body: ApiEnvelope<null> | null,
   ) {
-    super(body?.message ?? body?.code ?? "Request failed");
+    super(translateApiError(body?.code, body?.message));
     this.name = "ApiError";
   }
 
@@ -32,7 +33,10 @@ export class ApiError extends Error {
   }
 
   get fieldErrors(): { field: string; message: string }[] {
-    return this.body?.error?.fields ?? [];
+    return (this.body?.error?.fields ?? []).map((f) => ({
+      field: f.field,
+      message: translateFieldMessage(f.message),
+    }));
   }
 }
 

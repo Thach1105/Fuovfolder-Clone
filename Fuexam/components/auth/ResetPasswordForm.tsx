@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import * as authApi from "@/lib/api/auth";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -86,12 +87,10 @@ function ResetPasswordContent() {
         <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
           Mật khẩu mới
         </label>
-        <input
+        <PasswordInput
           id="password"
-          type="password"
           required
           minLength={8}
-          className="input-field"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
@@ -102,12 +101,10 @@ function ResetPasswordContent() {
         <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-slate-700">
           Xác nhận mật khẩu mới
         </label>
-        <input
+        <PasswordInput
           id="confirmPassword"
-          type="password"
           required
           minLength={8}
-          className="input-field"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           autoComplete="new-password"

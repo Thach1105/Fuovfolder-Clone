@@ -30,6 +30,7 @@ public class PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
     static final long PAYOS_MAX_SAFE_ORDER_CODE = 9_007_199_254_740_991L;
+    static final int MIN_CUSTOM_DEPOSIT_VND = 1000;
 
     private final OrderRepository orderRepo;
     private final PaymentRepository paymentRepo;
@@ -71,6 +72,41 @@ public class PaymentService {
         }
 
         OrderEntity order = OrderEntity.createFromTier(userId, tier.getAmountVnd(), tier, "payos", String.valueOf(orderCode));
+        orderRepo.save(order);
+        return new PayOSPaymentLinkResponse(response.getCheckoutUrl(), response.getQrCode(), String.valueOf(orderCode));
+    }
+
+    /**
+     * Tạo link thanh toán với số tiền tự nhập (nạp linh động). Quy đổi 1.000đ = 1.000
+     * điểm (tỉ lệ 1:1, không bonus — bonus là đặc quyền của các mệnh giá cố định).
+     */
+    @Transactional
+    public PayOSPaymentLinkResponse createCustomPaymentLink(int amountVnd, String returnUrl, String cancelUrl, UUID userId) {
+        if (amountVnd < MIN_CUSTOM_DEPOSIT_VND) {
+            throw new IllegalArgumentException("Số tiền nạp tối thiểu là " + MIN_CUSTOM_DEPOSIT_VND + "đ");
+        }
+
+        long orderCode = generateOrderCode();
+        CreatePaymentLinkRequest request = CreatePaymentLinkRequest.builder()
+                .orderCode(orderCode)
+                .amount((long) amountVnd)
+                .description("Nap diem tuy chon")
+                .returnUrl(returnUrl)
+                .cancelUrl(cancelUrl)
+                .build();
+
+        CreatePaymentLinkResponse response;
+        try {
+            response = payOS.paymentRequests().create(request);
+        } catch (Exception ex) {
+            log.error("Failed to create custom PayOS payment link: userId={}, amountVnd={}, returnUrl={}, cancelUrl={}",
+                    userId, amountVnd, returnUrl, cancelUrl, ex);
+            throw ex;
+        }
+
+        OrderEntity order = OrderEntity.create(userId, amountVnd, "VND", "payos", String.valueOf(orderCode));
+        order.setPointsAwarded(amountVnd);
+        order.setTierLabelSnapshot("Nạp linh động");
         orderRepo.save(order);
         return new PayOSPaymentLinkResponse(response.getCheckoutUrl(), response.getQrCode(), String.valueOf(orderCode));
     }

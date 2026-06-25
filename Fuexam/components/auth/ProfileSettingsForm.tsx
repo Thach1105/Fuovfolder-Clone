@@ -32,13 +32,13 @@ export function ProfileSettingsForm() {
   }, [user]);
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Đang tải hồ sơ...</p>;
+    return <p className="text-sm text-muted-foreground">Đang tải hồ sơ...</p>;
   }
 
   if (!user) {
     return (
       <div className="space-y-3 text-sm">
-        <p className="text-slate-600">Bạn cần đăng nhập để xem hồ sơ.</p>
+        <p className="text-muted-foreground">Bạn cần đăng nhập để xem hồ sơ.</p>
         <Link href="/login" className="btn-primary inline-flex">
           Đăng nhập
         </Link>
@@ -79,23 +79,23 @@ export function ProfileSettingsForm() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm">
-        <dl className="grid gap-2 sm:grid-cols-2">
+      <div className="rounded-xl border border-foreground/10 bg-muted/40 p-4 text-sm">
+        <dl className="grid gap-3 sm:grid-cols-2">
           <div>
-            <dt className="text-slate-500">Email</dt>
-            <dd className="font-medium text-slate-800">{user.email}</dd>
+            <dt className="text-muted-foreground">Email</dt>
+            <dd className="font-medium">{user.email}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Username</dt>
-            <dd className="font-medium text-slate-800">@{user.username}</dd>
+            <dt className="text-muted-foreground">Tên đăng nhập</dt>
+            <dd className="font-medium">@{user.username}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Trạng thái</dt>
-            <dd className="font-medium text-slate-800">{user.status}</dd>
+            <dt className="text-muted-foreground">Trạng thái</dt>
+            <dd className="font-medium">{user.status}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Email verified</dt>
-            <dd className="font-medium text-slate-800">
+            <dt className="text-muted-foreground">Xác minh email</dt>
+            <dd className="font-medium">
               {user.emailVerified ? "Đã xác minh" : "Chưa xác minh"}
             </dd>
           </div>
@@ -104,7 +104,7 @@ export function ProfileSettingsForm() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </div>
         )}
@@ -119,7 +119,7 @@ export function ProfileSettingsForm() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatarPreview} alt="" className="h-16 w-16 rounded-full object-cover" />
           ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-fuo-50 text-lg font-bold text-fuo-700">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-foreground text-lg font-bold text-background">
               {(form.displayName || user.username).charAt(0).toUpperCase()}
             </div>
           )}
@@ -132,7 +132,7 @@ export function ProfileSettingsForm() {
         </div>
 
         <div>
-          <label htmlFor="displayName" className="mb-1 block text-sm font-medium text-slate-700">
+          <label htmlFor="displayName" className="mb-1 block text-sm font-medium text-foreground">
             Tên hiển thị
           </label>
           <input
@@ -145,7 +145,7 @@ export function ProfileSettingsForm() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="firstName" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="firstName" className="mb-1 block text-sm font-medium text-foreground">
               Họ
             </label>
             <input
@@ -156,7 +156,7 @@ export function ProfileSettingsForm() {
             />
           </div>
           <div>
-            <label htmlFor="lastName" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="lastName" className="mb-1 block text-sm font-medium text-foreground">
               Tên
             </label>
             <input

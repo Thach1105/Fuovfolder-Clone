@@ -99,8 +99,8 @@ export default function PointsPage() {
   if (authLoading || (!user && !error)) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-10">
-        <h1 className="text-3xl font-bold text-slate-100">Fuexam Point của tôi</h1>
-        <p className="mt-2 text-sm text-slate-400">Đang tải...</p>
+        <h1 className="font-display text-4xl tracking-tight">Fuexam Point của tôi</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Đang tải...</p>
       </div>
     );
   }
@@ -108,26 +108,26 @@ export default function PointsPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-slate-100">Fuexam Point của tôi</h1>
-        <p className="mt-2 text-sm text-slate-400">
+        <h1 className="font-display text-4xl tracking-tight">Fuexam Point của tôi</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           Theo dõi số dư hiện tại và lịch sử giao dịch Fuexam Point của bạn.
         </p>
       </div>
 
       {error && (
-        <div className="mb-6 rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-center text-sm text-red-300">
+        <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-center text-sm text-destructive">
           {error}
         </div>
       )}
 
-      <section className="mb-10 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <section className="mb-10 rounded-2xl border border-foreground/10 bg-background p-6 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Số dư hiện tại
         </p>
         {initialLoading || balance === null ? (
-          <p className="mt-2 text-4xl font-bold text-slate-500">—</p>
+          <p className="mt-2 text-4xl font-bold text-muted-foreground">—</p>
         ) : (
-          <p className="mt-2 text-4xl font-bold text-emerald-400">
+          <p className="mt-2 text-4xl font-bold text-emerald-700">
             {formatPoints(balance)}
           </p>
         )}
@@ -144,31 +144,31 @@ export default function PointsPage() {
 
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-100">Lịch sử giao dịch</h2>
+          <h2 className="text-lg font-semibold">Lịch sử giao dịch</h2>
           {pageLoading && (
-            <span className="text-xs text-slate-500">Đang tải trang...</span>
+            <span className="text-xs text-muted-foreground">Đang tải trang...</span>
           )}
         </div>
 
         {initialLoading ? (
-          <p className="text-sm text-slate-400">Đang tải lịch sử...</p>
+          <p className="text-sm text-muted-foreground">Đang tải lịch sử...</p>
         ) : entries.length === 0 ? (
-          <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-8 text-center text-sm text-slate-400">
+          <div className="rounded-lg border border-foreground/10 bg-background p-8 text-center text-sm text-muted-foreground">
             Chưa có giao dịch Fuexam Point nào.
           </div>
         ) : (
           <>
-            <ul className="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/50">
+            <ul className="divide-y divide-foreground/10 overflow-hidden rounded-2xl border border-foreground/10 bg-background shadow-sm">
               {entries.map((entry) => (
                 <li
                   key={entry.id}
                   className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-100">
+                    <p className="text-sm font-medium">
                       {entry.reason?.trim() ? entry.reason : "Không rõ"}
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {entry.sourceType || "unknown"}
                       {entry.sourceId ? ` · ${entry.sourceId}` : ""}
                     </p>
@@ -178,28 +178,28 @@ export default function PointsPage() {
                     <span
                       className={
                         entry.delta > 0
-                          ? "text-sm font-semibold text-emerald-400"
+                          ? "text-sm font-semibold text-emerald-700"
                           : entry.delta < 0
-                            ? "text-sm font-semibold text-red-400"
-                            : "text-sm font-semibold text-slate-300"
+                            ? "text-sm font-semibold text-destructive"
+                            : "text-sm font-semibold text-muted-foreground"
                       }
                     >
                       {entry.delta > 0 ? "+" : ""}
                       {entry.delta.toLocaleString("vi-VN")} Fuexam
                     </span>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-muted-foreground">
                       {formatDateTime(entry.createdAt)}
                     </span>
                   </div>
                 </li>
               ))}
             </ul>
-            <div className="mt-4 flex items-center justify-between text-sm text-slate-400">
+            <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
               <button
                 type="button"
                 onClick={() => setPage((current) => Math.max(0, current - 1))}
                 disabled={pageLoading || page === 0}
-                className="rounded-lg border border-slate-800 px-3 py-1.5 transition hover:border-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-foreground/15 px-3 py-1.5 transition hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Trước
               </button>
@@ -217,7 +217,7 @@ export default function PointsPage() {
                   )
                 }
                 disabled={pageLoading || !ledger || page + 1 >= ledger.totalPages}
-                className="rounded-lg border border-slate-800 px-3 py-1.5 transition hover:border-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-foreground/15 px-3 py-1.5 transition hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Sau
               </button>

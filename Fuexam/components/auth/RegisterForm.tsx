@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { PasswordInput } from "@/components/auth/PasswordInput";
+import { FPT_CAMPUSES } from "@/lib/fpt-campuses";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -103,27 +105,31 @@ export function RegisterForm() {
 
       <div>
         <label htmlFor="campus" className="mb-1 block text-sm font-medium text-slate-700">
-          Campus (tuỳ chọn)
+          Cơ sở (tuỳ chọn)
         </label>
-        <input
+        <select
           id="campus"
-          type="text"
           className="input-field"
           value={form.campus}
           onChange={(e) => updateField("campus", e.target.value)}
-        />
+        >
+          <option value="">— Chọn cơ sở —</option>
+          {FPT_CAMPUSES.map((campus) => (
+            <option key={campus} value={campus}>
+              {campus}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
         <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
           Mật khẩu
         </label>
-        <input
+        <PasswordInput
           id="password"
-          type="password"
           required
           minLength={8}
-          className="input-field"
           value={form.password}
           onChange={(e) => updateField("password", e.target.value)}
           autoComplete="new-password"

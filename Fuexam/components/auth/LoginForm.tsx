@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 
 export function LoginForm() {
   const router = useRouter();
@@ -71,11 +72,9 @@ export function LoginForm() {
             Quên mật khẩu?
           </Link>
         </div>
-        <input
+        <PasswordInput
           id="password"
-          type="password"
           required
-          className="input-field"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"

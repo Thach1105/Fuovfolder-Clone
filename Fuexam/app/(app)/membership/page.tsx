@@ -53,25 +53,28 @@ export default function MembershipPage() {
     }
   };
 
-  const tierStyle = (slug: string) => {
+  // Mỗi hạng gói có một dải màu nhấn nhẹ trên nền sáng, đồng bộ theme chung.
+  const tierAccent = (slug: string) => {
     if (slug.includes("nova")) {
-      return "border-fuchsia-500/40 bg-gradient-to-b from-fuchsia-950/40 to-slate-950";
+      return "from-fuchsia-500 to-purple-600";
     }
     if (slug.includes("vip")) {
-      return "border-emerald-500/40 bg-gradient-to-b from-emerald-950/40 to-slate-950";
+      return "from-emerald-500 to-teal-600";
     }
-    return "border-sky-500/40 bg-gradient-to-b from-sky-950/40 to-slate-950";
+    return "from-sky-500 to-blue-600";
   };
+
+  const isPopular = (slug: string) => slug.includes("vip");
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <div className="mb-10 text-center">
-        <h1 className="text-3xl font-bold text-white">Membership</h1>
-        <p className="mt-2 text-slate-400">
+        <h1 className="font-display text-4xl tracking-tight">Membership</h1>
+        <p className="mt-2 text-muted-foreground">
           Nâng cấp tài khoản để mở khóa quyền lợi diễn đàn, tài liệu và hiệu ứng đặc biệt.
         </p>
         {status?.active && (
-          <p className="mt-4 text-sm text-emerald-400">
+          <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-sm text-emerald-700">
             Gói hiện tại: <strong>{status.planName}</strong> — hết hạn{" "}
             {status.expiresAt ? new Date(status.expiresAt).toLocaleDateString("vi-VN") : "—"}
           </p>
@@ -79,55 +82,86 @@ export default function MembershipPage() {
       </div>
 
       {error && (
-        <div className="mb-6 rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300">
+        <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      {loading && <p className="text-center text-sm text-slate-400">Đang tải gói...</p>}
+      {loading && <p className="text-center text-sm text-muted-foreground">Đang tải gói...</p>}
 
       <div className="grid gap-6 md:grid-cols-3">
-        {plans.map((plan) => (
-          <article
-            key={plan.id}
-            className={`rounded-2xl border p-6 ${tierStyle(plan.slug)} ${plan.slug.includes("vip") ? "ring-1 ring-emerald-500/30" : ""}`}
-          >
-            {resolveMediaUrl(plan.imageUrl) && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={resolveMediaUrl(plan.imageUrl)!}
-                alt=""
-                className="mb-4 h-24 w-full rounded-lg object-cover"
-              />
-            )}
-            <h2 className="text-xl font-bold text-white">{plan.name}</h2>
-            <p className="mt-2 text-3xl font-bold text-amber-300">
-              {plan.pricePoints.toLocaleString("vi-VN")}{" "}
-              <span className="text-sm font-normal text-slate-400">Fuexam</span>
-            </p>
-            <p className="mt-1 text-xs text-slate-500">{plan.durationDays} ngày · Role {plan.roleSlug}</p>
-            {plan.description && <p className="mt-4 text-sm text-slate-400">{plan.description}</p>}
-            <button
-              type="button"
-              disabled={authLoading || subscribing === plan.slug || status?.active}
-              onClick={() => subscribe(plan.slug)}
-              className="btn-primary mt-6 w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-50"
+        {plans.map((plan) => {
+          const popular = isPopular(plan.slug);
+          const imageUrl = resolveMediaUrl(plan.imageUrl);
+          return (
+            <article
+              key={plan.id}
+              className={`relative flex flex-col overflow-hidden rounded-2xl border bg-background shadow-sm transition hover:shadow-md ${
+                popular ? "border-foreground/30 ring-1 ring-foreground/10" : "border-foreground/10"
+              }`}
             >
-              {!user
-                ? "Đăng nhập để mua"
-                : subscribing === plan.slug
-                  ? "Đang xử lý..."
-                  : status?.active
-                    ? "Đã có gói active"
-                    : "Đăng ký bằng Fuexam Point"}
-            </button>
-          </article>
-        ))}
+              {popular && (
+                <span className="absolute right-4 top-4 z-10 rounded-full bg-foreground px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-background">
+                  Phổ biến
+                </span>
+              )}
+
+              {/* Ảnh bìa gói — có fallback gradient + chữ cái khi ảnh lỗi/thiếu */}
+              <div className={`relative h-28 w-full bg-gradient-to-br ${tierAccent(plan.slug)}`}>
+                {imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                )}
+                <span className="pointer-events-none absolute inset-0 flex items-center justify-center font-display text-2xl font-bold text-white/90 drop-shadow">
+                  {plan.name}
+                </span>
+              </div>
+
+              <div className="flex flex-1 flex-col p-6">
+                <p className="font-display text-2xl">
+                  {plan.pricePoints.toLocaleString("vi-VN")}{" "}
+                  <span className="text-sm font-normal text-muted-foreground">Fuexam</span>
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {plan.durationDays} ngày · Role {plan.roleSlug}
+                </p>
+                {plan.description && (
+                  <p className="mt-4 text-sm text-muted-foreground">{plan.description}</p>
+                )}
+                <button
+                  type="button"
+                  disabled={authLoading || subscribing === plan.slug || status?.active}
+                  onClick={() => subscribe(plan.slug)}
+                  className={`mt-6 inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                    popular
+                      ? "bg-foreground text-background hover:bg-foreground/90"
+                      : "border border-foreground/20 bg-transparent text-foreground hover:bg-foreground/5"
+                  }`}
+                >
+                  {!user
+                    ? "Đăng nhập để mua"
+                    : subscribing === plan.slug
+                      ? "Đang xử lý..."
+                      : status?.active
+                        ? "Đã có gói active"
+                        : "Đăng ký bằng Fuexam Point"}
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
 
-      <p className="mt-10 text-center text-xs text-slate-500">
+      <p className="mt-10 text-center text-xs text-muted-foreground">
         Tỷ giá: 1.000 Fuexam = 1.000 VND ·{" "}
-        <Link href="/me/points" className="text-amber-400 hover:underline">
+        <Link href="/me/points" className="font-medium text-foreground hover:underline">
           Nạp Fuexam Point
         </Link>
       </p>

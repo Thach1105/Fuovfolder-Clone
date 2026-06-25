@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import type { PublicQuestion } from "@/lib/api/source";
 import { sourceMediaUrl } from "@/lib/api/source";
+import { Lightbox } from "@/components/exam/Lightbox";
 
 type Props = { questions: PublicQuestion[] };
 
@@ -22,6 +23,7 @@ export function SourceQuestionRunner({ questions }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AnswerState>>({});
   const [finished, setFinished] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const total = questions.length;
   const stats = useMemo(() => {
@@ -103,6 +105,7 @@ export function SourceQuestionRunner({ questions }: Props) {
   }
 
   return (
+    <>
     <div className="space-y-5 rounded-2xl border border-foreground/10 bg-background/70 p-6 backdrop-blur-xl">
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-4">
@@ -114,40 +117,23 @@ export function SourceQuestionRunner({ questions }: Props) {
         <Progress value={progress} className="h-1.5" />
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {questions.map((q, i) => {
-          const a = answers[q.id];
-          return (
-            <button
-              key={q.id}
-              type="button"
-              onClick={() => goTo(i)}
-              aria-label={`Câu ${i + 1}`}
-              className={cn(
-                "h-7 w-7 rounded-md text-xs font-medium transition",
-                i === currentIndex
-                  ? "bg-foreground text-background"
-                  : a?.checked
-                    ? a.correct
-                      ? "bg-emerald-500/15 text-emerald-600"
-                      : "bg-destructive/15 text-destructive"
-                    : "bg-foreground/5 text-muted-foreground hover:bg-foreground/10",
-              )}
-            >
-              {i + 1}
-            </button>
-          );
-        })}
-      </div>
-
       <div className="space-y-3">
         {question.multipleCorrect && <Badge variant="secondary">Nhiều đáp án</Badge>}
         {question.questionText && <p className="text-base font-medium">{question.questionText}</p>}
         {questionImages.length > 0 && (
           <div className={questionImages.length > 1 ? "grid grid-cols-2 gap-2" : ""}>
             {questionImages.map((url, idx) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={`${url}-${idx}`} src={url} alt="" className="max-h-64 rounded-xl border border-foreground/10 object-cover" />
+              <button
+                key={`${url}-${idx}`}
+                type="button"
+                onClick={() => setLightboxIndex(idx)}
+                className="group relative overflow-hidden rounded-xl border border-foreground/10"
+                aria-label="Xem ảnh lớn"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" className="max-h-64 w-full object-cover transition-transform group-hover:scale-[1.02]" />
+                <span className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
+              </button>
             ))}
           </div>
         )}
@@ -226,5 +212,14 @@ export function SourceQuestionRunner({ questions }: Props) {
         </div>
       </div>
     </div>
+    {lightboxIndex !== null && questionImages.length > 0 && (
+      <Lightbox
+        images={questionImages}
+        currentIndex={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onNavigate={setLightboxIndex}
+      />
+    )}
+    </>
   );
 }

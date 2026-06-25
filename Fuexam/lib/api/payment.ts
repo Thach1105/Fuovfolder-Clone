@@ -15,6 +15,15 @@ export interface CreatePaymentLinkRequest {
   cancelUrl: string;
 }
 
+export interface CreateCustomPaymentLinkRequest {
+  amountVnd: number;
+  returnUrl: string;
+  cancelUrl: string;
+}
+
+/** Số tiền nạp linh động tối thiểu (đồng bộ với backend). */
+export const MIN_CUSTOM_DEPOSIT_VND = 1000;
+
 export interface PayOSPaymentLinkResponse {
   checkoutUrl?: string | null;
   qrCode?: string | null;
@@ -37,6 +46,13 @@ export function listDepositTiers() {
 
 export function createPaymentLink(payload: CreatePaymentLinkRequest) {
   return apiFetch<PayOSPaymentLinkResponse>("/api/v1/payment/create", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createCustomPaymentLink(payload: CreateCustomPaymentLinkRequest) {
+  return apiFetch<PayOSPaymentLinkResponse>("/api/v1/payment/create-custom", {
     method: "POST",
     body: JSON.stringify(payload),
   });

@@ -1,5 +1,6 @@
 import * as authApi from "@/lib/api/auth";
 import type { ApiEnvelope } from "@/types/api";
+import { translateApiError, translateFieldMessage } from "@/lib/api/error-messages";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const NO_REFRESH_RETRY_PATHS = new Set(["/api/v1/auth/refresh", "/api/v1/auth/logout"]);
@@ -18,12 +19,22 @@ export class ApiError extends Error {
     public readonly status: number,
     public readonly body: ApiEnvelope<null> | null,
   ) {
-    super(body?.message ?? body?.code ?? "Request failed");
+    // Dịch sang tiếng Việt ngay tại đây để mọi nơi dùng err.message đều có
+    // thông báo thân thiện, không lộ message tiếng Anh / mã code của backend.
+    super(translateApiError(body?.code, body?.message));
     this.name = "ApiError";
   }
 
+  /** Mã lỗi gốc từ backend (UPPER_SNAKE), hữu ích khi cần phân nhánh logic. */
+  get code(): string | null {
+    return this.body?.code ?? null;
+  }
+
   get fieldErrors(): { field: string; message: string }[] {
-    return this.body?.error?.fields ?? [];
+    return (this.body?.error?.fields ?? []).map((f) => ({
+      field: f.field,
+      message: translateFieldMessage(f.message),
+    }));
   }
 }
 

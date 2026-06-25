@@ -400,14 +400,12 @@ export default function CourseraPage() {
                 <dd className="font-bold text-slate-800">{stats.completed}</dd>
               </div>
             </dl>
-            <button
-              type="button"
-              className="mt-4 w-full rounded-lg bg-pink-500 px-3 py-2 text-sm font-semibold text-white opacity-60"
-              disabled
-              title="Module nạp tiền sẽ có sau"
+            <Link
+              href="/deposit"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-foreground px-3 py-2 text-sm font-semibold text-background transition hover:bg-foreground/90"
             >
-              + Nạp thêm Fuexam Point (sắp có)
-            </button>
+              + Nạp thêm Fuexam Point
+            </Link>
           </div>
           <div className="card p-4 text-sm text-slate-600">
             <h3 className="font-semibold text-slate-900">Hướng dẫn sử dụng</h3>

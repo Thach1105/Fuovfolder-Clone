@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, BookOpenCheck, MessagesSquare, GraduationCap, Check } from "lucide-react";
+import { ArrowRight, BookOpenCheck, MessagesSquare, GraduationCap, Check, Facebook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedSphere } from "@/components/landing/animated-sphere";
 import { AnimatedTetrahedron } from "@/components/landing/animated-tetrahedron";
@@ -305,10 +305,28 @@ export default function Home() {
             <span className="font-mono text-[10px]">FPT</span>
           </div>
           <p>© {new Date().getFullYear()} Fuexam — Cộng đồng sinh viên FPT.</p>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <Link href="/suoc" className="hover:text-foreground">Source</Link>
             <Link href="/forums" className="hover:text-foreground">Diễn đàn</Link>
             <Link href="/membership" className="hover:text-foreground">Membership</Link>
+            <a
+              href="https://www.facebook.com/groups/976684067613564"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 hover:text-foreground"
+            >
+              <Facebook className="h-4 w-4" />
+              Group 1
+            </a>
+            <a
+              href="https://www.facebook.com/groups/720202890383681"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 hover:text-foreground"
+            >
+              <Facebook className="h-4 w-4" />
+              Group 2
+            </a>
           </div>
         </div>
       </footer>

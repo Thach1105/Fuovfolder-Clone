@@ -2,6 +2,7 @@ package com.fuoverflow.payment.api;
 
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.payment.application.PaymentService;
+import com.fuoverflow.payment.api.dto.CreateCustomPaymentLinkRequest;
 import com.fuoverflow.payment.api.dto.CreatePaymentLinkRequest;
 import com.fuoverflow.payment.api.dto.PayOSPaymentLinkResponse;
 import com.fuoverflow.payment.api.dto.PaymentStatusResponse;
@@ -26,6 +27,18 @@ public class PaymentController {
         UUID userId = AuthContext.currentUserId();
         PayOSPaymentLinkResponse response = paymentService.createPaymentLink(
                 request.tierId(),
+                request.returnUrl(),
+                request.cancelUrl(),
+                userId
+        );
+        return ApiResponse.ok(response);
+    }
+
+    @PostMapping("/create-custom")
+    public ApiResponse<PayOSPaymentLinkResponse> createCustomPaymentLink(@RequestBody @Valid CreateCustomPaymentLinkRequest request) {
+        UUID userId = AuthContext.currentUserId();
+        PayOSPaymentLinkResponse response = paymentService.createCustomPaymentLink(
+                request.amountVnd(),
                 request.returnUrl(),
                 request.cancelUrl(),
                 userId
