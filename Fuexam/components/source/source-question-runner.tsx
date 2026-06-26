@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -19,7 +20,7 @@ import type { PublicQuestion } from "@/lib/api/source";
 import { sourceMediaUrl } from "@/lib/api/source";
 import { Lightbox } from "@/components/exam/Lightbox";
 
-type Props = { questions: PublicQuestion[] };
+type Props = { questions: PublicQuestion[]; navPortalId?: string };
 type AnswerState = { selected: Set<string>; checked: boolean; correct: boolean };
 type QuestionStatus = "empty" | "selected" | "correct" | "wrong";
 
@@ -113,13 +114,14 @@ function QuestionNavPanel({
   );
 }
 
-export function SourceQuestionRunner({ questions }: Props) {
+export function SourceQuestionRunner({ questions, navPortalId }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AnswerState>>({});
   const [finished, setFinished] = useState(false);
   const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [navPortalNode, setNavPortalNode] = useState<HTMLElement | null>(null);
 
   const total = questions.length;
   const stats = useMemo(() => {
@@ -129,6 +131,14 @@ export function SourceQuestionRunner({ questions }: Props) {
     const correct = values.filter((answer) => answer.checked && answer.correct).length;
     return { selected, checked, correct, unchecked: Math.max(0, total - checked) };
   }, [answers, total]);
+
+  useEffect(() => {
+    if (!navPortalId) {
+      setNavPortalNode(null);
+      return;
+    }
+    setNavPortalNode(document.getElementById(navPortalId));
+  }, [navPortalId]);
 
   if (total === 0) {
     return (
@@ -196,13 +206,31 @@ export function SourceQuestionRunner({ questions }: Props) {
     });
   }
 
-  function handleCheck() {
-    if (selected.size === 0) {
+  function handleCheckAll() {
+    const selectedQuestionCount = questions.filter((item) => {
+      const answer = answers[item.id];
+      return answer && answer.selected.size > 0;
+    }).length;
+
+    if (selectedQuestionCount === 0) {
       setWarning("Chọn ít nhất một đáp án trước khi kiểm tra.");
       return;
     }
+
     setWarning(null);
-    setState((prev) => ({ ...prev, checked: true, correct: isAnswerCorrect(question, prev.selected) }));
+    setAnswers((prev) => {
+      const next = { ...prev };
+      for (const item of questions) {
+        const answer = next[item.id];
+        if (!answer || answer.selected.size === 0) continue;
+        next[item.id] = {
+          ...answer,
+          checked: true,
+          correct: isAnswerCorrect(item, answer.selected),
+        };
+      }
+      return next;
+    });
   }
 
   function resetCurrentQuestion() {
@@ -230,10 +258,21 @@ export function SourceQuestionRunner({ questions }: Props) {
     return answer.correct ? "correct" : "wrong";
   }
 
+  const navPanel = (
+    <QuestionNavPanel
+      questions={questions}
+      currentIndex={currentIndex}
+      stats={stats}
+      total={total}
+      progress={progress}
+      statusFor={questionStatus}
+      onGoTo={goTo}
+    />
+  );
+
   return (
     <>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px] xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="space-y-5 rounded-2xl border border-foreground/10 bg-background/70 p-4 backdrop-blur-xl sm:p-6">
+      <div className="space-y-5 rounded-2xl border border-foreground/10 bg-background/70 p-4 backdrop-blur-xl sm:p-6">
           <div className="space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -326,11 +365,10 @@ export function SourceQuestionRunner({ questions }: Props) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 border-t border-foreground/10 pt-4">
-            {!checked ? (
-              <Button className="rounded-full bg-foreground text-background hover:bg-foreground/90" onClick={handleCheck}>
-                Kiểm tra
-              </Button>
-            ) : (
+            <Button className="rounded-full bg-foreground text-background hover:bg-foreground/90" onClick={handleCheckAll}>
+              Kiểm tra tất cả
+            </Button>
+            {checked && (
               <Button variant="outline" className="rounded-full" onClick={resetCurrentQuestion}>
                 Làm lại câu này
               </Button>
@@ -350,18 +388,9 @@ export function SourceQuestionRunner({ questions }: Props) {
               )}
             </div>
           </div>
-        </div>
-
-        <QuestionNavPanel
-          questions={questions}
-          currentIndex={currentIndex}
-          stats={stats}
-          total={total}
-          progress={progress}
-          statusFor={questionStatus}
-          onGoTo={goTo}
-        />
       </div>
+
+      {navPortalNode ? createPortal(navPanel, navPortalNode) : !navPortalId ? navPanel : null}
 
       {lightboxIndex !== null && images.length > 0 && (
         <Lightbox

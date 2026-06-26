@@ -135,6 +135,7 @@ export default function SuocDetailPage() {
   if (!detail) return null;
 
   const ownedActive = Boolean(user && detail.hasActiveAccess);
+  const questionNavPortalId = `source-question-nav-${detail.id}`;
   const accessEndsLabel = detail.activeAccessEndsAt
     ? new Date(detail.activeAccessEndsAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })
     : null;
@@ -208,7 +209,7 @@ export default function SuocDetailPage() {
                   </div>
                 </div>
               ) : (
-                <SourceQuestionRunner questions={questions} />
+                <SourceQuestionRunner questions={questions} navPortalId={questionNavPortalId} />
               )
             )}
           </div>
@@ -255,6 +256,8 @@ export default function SuocDetailPage() {
                 )}
               </dl>
             </div>
+
+            {ownedActive && <div id={questionNavPortalId} />}
 
             {detail.related.length > 0 && (
               <div className="rounded-2xl border border-foreground/10 bg-background/60 p-6 backdrop-blur">
