@@ -35,7 +35,7 @@ class OAuthAuthenticationFailureHandlerTest {
 
     @Test
     void shouldMapOAuthEmailNotVerifiedException() throws Exception {
-        AuthenticationException exception = new AuthenticationException("Failed", new OAuthEmailNotVerifiedException("Email not verified")) {};
+        AuthenticationException exception = new AuthenticationException("Failed", new OAuthEmailNotVerifiedException()) {};
 
         handler.onAuthenticationFailure(request, response, exception);
 

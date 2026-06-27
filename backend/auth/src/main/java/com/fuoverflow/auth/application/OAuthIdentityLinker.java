@@ -41,7 +41,7 @@ public class OAuthIdentityLinker {
     @Transactional
     public LinkedIdentity link(ProviderProfile profile) {
         if (!profile.emailVerified()) {
-            throw new OAuthEmailNotVerifiedException("OAuth provider email_verified is false");
+            throw new OAuthEmailNotVerifiedException();
         }
 
         // Case A: existing OAuth account

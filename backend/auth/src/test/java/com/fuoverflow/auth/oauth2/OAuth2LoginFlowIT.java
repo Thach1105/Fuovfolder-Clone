@@ -79,7 +79,7 @@ class OAuth2LoginFlowIT {
         failureHandler.onAuthenticationFailure(
                 request(),
                 response,
-                authException(new OAuthEmailNotVerifiedException("OAuth provider email_verified is false"))
+                authException(new OAuthEmailNotVerifiedException())
         );
 
         assertThat(response.getStatus()).isEqualTo(302);

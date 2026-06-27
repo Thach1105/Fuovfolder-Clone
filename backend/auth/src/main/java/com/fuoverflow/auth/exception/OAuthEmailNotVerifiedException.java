@@ -1,7 +1,10 @@
 package com.fuoverflow.auth.exception;
 
-public class OAuthEmailNotVerifiedException extends RuntimeException {
-    public OAuthEmailNotVerifiedException(String message) {
-        super(message);
+import com.fuoverflow.common.exception.ForbiddenException;
+
+public class OAuthEmailNotVerifiedException extends ForbiddenException {
+    public OAuthEmailNotVerifiedException() {
+        super("OAUTH_EMAIL_NOT_VERIFIED",
+              "Tài khoản OAuth2 chưa xác thực email. Vui lòng xác thực email trước khi đăng nhập.");
     }
 }
