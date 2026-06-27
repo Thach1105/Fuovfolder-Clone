@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ApiError } from "@/lib/api/client";
+import { resolveMediaUrl } from "@/lib/api/media";
 import { getPointsBalance, requestPointsBalanceRefresh } from "@/lib/api/points";
 import { SourceQuestionRunner } from "@/components/source/source-question-runner";
 import {
@@ -135,6 +136,7 @@ export default function SuocDetailPage() {
   if (!detail) return null;
 
   const ownedActive = Boolean(user && detail.hasActiveAccess);
+  const coverUrl = resolveMediaUrl(detail.coverImageUrl);
   const questionNavPortalId = `source-question-nav-${detail.id}`;
   const accessEndsLabel = detail.activeAccessEndsAt
     ? new Date(detail.activeAccessEndsAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -174,11 +176,22 @@ export default function SuocDetailPage() {
               </div>
             </header>
 
-            <div
-              className="flex h-56 items-center justify-center rounded-2xl font-display text-5xl text-white shadow-lg"
-              style={{ background: detail.cardColor ?? "#1a1712" }}
-            >
-              {detail.code}
+            <div className="relative h-56 w-full overflow-hidden rounded-2xl shadow-lg">
+              {coverUrl ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={coverUrl} alt={detail.title} className="h-full w-full object-cover" />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent" />
+                  <span className="absolute bottom-4 left-5 font-display text-4xl text-white drop-shadow-lg">{detail.code}</span>
+                </>
+              ) : (
+                <div
+                  className="flex h-full w-full items-center justify-center font-display text-5xl text-white"
+                  style={{ background: detail.cardColor ?? "#1a1712" }}
+                >
+                  {detail.code}
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-foreground/10 bg-background/60 p-6 backdrop-blur">

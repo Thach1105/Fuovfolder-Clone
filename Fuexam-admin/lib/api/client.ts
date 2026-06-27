@@ -109,7 +109,14 @@ async function parse<T>(res: Response): Promise<T> {
     return undefined as T;
   }
 
-  const parsed: unknown = JSON.parse(text);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    // Non-JSON response (e.g. HTML error page from a proxy/gateway). Surface a
+    // normal ApiError instead of leaking a raw "Unexpected token '<'" SyntaxError.
+    throw new ApiError(res.status, null);
+  }
 
   if (isApiEnvelope(parsed)) {
     if (!res.ok || parsed.success === false) {

@@ -12,3 +12,7 @@ export function listAdminUsers(page = 0, size = 20) {
   });
   return apiFetch<AdminUserPageResponse>(`/api/v1/admin/users?${params}`);
 }
+
+export function deleteAdminUser(userId: string) {
+  return apiFetch<void>(`/api/v1/admin/users/${userId}`, { method: "DELETE" });
+}

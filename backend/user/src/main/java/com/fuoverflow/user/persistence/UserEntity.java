@@ -209,4 +209,10 @@ public class UserEntity {
         this.avatarUrl = avatarUrl;
         this.updatedAt = at;
     }
+
+    public void markDeleted(Instant at) {
+        this.status = UserStatus.DELETED;
+        this.deletedAt = at;
+        this.updatedAt = at;
+    }
 }

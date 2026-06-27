@@ -51,11 +51,15 @@ export class ApiError extends Error {
 
 async function doFetch(path: string, init?: RequestInit): Promise<Response> {
   const hasBody = init?.body != null;
+  const isFormData =
+    typeof FormData !== "undefined" && init?.body instanceof FormData;
   return fetch(`${API_BASE}${path}`, {
     ...init,
     credentials: "include",
     headers: {
-      ...(hasBody ? { "Content-Type": "application/json" } : {}),
+      // Only set JSON content-type for non-FormData bodies; FormData must keep
+      // its auto-generated multipart boundary so the backend can parse uploads.
+      ...(hasBody && !isFormData ? { "Content-Type": "application/json" } : {}),
       ...init?.headers,
     },
   });
@@ -72,7 +76,14 @@ async function parseResponse<T>(res: Response): Promise<T> {
     return undefined as T;
   }
 
-  const parsed: unknown = JSON.parse(text);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    // Non-JSON response (e.g. HTML error page from a proxy/gateway). Surface a
+    // normal ApiError instead of leaking a raw "Unexpected token '<'" SyntaxError.
+    throw new ApiError(res.status, null);
+  }
 
   if (isApiEnvelope(parsed)) {
     if (!res.ok || parsed.success === false) {
