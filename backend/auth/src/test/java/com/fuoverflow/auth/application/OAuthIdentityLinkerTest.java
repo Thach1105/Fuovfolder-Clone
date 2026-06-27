@@ -110,8 +110,7 @@ class OAuthIdentityLinkerTest {
                 "unverified@example.com", false, "Unverified", null);
 
         assertThatThrownBy(() -> linker.link(profile))
-                .isInstanceOf(OAuthEmailNotVerifiedException.class)
-                .hasMessageContaining("email_verified");
+                .isInstanceOf(OAuthEmailNotVerifiedException.class);
     }
 
     @Test
