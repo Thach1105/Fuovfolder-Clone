@@ -91,6 +91,7 @@ services:
       - /opt/fuoverflow/data/uploads:/data/fuoverflow/uploads
       - /opt/fuoverflow/data/logs:/data/fuoverflow/logs
       - /opt/fuoverflow/data/tmp:/data/fuoverflow/tmp
+      - /opt/fuoverflow/secrets:/secrets:ro
     depends_on:
       postgres:
         condition: service_healthy
