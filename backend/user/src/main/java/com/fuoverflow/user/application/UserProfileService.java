@@ -52,8 +52,10 @@ public class UserProfileService {
             uploadService.markLinkedByObjectKey(normalized, userId, UploadPurpose.AVATAR);
             nextAvatar = normalized;
             if (previousAvatar != null && !previousAvatar.equals(nextAvatar)) {
-                objectStorage.delete(previousAvatar);
+                uploadService.deleteByStorageReference(previousAvatar);
             }
+        } else if (nextAvatar == null && previousAvatar != null) {
+            uploadService.deleteByStorageReference(previousAvatar);
         }
         user.updateProfile(
                 clean(request.displayName()),
