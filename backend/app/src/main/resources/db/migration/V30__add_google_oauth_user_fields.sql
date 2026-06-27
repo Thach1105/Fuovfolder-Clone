@@ -1,6 +1,9 @@
 -- Add email_verified boolean to users
 alter table users add column email_verified boolean not null default false;
 
+-- Existing ACTIVE users were already using the system — treat their email as verified
+update users set email_verified = true where status = 'ACTIVE';
+
 -- Extend users.status check constraint to allow pending_profile (uppercase enum values)
 alter table users drop constraint if exists users_status_check;
 alter table users add constraint users_status_check
