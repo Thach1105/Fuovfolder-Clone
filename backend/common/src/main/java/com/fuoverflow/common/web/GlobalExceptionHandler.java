@@ -1,5 +1,6 @@
 package com.fuoverflow.common.web;
 
+import com.fuoverflow.common.config.SupportProperties;
 import com.fuoverflow.common.exception.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -19,14 +20,20 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    private final SupportProperties support;
+
+    public GlobalExceptionHandler(SupportProperties support) {
+        this.support = support;
+    }
+
     @ExceptionHandler(ApiException.class)
-    ResponseEntity<ApiResponse<Void>> handleApiException(ApiException exception, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleApiException(ApiException exception, HttpServletRequest request) {
         return ResponseEntity.status(exception.status())
                 .body(error(exception.code(), exception.getMessage(), request, null));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException exception, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException exception, HttpServletRequest request) {
         List<ApiResponse.ErrorDetail.FieldError> fields = exception.getBindingResult().getFieldErrors().stream()
                 .map(this::toFieldError)
                 .toList();
@@ -35,17 +42,20 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException exception, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException exception, HttpServletRequest request) {
         return ResponseEntity.badRequest()
                 .body(error("VALIDATION_ERROR", "Request validation failed", request, null));
     }
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception exception, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception exception, HttpServletRequest request) {
         log.error("Unhandled exception: method={}, path={}, requestId={}",
                 request.getMethod(), request.getRequestURI(), request.getHeader("X-Request-Id"), exception);
+        String message = String.format(
+                "Đã xảy ra lỗi hệ thống. Vui lòng liên hệ hỗ trợ qua email %s hoặc số điện thoại %s.",
+                support.email(), support.phone());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(error("INTERNAL_ERROR", "Unexpected server error", request, null));
+                .body(error("INTERNAL_ERROR", message, request, null));
     }
 
     private ApiResponse.ErrorDetail.FieldError toFieldError(FieldError error) {

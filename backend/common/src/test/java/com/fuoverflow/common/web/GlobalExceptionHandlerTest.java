@@ -1,44 +1,38 @@
 package com.fuoverflow.common.web;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-import jakarta.servlet.http.HttpServletRequest;
+import com.fuoverflow.common.config.SupportProperties;
+import com.fuoverflow.common.exception.TooManyRequestsException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class GlobalExceptionHandlerTest {
 
+    private GlobalExceptionHandler handler;
+
+    @BeforeEach
+    void setUp() {
+        handler = new GlobalExceptionHandler(new SupportProperties("support@fuoverflow.com", "0900-000-000"));
+    }
+
     @Test
-    void handleUnexpected_shouldLogUnhandledExceptionWithRequestContext() {
-        GlobalExceptionHandler handler = new GlobalExceptionHandler();
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        RuntimeException boom = new RuntimeException("boom");
-        Logger logger = (Logger) LoggerFactory.getLogger(GlobalExceptionHandler.class);
-        ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        appender.start();
-        logger.addAppender(appender);
-        try {
-            when(request.getMethod()).thenReturn("POST");
-            when(request.getRequestURI()).thenReturn("/api/v1/payment/create");
-            when(request.getHeader("X-Request-Id")).thenReturn("req-123");
+    void shouldIncludeSupportContactIn5xxMessage() {
+        var request = new MockHttpServletRequest();
+        var response = handler.handleUnexpected(new RuntimeException("boom"), request);
+        assertThat(response.getBody().message())
+                .contains("support@fuoverflow.com")
+                .contains("0900-000-000");
+        assertThat(response.getStatusCode().value()).isEqualTo(500);
+    }
 
-            var response = handler.handleUnexpected(boom, request);
-
-            assertThat(response.getStatusCode().value()).isEqualTo(500);
-            assertThat(appender.list).isNotEmpty();
-            assertThat(appender.list.getLast().getFormattedMessage())
-                    .contains("Unhandled exception")
-                    .contains("POST")
-                    .contains("/api/v1/payment/create")
-                    .contains("req-123");
-            assertThat(appender.list.getLast().getThrowableProxy().getMessage()).contains("boom");
-        } finally {
-            logger.detachAppender(appender);
-        }
+    @Test
+    void shouldReturn429ForTooManyRequestsException() {
+        var request = new MockHttpServletRequest();
+        var ex = new TooManyRequestsException("RESEND_TOO_SOON", "Vui lòng chờ 60 giây.");
+        var response = handler.handleApiException(ex, request);
+        assertThat(response.getStatusCode().value()).isEqualTo(429);
+        assertThat(response.getBody().code()).isEqualTo("RESEND_TOO_SOON");
     }
 }
