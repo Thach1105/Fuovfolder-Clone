@@ -8,6 +8,7 @@ import com.fuoverflow.auth.persistence.UserSessionRepository;
 import com.fuoverflow.auth.support.TokenGenerator;
 import com.fuoverflow.auth.support.TokenHashing;
 import com.fuoverflow.common.exception.UnauthorizedException;
+import com.fuoverflow.common.support.ResendRateLimiter;
 import com.fuoverflow.user.api.dto.AuthUserView;
 import com.fuoverflow.user.application.UserLookupService;
 import com.fuoverflow.user.application.UserPasswordService;
@@ -33,6 +34,7 @@ public class PasswordResetService {
     private final PasswordService passwords;
     private final PasswordResetEmailSender emailSender;
     private final AuthProperties properties;
+    private final ResendRateLimiter rateLimiter;
 
     public PasswordResetService(
             UserLookupService users,
@@ -43,7 +45,8 @@ public class PasswordResetService {
             TokenHashing hashing,
             PasswordService passwords,
             PasswordResetEmailSender emailSender,
-            AuthProperties properties) {
+            AuthProperties properties,
+            ResendRateLimiter rateLimiter) {
         this.users = users;
         this.userPasswords = userPasswords;
         this.tokens = tokens;
@@ -53,6 +56,7 @@ public class PasswordResetService {
         this.passwords = passwords;
         this.emailSender = emailSender;
         this.properties = properties;
+        this.rateLimiter = rateLimiter;
     }
 
     @Transactional
@@ -60,6 +64,7 @@ public class PasswordResetService {
         users.findAuthUserByIdentifier(email)
                 .filter(this::canResetPassword)
                 .ifPresent(user -> {
+                    rateLimiter.checkAndRecord("password_reset", user.id());
                     Instant now = Instant.now();
                     tokens.consumeActiveByUserId(user.id(), now);
                     String token = generator.opaqueToken();
@@ -100,7 +105,7 @@ public class PasswordResetService {
     }
 
     private Duration tokenTtl() {
-        AuthProperties.PasswordReset config = properties.passwordReset();
+        AuthProperties.PasswordReset config = properties != null ? properties.passwordReset() : null;
         if (config == null || config.tokenTtl() == null) {
             return Duration.ofHours(1);
         }
