@@ -52,6 +52,12 @@ public class OrderEntity {
     @Column(name = "tier_label_snapshot", length = 120)
     private String tierLabelSnapshot;
 
+    @Column(name = "checkout_url")
+    private String checkoutUrl;
+
+    @Column(name = "expired_at")
+    private Instant expiredAt;
+
     @Version
     @Column(name = "lock_version", nullable = false)
     private int lockVersion;
@@ -167,6 +173,14 @@ public class OrderEntity {
     public void setTierId(UUID tierId) { this.tierId = tierId; }
     public void setPointsAwarded(Integer pointsAwarded) { this.pointsAwarded = pointsAwarded; }
     public void setTierLabelSnapshot(String tierLabelSnapshot) { this.tierLabelSnapshot = tierLabelSnapshot; }
+
+    public String getCheckoutUrl() { return checkoutUrl; }
+    public void setCheckoutUrl(String checkoutUrl) { this.checkoutUrl = checkoutUrl; }
+
+    public Instant getExpiredAt() { return expiredAt; }
+    public void setExpiredAt(Instant expiredAt) { this.expiredAt = expiredAt; }
+
+    public void markAsExpired() { this.status = "expired"; }
 
     public int getLockVersion() {
         return lockVersion;
