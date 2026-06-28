@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Facebook, Users, ArrowUpRight } from 'lucide-react'
+import { Users, ArrowUpRight, X } from 'lucide-react'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -50,52 +51,77 @@ export function JoinGroupPopup() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        showCloseButton
-        className="overflow-hidden border-0 p-0 sm:max-w-md"
+        showCloseButton={false}
+        className="block gap-0 overflow-hidden rounded-2xl border border-foreground/10 p-0 shadow-2xl sm:max-w-md"
       >
-        {/* Gradient banner */}
-        <div className="relative bg-gradient-to-br from-[#1877F2] via-[#2d8bff] to-[#0a5fd6] px-6 pt-8 pb-10 text-center">
-          <div className="pointer-events-none absolute inset-0 opacity-20 [background:radial-gradient(circle_at_20%_20%,white,transparent_40%),radial-gradient(circle_at_80%_60%,white,transparent_35%)]" />
-          <div className="relative mx-auto flex size-16 items-center justify-center rounded-2xl bg-white/15 shadow-lg ring-1 ring-white/25 backdrop-blur">
-            <Users className="size-8 text-white" strokeWidth={1.75} />
+        {/* Header — monochrome block, đồng bộ tone landing */}
+        <div className="relative overflow-hidden bg-foreground px-6 pb-7 pt-6 text-background">
+          {/* grid lines mờ cho cảm giác "technology" */}
+          <div className="pointer-events-none absolute inset-0 opacity-[0.07]">
+            {[20, 40, 60, 80].map((top) => (
+              <div
+                key={`h-${top}`}
+                className="absolute inset-x-0 h-px bg-background"
+                style={{ top: `${top}%` }}
+              />
+            ))}
+            {[12.5, 25, 37.5, 50, 62.5, 75, 87.5].map((left) => (
+              <div
+                key={`v-${left}`}
+                className="absolute inset-y-0 w-px bg-background"
+                style={{ left: `${left}%` }}
+              />
+            ))}
           </div>
-          <DialogHeader className="mt-4">
-            <DialogTitle className="text-center text-xl font-bold text-white">
-              Tham gia cộng đồng Fuexam
-            </DialogTitle>
-            <DialogDescription className="text-center text-sm text-white/85">
-              Vào các nhóm Facebook để nhận thông báo, hỏi đáp nhanh và cập nhật
-              tài liệu, đề thi mới nhất.
-            </DialogDescription>
-          </DialogHeader>
+
+          <DialogClose className="absolute right-4 top-4 rounded-md p-1 text-background/60 transition-colors hover:bg-background/10 hover:text-background focus:outline-none">
+            <X className="size-4" />
+            <span className="sr-only">Đóng</span>
+          </DialogClose>
+
+          <div className="relative">
+            <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-background/55">
+              <Users className="size-3.5" strokeWidth={2} />
+              Cộng đồng
+            </span>
+            <DialogHeader className="mt-3 space-y-1.5 text-left">
+              <DialogTitle className="font-display text-2xl leading-tight tracking-tight text-background">
+                Tham gia cộng đồng Fuexam
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-relaxed text-background/60">
+                Vào các nhóm Facebook để nhận thông báo, hỏi đáp nhanh và cập
+                nhật tài liệu, đề thi mới nhất.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
         </div>
 
         {/* Body */}
-        <div className="space-y-3 px-6 pt-5 pb-6">
-          {COMMUNITY_GROUPS.map((group) => (
+        <div className="space-y-2.5 bg-background p-5">
+          {COMMUNITY_GROUPS.map((group, index) => (
             <a
               key={group.href}
               href={group.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm transition-all hover:border-[#1877F2]/40 hover:shadow-md"
+              className="group flex items-center gap-3 rounded-lg border border-foreground/10 bg-card px-3.5 py-3 transition-all hover:border-foreground/30 hover:bg-accent/40"
             >
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#1877F2]/10 text-[#1877F2]">
-                <Facebook className="size-5" />
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-foreground/10 bg-background font-mono text-xs text-muted-foreground transition-colors group-hover:border-foreground/30 group-hover:text-foreground">
+                {String(index + 1).padStart(2, "0")}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold">
+                <span className="block truncate text-sm font-semibold text-foreground">
                   {group.name}
                 </span>
                 <span className="block truncate text-xs text-muted-foreground">
                   {group.desc}
                 </span>
               </span>
-              <ArrowUpRight className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#1877F2]" />
+              <ArrowUpRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground" />
             </a>
           ))}
 
-          <label className="flex cursor-pointer items-center justify-center gap-2 pt-1 text-sm text-muted-foreground select-none">
+          <label className="mt-1 flex cursor-pointer items-center gap-2 px-1 pt-2 text-xs text-muted-foreground select-none">
             <Checkbox
               checked={dontShow}
               onCheckedChange={(v) => setDontShow(v === true)}
