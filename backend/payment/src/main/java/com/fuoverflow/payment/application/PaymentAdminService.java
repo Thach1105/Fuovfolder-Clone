@@ -115,9 +115,9 @@ public class PaymentAdminService {
 
         for (Object[] row : statusAgg) {
             String status = (String) row[0];
-            long count = (Long) row[1];
-            long revenue = (Long) row[2];
-            long points = (Long) row[3];
+            long count = ((Number) row[1]).longValue();
+            long revenue = ((Number) row[2]).longValue();
+            long points = ((Number) row[3]).longValue();
             totalTransactions += count;
 
             switch (status) {
@@ -134,12 +134,12 @@ public class PaymentAdminService {
         List<Object[]> tierRows = orderRepo.revenueByTier(fromDate, toDate);
         List<PaymentAnalyticsResponse.TierRevenue> revenueByTier = tierRows.stream()
                 .map(r -> new PaymentAnalyticsResponse.TierRevenue(
-                        (String) r[0], (Long) r[1], (Long) r[2]))
+                        (String) r[0], ((Number) r[1]).longValue(), ((Number) r[2]).longValue()))
                 .toList();
 
         List<Object[]> topRows = orderRepo.topUsersByRevenue(fromDate, toDate, PageRequest.of(0, 10));
         Set<UUID> topUserIds = new HashSet<>();
-        topRows.forEach(r -> topUserIds.add((UUID) r[0]));
+        topRows.forEach(r -> topUserIds.add(toUuid(r[0])));
         Map<UUID, UserEntity> topUserMap = new HashMap<>();
         if (!topUserIds.isEmpty()) {
             userRepo.findAllById(topUserIds).forEach(u -> topUserMap.put(u.getId(), u));
@@ -147,13 +147,13 @@ public class PaymentAdminService {
 
         List<PaymentAnalyticsResponse.TopUser> topUsers = topRows.stream()
                 .map(r -> {
-                    UUID uid = (UUID) r[0];
+                    UUID uid = toUuid(r[0]);
                     UserEntity u = topUserMap.get(uid);
                     return new PaymentAnalyticsResponse.TopUser(
                             uid.toString(),
                             u != null ? u.getUsername() : null,
-                            (Long) r[2],
-                            (Long) r[1]
+                            ((Number) r[2]).longValue(),
+                            ((Number) r[1]).longValue()
                     );
                 }).toList();
 
@@ -162,5 +162,10 @@ public class PaymentAdminService {
                 new PaymentAnalyticsResponse.StatusBreakdown(paid, pending, failed, expired),
                 conversionRate, averageDeposit, revenueByTier, topUsers
         );
+    }
+
+    private static UUID toUuid(Object value) {
+        if (value instanceof UUID u) return u;
+        return UUID.fromString(value.toString());
     }
 }

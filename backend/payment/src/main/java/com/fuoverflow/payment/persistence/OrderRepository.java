@@ -18,15 +18,24 @@ public interface OrderRepository extends JpaRepository<OrderEntity, UUID> {
 
     Optional<OrderEntity> findByProviderOrderId(String providerOrderId);
 
-    @Query("""
-            SELECT o FROM OrderEntity o
-            WHERE o.userId = :userId
-              AND o.provider = 'payos'
-              AND (:status IS NULL OR o.status = :status)
-              AND (:fromDate IS NULL OR o.createdAt >= :fromDate)
-              AND (:toDate IS NULL OR o.createdAt <= :toDate)
-            ORDER BY o.createdAt DESC
-            """)
+    @Query(value = """
+            SELECT * FROM orders
+            WHERE user_id = :userId
+              AND provider = 'payos'
+              AND (CAST(:status AS varchar) IS NULL OR status = :status)
+              AND (CAST(:fromDate AS timestamptz) IS NULL OR created_at >= :fromDate)
+              AND (CAST(:toDate AS timestamptz) IS NULL OR created_at <= :toDate)
+            ORDER BY created_at DESC
+            """,
+            countQuery = """
+            SELECT count(*) FROM orders
+            WHERE user_id = :userId
+              AND provider = 'payos'
+              AND (CAST(:status AS varchar) IS NULL OR status = :status)
+              AND (CAST(:fromDate AS timestamptz) IS NULL OR created_at >= :fromDate)
+              AND (CAST(:toDate AS timestamptz) IS NULL OR created_at <= :toDate)
+            """,
+            nativeQuery = true)
     Page<OrderEntity> findUserDeposits(
             @Param("userId") UUID userId,
             @Param("status") String status,
@@ -34,15 +43,24 @@ public interface OrderRepository extends JpaRepository<OrderEntity, UUID> {
             @Param("toDate") Instant toDate,
             Pageable pageable);
 
-    @Query("""
-            SELECT o FROM OrderEntity o
-            WHERE o.provider = 'payos'
-              AND (:status IS NULL OR o.status = :status)
-              AND (:userId IS NULL OR o.userId = :userId)
-              AND (:fromDate IS NULL OR o.createdAt >= :fromDate)
-              AND (:toDate IS NULL OR o.createdAt <= :toDate)
-            ORDER BY o.createdAt DESC
-            """)
+    @Query(value = """
+            SELECT * FROM orders
+            WHERE provider = 'payos'
+              AND (CAST(:status AS varchar) IS NULL OR status = :status)
+              AND (CAST(:userId AS uuid) IS NULL OR user_id = :userId)
+              AND (CAST(:fromDate AS timestamptz) IS NULL OR created_at >= :fromDate)
+              AND (CAST(:toDate AS timestamptz) IS NULL OR created_at <= :toDate)
+            ORDER BY created_at DESC
+            """,
+            countQuery = """
+            SELECT count(*) FROM orders
+            WHERE provider = 'payos'
+              AND (CAST(:status AS varchar) IS NULL OR status = :status)
+              AND (CAST(:userId AS uuid) IS NULL OR user_id = :userId)
+              AND (CAST(:fromDate AS timestamptz) IS NULL OR created_at >= :fromDate)
+              AND (CAST(:toDate AS timestamptz) IS NULL OR created_at <= :toDate)
+            """,
+            nativeQuery = true)
     Page<OrderEntity> findAllOrders(
             @Param("status") String status,
             @Param("userId") UUID userId,
@@ -50,35 +68,35 @@ public interface OrderRepository extends JpaRepository<OrderEntity, UUID> {
             @Param("toDate") Instant toDate,
             Pageable pageable);
 
-    @Query("""
-            SELECT o.status, COUNT(o), COALESCE(SUM(o.totalCents), 0), COALESCE(SUM(o.pointsAwarded), 0)
-            FROM OrderEntity o
-            WHERE o.provider = 'payos'
-              AND (:fromDate IS NULL OR o.createdAt >= :fromDate)
-              AND (:toDate IS NULL OR o.createdAt <= :toDate)
-            GROUP BY o.status
-            """)
+    @Query(value = """
+            SELECT status, COUNT(*), COALESCE(SUM(total_cents), 0), COALESCE(SUM(points_awarded), 0)
+            FROM orders
+            WHERE provider = 'payos'
+              AND (CAST(:fromDate AS timestamptz) IS NULL OR created_at >= :fromDate)
+              AND (CAST(:toDate AS timestamptz) IS NULL OR created_at <= :toDate)
+            GROUP BY status
+            """, nativeQuery = true)
     List<Object[]> aggregateByStatus(@Param("fromDate") Instant fromDate, @Param("toDate") Instant toDate);
 
-    @Query("""
-            SELECT o.tierLabelSnapshot, COUNT(o), COALESCE(SUM(o.totalCents), 0)
-            FROM OrderEntity o
-            WHERE o.provider = 'payos' AND o.status = 'paid'
-              AND (:fromDate IS NULL OR o.createdAt >= :fromDate)
-              AND (:toDate IS NULL OR o.createdAt <= :toDate)
-            GROUP BY o.tierLabelSnapshot
-            ORDER BY SUM(o.totalCents) DESC
-            """)
+    @Query(value = """
+            SELECT tier_label_snapshot, COUNT(*), COALESCE(SUM(total_cents), 0)
+            FROM orders
+            WHERE provider = 'payos' AND status = 'paid'
+              AND (CAST(:fromDate AS timestamptz) IS NULL OR created_at >= :fromDate)
+              AND (CAST(:toDate AS timestamptz) IS NULL OR created_at <= :toDate)
+            GROUP BY tier_label_snapshot
+            ORDER BY SUM(total_cents) DESC
+            """, nativeQuery = true)
     List<Object[]> revenueByTier(@Param("fromDate") Instant fromDate, @Param("toDate") Instant toDate);
 
-    @Query("""
-            SELECT o.userId, COUNT(o), COALESCE(SUM(o.totalCents), 0)
-            FROM OrderEntity o
-            WHERE o.provider = 'payos' AND o.status = 'paid'
-              AND (:fromDate IS NULL OR o.createdAt >= :fromDate)
-              AND (:toDate IS NULL OR o.createdAt <= :toDate)
-            GROUP BY o.userId
-            ORDER BY SUM(o.totalCents) DESC
-            """)
+    @Query(value = """
+            SELECT user_id, COUNT(*), COALESCE(SUM(total_cents), 0)
+            FROM orders
+            WHERE provider = 'payos' AND status = 'paid'
+              AND (CAST(:fromDate AS timestamptz) IS NULL OR created_at >= :fromDate)
+              AND (CAST(:toDate AS timestamptz) IS NULL OR created_at <= :toDate)
+            GROUP BY user_id
+            ORDER BY SUM(total_cents) DESC
+            """, nativeQuery = true)
     List<Object[]> topUsersByRevenue(@Param("fromDate") Instant fromDate, @Param("toDate") Instant toDate, Pageable pageable);
 }
