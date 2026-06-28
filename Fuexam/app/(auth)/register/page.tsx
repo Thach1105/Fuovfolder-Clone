@@ -8,8 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/PasswordInput";
 import { API_BASE, ApiError } from "@/lib/api/client";
-import { FPT_CAMPUSES } from "@/lib/fpt-campuses";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import {
+  type ProfileIdentityFormState,
+  validateProfileIdentity,
+} from "@/lib/auth/profile-validation";
+import { FPT_CAMPUSES } from "@/lib/fpt-campuses";
 import { cn } from "@/lib/utils";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 
@@ -25,39 +29,32 @@ type RegisterFormState = {
 type FieldName = keyof RegisterFormState;
 type FieldErrors = Partial<Record<FieldName, string>>;
 
-const USERNAME_PATTERN = /^[a-z0-9_]+$/;
-
 function validate(form: RegisterFormState): FieldErrors {
   const errors: FieldErrors = {};
   const email = form.email.trim();
-  const username = form.username.trim();
-  const displayName = form.displayName.trim();
 
   if (!email) errors.email = "Nhập email của bạn.";
-  else if (!/^\S+@\S+\.\S+$/.test(email)) errors.email = "Email chưa đúng định dạng. Ví dụ: name@domain.com.";
-
-  if (!username) errors.username = "Nhập tên đăng nhập.";
-  else if (username.length < 3) errors.username = "Tên đăng nhập cần ít nhất 3 ký tự.";
-  else if (username.length > 32) errors.username = "Tên đăng nhập tối đa 32 ký tự.";
-  else if (username !== username.toLowerCase()) errors.username = "Tên đăng nhập chỉ dùng chữ thường, viết liền, không dấu.";
-  else if (!USERNAME_PATTERN.test(username)) {
-    errors.username = "Tên đăng nhập viết liền, không dấu; chỉ dùng a-z, 0-9 và dấu gạch dưới (_).";
+  else if (!/^\S+@\S+\.\S+$/.test(email)) {
+    errors.email = "Email chưa đúng định dạng. Ví dụ: name@domain.com.";
   }
 
   if (!form.password) errors.password = "Nhập mật khẩu.";
-  else if (form.password.length < 8) errors.password = "Mật khẩu cần ít nhất 8 ký tự.";
-  else if (/^\s+$/.test(form.password)) errors.password = "Mật khẩu không được chỉ gồm khoảng trắng.";
+  else if (form.password.length < 8) {
+    errors.password = "Mật khẩu cần ít nhất 8 ký tự.";
+  } else if (/^\s+$/.test(form.password)) {
+    errors.password = "Mật khẩu không được chỉ gồm khoảng trắng.";
+  }
 
-  if (!form.confirmPassword) errors.confirmPassword = "Nhập lại mật khẩu để xác nhận.";
-  else if (form.confirmPassword !== form.password) errors.confirmPassword = "Mật khẩu nhập lại chưa khớp.";
+  if (!form.confirmPassword) {
+    errors.confirmPassword = "Nhập lại mật khẩu để xác nhận.";
+  } else if (form.confirmPassword !== form.password) {
+    errors.confirmPassword = "Mật khẩu nhập lại chưa khớp.";
+  }
 
-  if (!form.campus) errors.campus = "Chọn campus của bạn.";
-
-  if (!displayName) errors.displayName = "Nhập tên hiển thị.";
-  else if (displayName.length < 2) errors.displayName = "Tên hiển thị cần ít nhất 2 ký tự.";
-  else if (displayName.length > 80) errors.displayName = "Tên hiển thị tối đa 80 ký tự.";
-
-  return errors;
+  return {
+    ...errors,
+    ...validateProfileIdentity(form satisfies ProfileIdentityFormState),
+  } satisfies FieldErrors;
 }
 
 function FieldError({ message }: { message?: string }) {
