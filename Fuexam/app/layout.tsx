@@ -2,6 +2,7 @@ import React from "react"
 import type { Metadata } from 'next'
 import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { PendingProfileGate } from '@/components/auth/PendingProfileGate'
 import { AuthProvider } from '@/lib/auth/AuthProvider'
 import './globals.css'
 
@@ -35,7 +36,10 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className={`${instrumentSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <PendingProfileGate />
+          {children}
+        </AuthProvider>
         <Analytics />
       </body>
     </html>
