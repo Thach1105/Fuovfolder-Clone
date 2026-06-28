@@ -220,6 +220,11 @@ public class UserEntity {
     }
 
     public void markDeleted(Instant at) {
+        String prefix = "deleted_";
+        this.username = prefix + this.username;
+        this.usernameNormalized = prefix + this.usernameNormalized;
+        this.email = prefix + this.email;
+        this.normalizedEmail = prefix + this.normalizedEmail;
         this.status = UserStatus.DELETED;
         this.deletedAt = at;
         this.updatedAt = at;
