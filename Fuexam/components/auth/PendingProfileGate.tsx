@@ -14,7 +14,14 @@ const EXEMPT_PATHS = new Set([
   "/error",
   "/login",
   "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
 ]);
+
+function isExemptPath(pathname: string) {
+  return EXEMPT_PATHS.has(pathname);
+}
 
 export function PendingProfileGate() {
   const pathname = usePathname();
@@ -24,7 +31,7 @@ export function PendingProfileGate() {
   useEffect(() => {
     if (loading || !pathname || !user) return;
     if (!isPendingProfileStatus(user.status)) return;
-    if (EXEMPT_PATHS.has(pathname)) return;
+    if (isExemptPath(pathname)) return;
     router.replace(COMPLETE_PROFILE_PATH);
   }, [loading, pathname, router, user]);
 
