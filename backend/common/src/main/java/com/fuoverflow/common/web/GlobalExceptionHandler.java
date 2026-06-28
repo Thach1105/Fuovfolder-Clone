@@ -51,11 +51,27 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception exception, HttpServletRequest request) {
         log.error("Unhandled exception: method={}, path={}, requestId={}",
                 request.getMethod(), request.getRequestURI(), request.getHeader("X-Request-Id"), exception);
-        String message = String.format(
-                "Đã xảy ra lỗi hệ thống. Vui lòng liên hệ hỗ trợ qua email %s hoặc số điện thoại %s.",
-                support.email(), support.phone());
+        String message = buildSupportMessage(support);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(error("INTERNAL_ERROR", message, request, null));
+    }
+
+    private String buildSupportMessage(SupportProperties support) {
+        boolean hasEmail = support.email() != null && !support.email().isBlank();
+        boolean hasPhone = support.phone() != null && !support.phone().isBlank();
+        if (hasEmail && hasPhone) {
+            return String.format(
+                "Đã xảy ra lỗi hệ thống. Vui lòng liên hệ hỗ trợ qua email %s hoặc số điện thoại %s.",
+                support.email(), support.phone());
+        } else if (hasEmail) {
+            return String.format(
+                "Đã xảy ra lỗi hệ thống. Vui lòng liên hệ hỗ trợ qua email %s.", support.email());
+        } else if (hasPhone) {
+            return String.format(
+                "Đã xảy ra lỗi hệ thống. Vui lòng liên hệ hỗ trợ qua số điện thoại %s.", support.phone());
+        } else {
+            return "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau hoặc liên hệ quản trị viên.";
+        }
     }
 
     private ApiResponse.ErrorDetail.FieldError toFieldError(FieldError error) {

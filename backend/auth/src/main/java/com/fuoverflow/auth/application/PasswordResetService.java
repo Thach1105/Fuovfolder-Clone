@@ -7,6 +7,7 @@ import com.fuoverflow.auth.persistence.PasswordResetTokenRepository;
 import com.fuoverflow.auth.persistence.UserSessionRepository;
 import com.fuoverflow.auth.support.TokenGenerator;
 import com.fuoverflow.auth.support.TokenHashing;
+import com.fuoverflow.common.exception.TooManyRequestsException;
 import com.fuoverflow.common.exception.UnauthorizedException;
 import com.fuoverflow.common.support.ResendRateLimiter;
 import com.fuoverflow.user.api.dto.AuthUserView;
@@ -64,7 +65,11 @@ public class PasswordResetService {
         users.findAuthUserByIdentifier(email)
                 .filter(this::canResetPassword)
                 .ifPresent(user -> {
-                    rateLimiter.checkAndRecord("password_reset", user.id());
+                    try {
+                        rateLimiter.checkAndRecord("password_reset", user.id());
+                    } catch (TooManyRequestsException e) {
+                        return; // silently drop — preserves no-enumeration guarantee
+                    }
                     Instant now = Instant.now();
                     tokens.consumeActiveByUserId(user.id(), now);
                     String token = generator.opaqueToken();
@@ -105,7 +110,7 @@ public class PasswordResetService {
     }
 
     private Duration tokenTtl() {
-        AuthProperties.PasswordReset config = properties != null ? properties.passwordReset() : null;
+        AuthProperties.PasswordReset config = properties.passwordReset();
         if (config == null || config.tokenTtl() == null) {
             return Duration.ofHours(1);
         }

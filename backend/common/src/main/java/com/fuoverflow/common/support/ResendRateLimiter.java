@@ -27,13 +27,6 @@ public class ResendRateLimiter {
         String cooldownKey = cooldownKey(type, userId);
         String dailyKey = dailyKey(type, userId);
 
-        if (Boolean.TRUE.equals(redis.hasKey(cooldownKey))) {
-            Long ttl = redis.getExpire(cooldownKey, TimeUnit.SECONDS);
-            long remaining = ttl != null && ttl > 0 ? ttl : COOLDOWN_SECONDS;
-            throw new TooManyRequestsException("RESEND_TOO_SOON",
-                    String.format("Vui lòng chờ %d giây trước khi gửi lại.", remaining));
-        }
-
         String dailyCountStr = redis.opsForValue().get(dailyKey);
         int dailyCount = dailyCountStr != null ? Integer.parseInt(dailyCountStr) : 0;
         if (dailyCount >= DAILY_MAX) {
@@ -41,9 +34,17 @@ public class ResendRateLimiter {
                     "Bạn đã đạt giới hạn gửi email trong ngày hôm nay. Vui lòng thử lại vào ngày mai.");
         }
 
-        redis.opsForValue().set(cooldownKey, "1", COOLDOWN_SECONDS, TimeUnit.SECONDS);
-        Long newCount = redis.opsForValue().increment(dailyKey);
-        if (newCount != null && newCount == 1) {
+        Boolean isNew = redis.opsForValue().setIfAbsent(cooldownKey, "1", COOLDOWN_SECONDS, TimeUnit.SECONDS);
+        if (!Boolean.TRUE.equals(isNew)) {
+            Long ttl = redis.getExpire(cooldownKey, TimeUnit.SECONDS);
+            long remaining = ttl != null && ttl > 0 ? ttl : COOLDOWN_SECONDS;
+            throw new TooManyRequestsException("RESEND_TOO_SOON",
+                    String.format("Vui lòng chờ %d giây trước khi gửi lại.", remaining));
+        }
+
+        redis.opsForValue().increment(dailyKey);
+        Long existingTtl = redis.getExpire(dailyKey, TimeUnit.SECONDS);
+        if (existingTtl != null && existingTtl < 0) {
             redis.expire(dailyKey, 24, TimeUnit.HOURS);
         }
     }

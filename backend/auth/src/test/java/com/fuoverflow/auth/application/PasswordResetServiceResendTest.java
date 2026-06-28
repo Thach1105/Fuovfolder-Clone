@@ -39,6 +39,8 @@ class PasswordResetServiceResendTest {
         tokens = mock(PasswordResetTokenRepository.class);
         rateLimiter = mock(ResendRateLimiter.class);
         emailSender = mock(PasswordResetEmailSender.class);
+        AuthProperties authProperties = mock(AuthProperties.class);
+        when(authProperties.passwordReset()).thenReturn(null);
         service = new PasswordResetService(
                 users,
                 mock(UserPasswordService.class),
@@ -48,7 +50,7 @@ class PasswordResetServiceResendTest {
                 mock(TokenHashing.class),
                 mock(PasswordService.class),
                 emailSender,
-                null,
+                authProperties,
                 rateLimiter);
     }
 
@@ -73,15 +75,15 @@ class PasswordResetServiceResendTest {
     }
 
     @Test
-    void requestResetShouldPropagateRateLimitException() {
+    void requestResetShouldSilentlyDropRateLimitExceptionToPreventEnumeration() {
         UUID userId = UUID.randomUUID();
         AuthUserView user = activeUser(userId, "user@example.com");
         when(users.findAuthUserByIdentifier("user@example.com")).thenReturn(Optional.of(user));
         doThrow(new TooManyRequestsException("RESEND_TOO_SOON", "Vui lòng chờ 60 giây."))
                 .when(rateLimiter).checkAndRecord("password_reset", userId);
 
-        assertThatThrownBy(() -> service.requestReset("user@example.com"))
-                .isInstanceOf(TooManyRequestsException.class);
+        // Must not throw — rate limit is swallowed to prevent email enumeration
+        assertThat(service.requestReset("user@example.com")).isNotNull();
 
         verifyNoInteractions(emailSender);
     }

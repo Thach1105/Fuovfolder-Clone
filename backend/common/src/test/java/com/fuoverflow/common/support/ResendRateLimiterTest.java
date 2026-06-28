@@ -31,7 +31,9 @@ class ResendRateLimiterTest {
     @Test
     void shouldThrowWhenCooldownKeyExists() {
         UUID userId = UUID.randomUUID();
-        when(redis.hasKey(contains("cooldown"))).thenReturn(true);
+        when(ops.get(contains("daily"))).thenReturn("5");
+        when(ops.setIfAbsent(contains("cooldown"), eq("1"), eq(120L), eq(TimeUnit.SECONDS))).thenReturn(false);
+        when(redis.getExpire(contains("cooldown"), eq(TimeUnit.SECONDS))).thenReturn(60L);
 
         assertThatThrownBy(() -> limiter.checkAndRecord("email_verify", userId))
                 .isInstanceOf(TooManyRequestsException.class)
@@ -44,7 +46,6 @@ class ResendRateLimiterTest {
     @Test
     void shouldThrowWhenDailyLimitReached() {
         UUID userId = UUID.randomUUID();
-        when(redis.hasKey(contains("cooldown"))).thenReturn(false);
         when(ops.get(contains("daily"))).thenReturn("20");
 
         assertThatThrownBy(() -> limiter.checkAndRecord("email_verify", userId))
@@ -58,21 +59,22 @@ class ResendRateLimiterTest {
     @Test
     void shouldRecordAttemptWhenAllowed() {
         UUID userId = UUID.randomUUID();
-        when(redis.hasKey(contains("cooldown"))).thenReturn(false);
         when(ops.get(contains("daily"))).thenReturn("5");
+        when(ops.setIfAbsent(contains("cooldown"), eq("1"), eq(120L), eq(TimeUnit.SECONDS))).thenReturn(true);
+        when(redis.getExpire(contains("daily"), eq(TimeUnit.SECONDS))).thenReturn(86400L);
 
         limiter.checkAndRecord("email_verify", userId);
 
-        verify(ops).set(contains("cooldown"), eq("1"), eq(120L), eq(TimeUnit.SECONDS));
+        verify(ops).setIfAbsent(contains("cooldown"), eq("1"), eq(120L), eq(TimeUnit.SECONDS));
         verify(ops).increment(contains("daily"));
     }
 
     @Test
-    void shouldSetDailyKeyTtlWhenCounterIsOne() {
+    void shouldSetDailyKeyTtlWhenNoTtlExists() {
         UUID userId = UUID.randomUUID();
-        when(redis.hasKey(contains("cooldown"))).thenReturn(false);
         when(ops.get(contains("daily"))).thenReturn(null);
-        when(ops.increment(contains("daily"))).thenReturn(1L);
+        when(ops.setIfAbsent(contains("cooldown"), eq("1"), eq(120L), eq(TimeUnit.SECONDS))).thenReturn(true);
+        when(redis.getExpire(contains("daily"), eq(TimeUnit.SECONDS))).thenReturn(-1L);
 
         limiter.checkAndRecord("email_verify", userId);
 
