@@ -30,7 +30,8 @@ public class PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
     static final long PAYOS_MAX_SAFE_ORDER_CODE = 9_007_199_254_740_991L;
-    static final int MIN_CUSTOM_DEPOSIT_VND = 1000;
+    static final int MIN_CUSTOM_DEPOSIT_VND = 10_000;
+    static final int MAX_CUSTOM_DEPOSIT_VND = 499_999_999;
 
     private final OrderRepository orderRepo;
     private final PaymentRepository paymentRepo;
@@ -83,7 +84,10 @@ public class PaymentService {
     @Transactional
     public PayOSPaymentLinkResponse createCustomPaymentLink(int amountVnd, String returnUrl, String cancelUrl, UUID userId) {
         if (amountVnd < MIN_CUSTOM_DEPOSIT_VND) {
-            throw new IllegalArgumentException("Số tiền nạp tối thiểu là " + MIN_CUSTOM_DEPOSIT_VND + "đ");
+            throw new IllegalArgumentException("Số tiền nạp tối thiểu là 10.000đ");
+        }
+        if (amountVnd > MAX_CUSTOM_DEPOSIT_VND) {
+            throw new IllegalArgumentException("Số tiền nạp tối đa là 499.999.999đ");
         }
 
         long orderCode = generateOrderCode();
