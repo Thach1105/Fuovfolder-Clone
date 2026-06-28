@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import {
+  COMPLETE_PROFILE_PATH,
+  isPendingProfileStatus,
+  isSafeAppPath,
+} from "@/lib/auth/pending-profile";
+import * as usersApi from "@/lib/api/users";
 
 function CallbackInner() {
   const router = useRouter();
@@ -16,7 +22,14 @@ function CallbackInner() {
       await refreshUser();
       const next = sessionStorage.getItem("oauth_next");
       sessionStorage.removeItem("oauth_next");
-      const destination = next && next.startsWith("/") && !next.startsWith("//") ? next : "/suoc";
+
+      const profile = await usersApi.getCurrentUser();
+      const destination = isPendingProfileStatus(profile.status)
+        ? COMPLETE_PROFILE_PATH
+        : isSafeAppPath(next)
+          ? next
+          : "/suoc";
+
       router.replace(destination);
     } catch {
       setError(true);
