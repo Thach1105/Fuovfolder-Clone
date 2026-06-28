@@ -16,6 +16,7 @@ import {
   Inbox,
   Users,
   CreditCard,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { can } from "@/lib/auth/permissions";
@@ -93,6 +94,12 @@ const NAV: NavSection[] = [
         label: "Deposit — Mệnh giá nạp",
         icon: CreditCard,
         permission: "deposit.admin:read",
+      },
+      {
+        href: "/payments",
+        label: "Quản lý nạp tiền",
+        icon: Wallet,
+        permission: "payment.admin:read",
       },
     ],
   },

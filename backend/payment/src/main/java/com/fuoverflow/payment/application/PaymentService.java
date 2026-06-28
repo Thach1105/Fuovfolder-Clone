@@ -4,8 +4,12 @@ import com.fuoverflow.award.application.PointsWalletService;
 import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.deposit.persistence.DepositTierEntity;
 import com.fuoverflow.deposit.persistence.DepositTierRepository;
+import com.fuoverflow.payment.api.dto.DepositHistoryItemResponse;
+import com.fuoverflow.payment.api.dto.DepositHistoryPageResponse;
+import com.fuoverflow.payment.api.dto.DepositResumeResponse;
 import com.fuoverflow.payment.api.dto.PayOSPaymentLinkResponse;
 import com.fuoverflow.payment.api.dto.PaymentStatusResponse;
+import com.fuoverflow.payment.config.PaymentProperties;
 import com.fuoverflow.payment.persistence.OrderEntity;
 import com.fuoverflow.payment.persistence.OrderRepository;
 import com.fuoverflow.payment.persistence.PaymentEntity;
@@ -19,8 +23,13 @@ import vn.payos.PayOS;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -38,14 +47,17 @@ public class PaymentService {
     private final PayOS payOS;
     private final PointsWalletService pointsWalletService;
     private final DepositTierRepository tierRepo;
+    private final PaymentProperties paymentProperties;
 
     public PaymentService(OrderRepository orderRepo, PaymentRepository paymentRepo,
-                          PayOS payOS, PointsWalletService pointsWalletService, DepositTierRepository tierRepo) {
+                          PayOS payOS, PointsWalletService pointsWalletService,
+                          DepositTierRepository tierRepo, PaymentProperties paymentProperties) {
         this.orderRepo = orderRepo;
         this.paymentRepo = paymentRepo;
         this.payOS = payOS;
         this.pointsWalletService = pointsWalletService;
         this.tierRepo = tierRepo;
+        this.paymentProperties = paymentProperties;
     }
 
     @Transactional
@@ -55,12 +67,14 @@ public class PaymentService {
                 .orElseThrow(() -> new NotFoundException("DEPOSIT_TIER_NOT_FOUND", "Deposit tier not found: " + tierId));
 
         long orderCode = generateOrderCode();
+        Instant expiredAt = Instant.now().plusSeconds(paymentProperties.linkExpiryMinutes() * 60L);
         CreatePaymentLinkRequest request = CreatePaymentLinkRequest.builder()
                 .orderCode(orderCode)
                 .amount((long) tier.getAmountVnd())
                 .description("Nap diem " + tier.getLabel())
                 .returnUrl(returnUrl)
                 .cancelUrl(cancelUrl)
+                .expiredAt(expiredAt.getEpochSecond())
                 .build();
 
         CreatePaymentLinkResponse response;
@@ -73,6 +87,8 @@ public class PaymentService {
         }
 
         OrderEntity order = OrderEntity.createFromTier(userId, tier.getAmountVnd(), tier, "payos", String.valueOf(orderCode));
+        order.setCheckoutUrl(response.getCheckoutUrl());
+        order.setExpiredAt(expiredAt);
         orderRepo.save(order);
         return new PayOSPaymentLinkResponse(response.getCheckoutUrl(), response.getQrCode(), String.valueOf(orderCode));
     }
@@ -91,12 +107,14 @@ public class PaymentService {
         }
 
         long orderCode = generateOrderCode();
+        Instant expiredAt = Instant.now().plusSeconds(paymentProperties.linkExpiryMinutes() * 60L);
         CreatePaymentLinkRequest request = CreatePaymentLinkRequest.builder()
                 .orderCode(orderCode)
                 .amount((long) amountVnd)
                 .description("Nap diem tuy chon")
                 .returnUrl(returnUrl)
                 .cancelUrl(cancelUrl)
+                .expiredAt(expiredAt.getEpochSecond())
                 .build();
 
         CreatePaymentLinkResponse response;
@@ -111,6 +129,8 @@ public class PaymentService {
         OrderEntity order = OrderEntity.create(userId, amountVnd, "VND", "payos", String.valueOf(orderCode));
         order.setPointsAwarded(amountVnd);
         order.setTierLabelSnapshot("Nạp linh động");
+        order.setCheckoutUrl(response.getCheckoutUrl());
+        order.setExpiredAt(expiredAt);
         orderRepo.save(order);
         return new PayOSPaymentLinkResponse(response.getCheckoutUrl(), response.getQrCode(), String.valueOf(orderCode));
     }
@@ -251,5 +271,70 @@ public class PaymentService {
     public void confirmPaymentByOrderCode(String orderCode) {
         OrderEntity order = getOrderByCode(orderCode);
         confirmOrder(order, orderCode);
+    }
+
+    @Transactional(readOnly = true)
+    public DepositHistoryPageResponse listUserDeposits(UUID userId, String status, Instant fromDate, Instant toDate, int page, int size) {
+        Page<OrderEntity> orders = orderRepo.findUserDeposits(userId, status, fromDate, toDate, PageRequest.of(page, size));
+
+        List<DepositHistoryItemResponse> items = orders.getContent().stream().map(o -> {
+            Instant paidAt = paymentRepo.findByOrderId(o.getId()).stream()
+                    .filter(p -> "paid".equals(p.getStatus()))
+                    .map(PaymentEntity::getPaidAt)
+                    .findFirst().orElse(null);
+
+            boolean canResume = "pending".equals(o.getStatus())
+                    && o.getCheckoutUrl() != null
+                    && o.getExpiredAt() != null
+                    && Instant.now().isBefore(o.getExpiredAt());
+
+            return new DepositHistoryItemResponse(
+                    o.getId().toString(),
+                    o.getProviderOrderId(),
+                    o.getTotalCents(),
+                    o.getCurrency(),
+                    o.getStatus(),
+                    o.getPointsAwarded(),
+                    o.getTierLabelSnapshot(),
+                    canResume,
+                    o.getExpiredAt(),
+                    o.getCreatedAt(),
+                    paidAt
+            );
+        }).toList();
+
+        return new DepositHistoryPageResponse(items, orders.getNumber(), orders.getSize(), orders.getTotalElements(), orders.getTotalPages());
+    }
+
+    @Transactional
+    public DepositResumeResponse getResumeInfo(UUID orderId, UUID userId) {
+        OrderEntity order = orderRepo.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found"));
+
+        if (!order.getUserId().equals(userId)) {
+            throw new NotFoundException("ORDER_NOT_FOUND", "Order not found");
+        }
+
+        if (!"pending".equals(order.getStatus())) {
+            if ("paid".equals(order.getStatus())) {
+                return DepositResumeResponse.alreadyPaid();
+            }
+            return DepositResumeResponse.notResumable("NOT_PENDING", "Đơn hàng không ở trạng thái chờ thanh toán.");
+        }
+
+        if (order.getExpiredAt() == null || order.getCheckoutUrl() == null) {
+            order.markAsExpired();
+            orderRepo.save(order);
+            return DepositResumeResponse.expired();
+        }
+
+        if (Instant.now().isAfter(order.getExpiredAt())) {
+            order.markAsExpired();
+            orderRepo.save(order);
+            return DepositResumeResponse.expired();
+        }
+
+        long remainingSeconds = Duration.between(Instant.now(), order.getExpiredAt()).getSeconds();
+        return DepositResumeResponse.resumable(order.getCheckoutUrl(), order.getExpiredAt(), remainingSeconds);
     }
 }

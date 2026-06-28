@@ -7,11 +7,15 @@ import com.fuoverflow.award.application.PointsWalletService;
 import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.deposit.persistence.DepositTierEntity;
 import com.fuoverflow.deposit.persistence.DepositTierRepository;
+import com.fuoverflow.payment.api.dto.DepositHistoryPageResponse;
+import com.fuoverflow.payment.api.dto.DepositResumeResponse;
 import com.fuoverflow.payment.api.dto.PaymentStatusResponse;
+import com.fuoverflow.payment.config.PaymentProperties;
 import com.fuoverflow.payment.persistence.OrderEntity;
 import com.fuoverflow.payment.persistence.OrderRepository;
 import com.fuoverflow.payment.persistence.PaymentEntity;
 import com.fuoverflow.payment.persistence.PaymentRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
@@ -22,7 +26,13 @@ import org.slf4j.LoggerFactory;
 import vn.payos.PayOS;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -60,8 +70,15 @@ class PaymentServiceTest {
     @Mock
     private DepositTierRepository tierRepo;
 
-    @InjectMocks
+    private PaymentProperties paymentProperties;
+
     private PaymentService paymentService;
+
+    @BeforeEach
+    void setUp() {
+        paymentProperties = new PaymentProperties(30);
+        paymentService = new PaymentService(orderRepo, paymentRepo, payOS, pointsWalletService, tierRepo, paymentProperties);
+    }
 
     @Test
     void createPaymentLink_shouldLogContextWhenPayOSCreateFails() {
@@ -231,5 +248,137 @@ class PaymentServiceTest {
             assertThat(orderCode).isPositive();
             assertThat(orderCode).isLessThanOrEqualTo(9_007_199_254_740_991L);
         }
+    }
+
+    // --- getResumeInfo tests ---
+
+    @Test
+    void getResumeInfo_shouldReturnResumableWhenPendingAndNotExpired() {
+        UUID userId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(userId, 10000, "VND", "payos", "order-1");
+        order.setCheckoutUrl("https://pay.payos.vn/checkout/abc");
+        order.setExpiredAt(Instant.now().plus(15, ChronoUnit.MINUTES));
+        when(orderRepo.findById(order.getId())).thenReturn(Optional.of(order));
+
+        DepositResumeResponse response = paymentService.getResumeInfo(order.getId(), userId);
+
+        assertThat(response.canResume()).isTrue();
+        assertThat(response.checkoutUrl()).isEqualTo("https://pay.payos.vn/checkout/abc");
+        assertThat(response.remainingSeconds()).isPositive();
+        assertThat(response.reason()).isNull();
+    }
+
+    @Test
+    void getResumeInfo_shouldReturnExpiredAndUpdateStatusWhenPastExpiry() {
+        UUID userId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(userId, 10000, "VND", "payos", "order-1");
+        order.setCheckoutUrl("https://pay.payos.vn/checkout/abc");
+        order.setExpiredAt(Instant.now().minus(5, ChronoUnit.MINUTES));
+        when(orderRepo.findById(order.getId())).thenReturn(Optional.of(order));
+
+        DepositResumeResponse response = paymentService.getResumeInfo(order.getId(), userId);
+
+        assertThat(response.canResume()).isFalse();
+        assertThat(response.reason()).isEqualTo("EXPIRED");
+        assertThat(order.getStatus()).isEqualTo("expired");
+        verify(orderRepo).save(order);
+    }
+
+    @Test
+    void getResumeInfo_shouldReturnExpiredWhenCheckoutUrlIsNull() {
+        UUID userId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(userId, 10000, "VND", "payos", "order-1");
+        when(orderRepo.findById(order.getId())).thenReturn(Optional.of(order));
+
+        DepositResumeResponse response = paymentService.getResumeInfo(order.getId(), userId);
+
+        assertThat(response.canResume()).isFalse();
+        assertThat(response.reason()).isEqualTo("EXPIRED");
+        verify(orderRepo).save(order);
+    }
+
+    @Test
+    void getResumeInfo_shouldReturnAlreadyPaidWhenOrderIsPaid() {
+        UUID userId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(userId, 10000, "VND", "payos", "order-1");
+        order.markAsPaid();
+        when(orderRepo.findById(order.getId())).thenReturn(Optional.of(order));
+
+        DepositResumeResponse response = paymentService.getResumeInfo(order.getId(), userId);
+
+        assertThat(response.canResume()).isFalse();
+        assertThat(response.reason()).isEqualTo("ALREADY_PAID");
+        verify(orderRepo, never()).save(any());
+    }
+
+    @Test
+    void getResumeInfo_shouldRejectWhenOrderBelongsToAnotherUser() {
+        UUID ownerId = UUID.randomUUID();
+        UUID anotherUserId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(ownerId, 10000, "VND", "payos", "order-1");
+        when(orderRepo.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> paymentService.getResumeInfo(order.getId(), anotherUserId))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void getResumeInfo_shouldThrowWhenOrderNotFound() {
+        UUID orderId = UUID.randomUUID();
+        when(orderRepo.findById(orderId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> paymentService.getResumeInfo(orderId, UUID.randomUUID()))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    // --- listUserDeposits tests ---
+
+    @Test
+    void listUserDeposits_shouldReturnPaginatedResults() {
+        UUID userId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(userId, 50000, "VND", "payos", "order-1");
+        order.setPointsAwarded(50000);
+        order.setTierLabelSnapshot("Nạp 50K");
+        order.setExpiredAt(Instant.now().plus(10, ChronoUnit.MINUTES));
+        order.setCheckoutUrl("https://pay.payos.vn/checkout/xyz");
+
+        Page<OrderEntity> page = new PageImpl<>(List.of(order), PageRequest.of(0, 20), 1);
+        when(orderRepo.findUserDeposits(eq(userId), eq(null), eq(null), eq(null), any())).thenReturn(page);
+        when(paymentRepo.findByOrderId(order.getId())).thenReturn(Collections.emptyList());
+
+        DepositHistoryPageResponse response = paymentService.listUserDeposits(userId, null, null, null, 0, 20);
+
+        assertThat(response.items()).hasSize(1);
+        assertThat(response.items().getFirst().orderCode()).isEqualTo("order-1");
+        assertThat(response.items().getFirst().canResume()).isTrue();
+        assertThat(response.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void listUserDeposits_shouldReturnEmptyWhenNoOrders() {
+        UUID userId = UUID.randomUUID();
+        Page<OrderEntity> emptyPage = new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 20), 0);
+        when(orderRepo.findUserDeposits(eq(userId), any(), any(), any(), any())).thenReturn(emptyPage);
+
+        DepositHistoryPageResponse response = paymentService.listUserDeposits(userId, null, null, null, 0, 20);
+
+        assertThat(response.items()).isEmpty();
+        assertThat(response.totalElements()).isZero();
+    }
+
+    @Test
+    void listUserDeposits_shouldMarkCanResumeFalseWhenExpired() {
+        UUID userId = UUID.randomUUID();
+        OrderEntity order = OrderEntity.create(userId, 50000, "VND", "payos", "order-1");
+        order.setCheckoutUrl("https://pay.payos.vn/checkout/xyz");
+        order.setExpiredAt(Instant.now().minus(5, ChronoUnit.MINUTES));
+
+        Page<OrderEntity> page = new PageImpl<>(List.of(order), PageRequest.of(0, 20), 1);
+        when(orderRepo.findUserDeposits(eq(userId), any(), any(), any(), any())).thenReturn(page);
+        when(paymentRepo.findByOrderId(order.getId())).thenReturn(Collections.emptyList());
+
+        DepositHistoryPageResponse response = paymentService.listUserDeposits(userId, null, null, null, 0, 20);
+
+        assertThat(response.items().getFirst().canResume()).isFalse();
     }
 }

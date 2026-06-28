@@ -62,3 +62,50 @@ export function getPaymentStatus(orderCode: string) {
   const params = new URLSearchParams({ orderCode });
   return apiFetch<PaymentStatusResponse>(`/api/v1/payment/status?${params}`);
 }
+
+export interface DepositHistoryItem {
+  orderId: string;
+  orderCode: string;
+  amount: number;
+  currency: string;
+  status: string;
+  pointsAwarded: number | null;
+  tierLabel: string | null;
+  canResume: boolean;
+  expiredAt: string | null;
+  createdAt: string;
+  paidAt: string | null;
+}
+
+export interface DepositHistoryPage {
+  items: DepositHistoryItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface DepositResumeInfo {
+  canResume: boolean;
+  checkoutUrl: string | null;
+  expiredAt: string | null;
+  remainingSeconds: number | null;
+  reason: string | null;
+  message: string | null;
+}
+
+export function listMyDeposits(params: {
+  page?: number;
+  size?: number;
+  status?: string;
+}) {
+  const q = new URLSearchParams();
+  if (params.page != null) q.set("page", String(params.page));
+  if (params.size != null) q.set("size", String(params.size));
+  if (params.status) q.set("status", params.status);
+  return apiFetch<DepositHistoryPage>(`/api/v1/payment/me/deposits?${q}`);
+}
+
+export function resumeDeposit(orderId: string) {
+  return apiFetch<DepositResumeInfo>(`/api/v1/payment/me/deposits/${orderId}/resume`);
+}
