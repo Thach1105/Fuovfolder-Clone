@@ -26,6 +26,11 @@ export const metadata: Metadata = {
   title: 'Fuexam — Cộng đồng sinh viên FPT',
   description: 'Diễn đàn, tài liệu ôn thi (Source) và khóa học cho sinh viên FPT.',
   generator: 'Fuexam',
+  icons: {
+    icon: '/fa-icon.ico',
+    shortcut: '/fa-icon.ico',
+    apple: '/apple-icon.png',
+  },
 }
 
 export default function RootLayout({

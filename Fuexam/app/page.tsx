@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
@@ -17,21 +18,11 @@ import { HeaderNotificationBell } from "@/components/app/header-notification-bel
 import { AnimatedSphere } from "@/components/landing/animated-sphere";
 import { AnimatedTetrahedron } from "@/components/landing/animated-tetrahedron";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { COMMUNITY_GROUPS } from "@/lib/community-groups";
 
 const words = ["ôn thi", "thảo luận", "chia sẻ", "bứt phá"];
 
-const GROUPS = [
-  {
-    name: "Cộng đồng Fuexam",
-    desc: "Nhận thông báo, hỏi đáp nhanh và cập nhật Source mới.",
-    href: "https://www.facebook.com/groups/976684067613564",
-  },
-  {
-    name: "Hỗ trợ học tập FPT",
-    desc: "Trao đổi môn học, tài liệu và kinh nghiệm qua môn.",
-    href: "https://www.facebook.com/groups/720202890383681",
-  },
-];
+const GROUPS = COMMUNITY_GROUPS;
 
 const FEATURES = [
   {
@@ -123,9 +114,15 @@ export default function Home() {
     <main className="relative min-h-screen overflow-x-hidden noise-overlay">
       <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4">
         <nav className="mx-auto flex h-14 max-w-[1200px] items-center gap-6 rounded-2xl border border-foreground/10 bg-background/75 px-5 backdrop-blur-xl">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="font-display text-xl tracking-tight">Fuexam</span>
-            <span className="mt-1 font-mono text-[10px] text-muted-foreground">FPT</span>
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/logo-full.png"
+              alt="Fuexam"
+              width={1492}
+              height={1054}
+              priority
+              className="h-8 w-auto"
+            />
           </Link>
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <Link href="/suoc" className="hidden text-sm text-foreground/70 transition hover:text-foreground md:inline">Source</Link>
@@ -223,7 +220,7 @@ export default function Home() {
                 Link group được đưa lên đây để dễ thấy hơn footer. Bạn có thể hỏi đáp, xem thông báo Source mới và theo dõi hoạt động cộng đồng.
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {GROUPS.map((group) => (
                 <a
                   key={group.href}
@@ -368,9 +365,14 @@ export default function Home() {
 
       <footer className="border-t border-foreground/10 py-10">
         <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-4 px-6 text-sm text-muted-foreground sm:flex-row lg:px-12">
-          <div className="flex items-center gap-2">
-            <span className="font-display text-lg tracking-tight text-foreground">Fuexam</span>
-            <span className="font-mono text-[10px]">FPT</span>
+          <div className="flex items-center">
+            <Image
+              src="/logo-full.png"
+              alt="Fuexam"
+              width={1492}
+              height={1054}
+              className="h-7 w-auto"
+            />
           </div>
           <p>© {new Date().getFullYear()} Fuexam - Cộng đồng sinh viên FPT.</p>
           <div className="flex flex-wrap items-center justify-center gap-4">

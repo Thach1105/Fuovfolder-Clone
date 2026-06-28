@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AppHeader } from "@/components/app/app-header";
 import { AppBackdrop } from "@/components/app/app-backdrop";
+import { JoinGroupPopup } from "@/components/app/join-group-popup";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -8,6 +9,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <AppBackdrop />
       <AppHeader />
       <main className="mx-auto max-w-[1200px] px-4 py-8 lg:px-6">{children}</main>
+      <JoinGroupPopup />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -64,9 +65,15 @@ export function AppHeader() {
               : "border-transparent bg-background/40 backdrop-blur-md",
           )}
         >
-          <Link href="/" className="group flex shrink-0 items-center gap-2">
-            <span className="font-display text-xl tracking-tight">Fuexam</span>
-            <span className="mt-1 font-mono text-[10px] text-muted-foreground">FPT</span>
+          <Link href="/" className="group flex shrink-0 items-center">
+            <Image
+              src="/logo-full.png"
+              alt="Fuexam"
+              width={1492}
+              height={1054}
+              priority
+              className="h-8 w-auto"
+            />
           </Link>
 
           <div className="hidden items-center gap-1 md:flex">
