@@ -2,21 +2,67 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, MailCheck } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import * as authApi from "@/lib/api/auth";
 
+const COOLDOWN = 120;
+
 type VerifyState = "idle" | "verifying" | "success" | "error";
+
+function useResendCooldown() {
+  const [countdown, setCountdown] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startCooldown = useCallback(() => {
+    setCountdown(COOLDOWN);
+    timerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          timerRef.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
+
+  return { countdown, startCooldown };
+}
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const sent = searchParams.get("sent") === "1";
+  const emailParam = searchParams.get("email") ?? "";
 
   const [state, setState] = useState<VerifyState>(token ? "verifying" : "idle");
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [resendError, setResendError] = useState<string | null>(null);
+  const { countdown, startCooldown } = useResendCooldown();
+
+  async function handleResend() {
+    if (!emailParam || countdown > 0 || resendStatus === "sending") return;
+    setResendError(null);
+    setResendStatus("sending");
+    try {
+      await authApi.resendVerificationEmail(emailParam);
+      setResendStatus("sent");
+      startCooldown();
+    } catch (err) {
+      setResendStatus("error");
+      setResendError(
+        err instanceof ApiError ? err.message : "Không gửi được email. Vui lòng thử lại."
+      );
+    }
+  }
 
   useEffect(() => {
     if (!token) return;
@@ -110,6 +156,29 @@ function VerifyEmailContent() {
             </div>
           </div>
         </div>
+
+        {emailParam && (
+          <div className="space-y-2">
+            {resendStatus === "sent" && (
+              <p className="text-sm text-emerald-600">Email đã được gửi lại thành công.</p>
+            )}
+            {resendStatus === "error" && resendError && (
+              <p className="text-sm text-red-600">{resendError}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={countdown > 0 || resendStatus === "sending"}
+              className="text-sm font-medium text-fuo-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {resendStatus === "sending"
+                ? "Đang gửi..."
+                : countdown > 0
+                  ? `Gửi lại sau ${countdown}s`
+                  : "Không nhận được email? Gửi lại"}
+            </button>
+          </div>
+        )}
 
         <Link href="/login" className="font-medium text-fuo-600 hover:underline">
           Về trang đăng nhập

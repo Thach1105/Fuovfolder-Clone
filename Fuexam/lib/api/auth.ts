@@ -22,6 +22,13 @@ export function verifyEmail(token: string) {
   });
 }
 
+export function resendVerificationEmail(email: string) {
+  return apiFetch<void>("/api/v1/auth/email/resend", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
 export function forgotPassword(email: string) {
   return apiFetch<ForgotPasswordResponse>("/api/v1/auth/password/forgot", {
     method: "POST",

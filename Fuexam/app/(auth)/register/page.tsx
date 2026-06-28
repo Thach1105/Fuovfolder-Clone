@@ -113,7 +113,7 @@ export default function RegisterPage() {
         displayName: form.displayName.trim(),
         campus: form.campus,
       });
-      router.push("/verify-email?sent=1");
+      router.push(`/verify-email?sent=1&email=${encodeURIComponent(form.email.trim())}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Đăng ký thất bại. Vui lòng thử lại.");
     } finally {
