@@ -210,3 +210,62 @@ export interface AdminDepositTierResponse {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface AdminOrderListItem {
+  orderId: string;
+  orderCode: string;
+  amount: number;
+  currency: string;
+  status: string;
+  pointsAwarded: number | null;
+  tierLabel: string | null;
+  userId: string;
+  username: string | null;
+  email: string | null;
+  createdAt: string;
+  paidAt: string | null;
+}
+
+export interface AdminOrderPageResponse {
+  items: AdminOrderListItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface AdminOrderPaymentRecord {
+  paymentId: string;
+  status: string;
+  amountCents: number;
+  currency: string;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminOrderDetailResponse {
+  orderId: string;
+  orderCode: string;
+  amount: number;
+  currency: string;
+  status: string;
+  pointsAwarded: number | null;
+  tierLabel: string | null;
+  checkoutUrl: string | null;
+  expiredAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: { userId: string; username: string | null; email: string | null; displayName: string | null };
+  payments: AdminOrderPaymentRecord[];
+}
+
+export interface PaymentAnalyticsResponse {
+  totalRevenue: number;
+  totalTransactions: number;
+  totalPointsIssued: number;
+  statusBreakdown: { paid: number; pending: number; failed: number; expired: number };
+  conversionRate: number;
+  averageDepositAmount: number;
+  revenueByTier: { tierLabel: string; count: number; totalRevenue: number }[];
+  topUsers: { userId: string; username: string | null; totalDeposited: number; transactionCount: number }[];
+}
