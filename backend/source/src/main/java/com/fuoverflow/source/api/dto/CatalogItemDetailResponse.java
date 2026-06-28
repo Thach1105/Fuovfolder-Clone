@@ -16,6 +16,7 @@ public record CatalogItemDetailResponse(
         double passRatePercent,
         long viewCount,
         String cardColor,
+        String coverImageUrl,
         String categorySlug,
         boolean featured,
         List<CatalogItemResponse> related,

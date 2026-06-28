@@ -44,6 +44,7 @@ public final class SourceCatalogMapper {
                 e.getPassRateBp() / 100.0,
                 e.getViewCount(),
                 e.getCardColor(),
+                e.getCoverImageUrl(),
                 e.getCategorySlug(),
                 e.isFeatured(),
                 related,
