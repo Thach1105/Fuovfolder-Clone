@@ -202,6 +202,15 @@ public class UserEntity {
         this.updatedAt = at;
     }
 
+    public void completeProfile(String username, String usernameNormalized, String displayName, String campus, Instant at) {
+        this.username = username;
+        this.usernameNormalized = usernameNormalized;
+        this.displayName = displayName;
+        this.campus = campus;
+        this.status = UserStatus.ACTIVE;
+        this.updatedAt = at;
+    }
+
     public void updateProfile(String displayName, String firstName, String lastName, String avatarUrl, Instant at) {
         if (displayName != null) this.displayName = displayName;
         this.firstName = firstName;

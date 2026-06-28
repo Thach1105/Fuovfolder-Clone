@@ -2,6 +2,7 @@ package com.fuoverflow.auth.api;
 
 import com.fuoverflow.auth.api.dto.*;
 import com.fuoverflow.auth.application.AuthService;
+import com.fuoverflow.auth.application.CompletePendingProfileService;
 import com.fuoverflow.auth.application.CookieService;
 import com.fuoverflow.auth.application.EmailVerificationService;
 import com.fuoverflow.auth.application.PasswordResetService;
@@ -12,6 +13,7 @@ import com.fuoverflow.auth.support.PasswordResetLinks;
 import com.fuoverflow.common.config.CorsProperties;
 import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
+import com.fuoverflow.user.api.dto.UserProfileResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,6 +29,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
     private final AuthService authService;
+    private final CompletePendingProfileService completePendingProfileService;
     private final EmailVerificationService emailVerificationService;
     private final PasswordResetService passwordResetService;
     private final CookieService cookieService;
@@ -35,12 +38,14 @@ public class AuthController {
 
     public AuthController(
             AuthService authService,
+            CompletePendingProfileService completePendingProfileService,
             EmailVerificationService emailVerificationService,
             PasswordResetService passwordResetService,
             CookieService cookieService,
             AuthProperties authProperties,
             CorsProperties corsProperties) {
         this.authService = authService;
+        this.completePendingProfileService = completePendingProfileService;
         this.emailVerificationService = emailVerificationService;
         this.passwordResetService = passwordResetService;
         this.cookieService = cookieService;
@@ -52,6 +57,14 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ApiResponse.ok(authService.register(request));
+    }
+
+    @PostMapping("/complete-profile")
+    public ApiResponse<UserProfileResponse> completeProfile(
+            @Valid @RequestBody CompletePendingProfileRequest request,
+            org.springframework.security.core.Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
+        return ApiResponse.ok(completePendingProfileService.complete(userId, request));
     }
 
     @GetMapping("/email/verify")
