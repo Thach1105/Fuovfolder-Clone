@@ -9,6 +9,7 @@ import com.fuoverflow.common.support.ResendRateLimiter;
 import com.fuoverflow.user.api.dto.AuthUserView;
 import com.fuoverflow.user.application.UserEmailVerificationService;
 import com.fuoverflow.user.application.UserLookupService;
+import com.fuoverflow.user.domain.UserStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,7 +69,7 @@ public class EmailVerificationService {
     @Transactional
     public void resend(String email) {
         AuthUserView user = userLookup.findAuthUserByIdentifier(email).orElse(null);
-        if (user == null || user.emailVerified()) {
+        if (user == null || user.emailVerified() || user.status() != UserStatus.PENDING_EMAIL_VERIFICATION) {
             return;
         }
         rateLimiter.checkAndRecord("email_verify", user.id());
