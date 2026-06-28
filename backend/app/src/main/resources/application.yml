@@ -141,6 +141,9 @@ payos:
   api-key: ${PAYOS_API_KEY:}
   checksum-key: ${PAYOS_CHECKSUM_KEY:}
 
+payment:
+  link-expiry-minutes: 30
+
 app:
   support:
     email: ${SUPPORT_EMAIL:}
