@@ -37,7 +37,9 @@ function CallbackInner() {
   }, [refreshUser, router]);
 
   useEffect(() => {
-    handleCallback();
+    queueMicrotask(() => {
+      void handleCallback();
+    });
   }, [handleCallback]);
 
   if (error) {

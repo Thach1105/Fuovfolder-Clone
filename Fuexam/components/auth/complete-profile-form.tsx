@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,11 +34,11 @@ function FieldError({ message }: { message?: string }) {
 export function CompleteProfileForm(): JSX.Element {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
-  const [form, setForm] = useState<CompleteProfileFormState>({
+  const [form, setForm] = useState<CompleteProfileFormState>(() => ({
     username: user?.username ?? "",
     campus: "",
     displayName: user?.displayName ?? "",
-  });
+  }));
   const [touched, setTouched] = useState<
     Partial<Record<CompleteProfileField, boolean>>
   >({});
@@ -48,14 +48,6 @@ export function CompleteProfileForm(): JSX.Element {
     Partial<Record<CompleteProfileField, string>>
   >({});
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    setForm((prev) => ({
-      ...prev,
-      username: user?.username ?? prev.username,
-      displayName: user?.displayName ?? prev.displayName,
-    }));
-  }, [user?.displayName, user?.username]);
 
   const errors = useMemo(() => validateCompleteProfileForm(form), [form]);
 
