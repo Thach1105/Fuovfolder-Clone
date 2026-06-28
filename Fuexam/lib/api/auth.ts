@@ -2,10 +2,12 @@ import { apiFetch, refreshAuthSession } from "@/lib/api/client";
 import type {
   AuthTokenResponse,
   AuthenticatedUserResponse,
+  CompletePendingProfileRequest,
   ForgotPasswordResponse,
   LoginRequest,
   RegisterRequest,
   RegisterResponse,
+  UserProfileResponse,
 } from "@/types/api";
 
 export function register(data: RegisterRequest) {
@@ -56,4 +58,14 @@ export function logout() {
 
 export function refreshSession() {
   return refreshAuthSession();
+}
+
+export function completePendingProfile(data: CompletePendingProfileRequest) {
+  return apiFetch<UserProfileResponse | AuthenticatedUserResponse | void>(
+    "/api/v1/auth/complete-profile",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
 }

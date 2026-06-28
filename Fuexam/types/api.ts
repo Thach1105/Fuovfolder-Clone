@@ -56,6 +56,12 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface CompletePendingProfileRequest {
+  username: string;
+  campus: string;
+  displayName: string;
+}
+
 export interface ForgotPasswordResponse {
   message: string;
 }
