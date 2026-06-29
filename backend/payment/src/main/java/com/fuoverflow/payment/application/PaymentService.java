@@ -1,6 +1,8 @@
 package com.fuoverflow.payment.application;
 
 import com.fuoverflow.award.application.PointsWalletService;
+import com.fuoverflow.common.broadcast.DepositCompletedEvent;
+import com.fuoverflow.common.broadcast.UserDisplayNameLookup;
 import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.deposit.persistence.DepositTierEntity;
 import com.fuoverflow.deposit.persistence.DepositTierRepository;
@@ -16,6 +18,7 @@ import com.fuoverflow.payment.persistence.PaymentEntity;
 import com.fuoverflow.payment.persistence.PaymentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,16 +51,22 @@ public class PaymentService {
     private final PointsWalletService pointsWalletService;
     private final DepositTierRepository tierRepo;
     private final PaymentProperties paymentProperties;
+    private final ApplicationEventPublisher eventPublisher;
+    private final UserDisplayNameLookup userDisplayNameLookup;
 
     public PaymentService(OrderRepository orderRepo, PaymentRepository paymentRepo,
                           PayOS payOS, PointsWalletService pointsWalletService,
-                          DepositTierRepository tierRepo, PaymentProperties paymentProperties) {
+                          DepositTierRepository tierRepo, PaymentProperties paymentProperties,
+                          ApplicationEventPublisher eventPublisher,
+                          UserDisplayNameLookup userDisplayNameLookup) {
         this.orderRepo = orderRepo;
         this.paymentRepo = paymentRepo;
         this.payOS = payOS;
         this.pointsWalletService = pointsWalletService;
         this.tierRepo = tierRepo;
         this.paymentProperties = paymentProperties;
+        this.eventPublisher = eventPublisher;
+        this.userDisplayNameLookup = userDisplayNameLookup;
     }
 
     @Transactional
@@ -175,6 +184,15 @@ public class PaymentService {
         }
         pointsWalletService.credit(order.getUserId(), Math.toIntExact(points), "Deposit points from PayOS",
                 PointsWalletService.SOURCE_TOPUP, payment.getId());
+        try {
+            String displayName = userDisplayNameLookup.getDisplayName(order.getUserId());
+            long amountVnd = order.getTotalCents() / 100;
+            DepositCompletedEvent event = new DepositCompletedEvent(
+                    order.getUserId(), displayName, amountVnd, points);
+            eventPublisher.publishEvent(event);
+        } catch (Exception e) {
+            log.warn("Failed to publish deposit broadcast event", e);
+        }
     }
 
     private Optional<PaymentEntity> findExistingPayment(String orderCode) {
