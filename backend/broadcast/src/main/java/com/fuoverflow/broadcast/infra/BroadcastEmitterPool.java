@@ -44,7 +44,10 @@ public class BroadcastEmitterPool {
                         .name(message.eventType())
                         .data(json));
             } catch (IOException e) {
-                emitter.completeWithError(e);
+                try {
+                    emitter.completeWithError(e);
+                } catch (Exception ignored) {
+                }
             }
         }
     }
