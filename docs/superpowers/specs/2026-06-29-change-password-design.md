@@ -17,7 +17,7 @@ Sau khi đổi mật khẩu thành công, toàn bộ session khác bị revoke, 
 
 ### 1. Migration
 
-`V25__password_reset_token_add_purpose.sql`
+`V34__password_reset_token_add_purpose.sql`
 
 Thêm column `purpose VARCHAR(32) NOT NULL DEFAULT 'RESET_PASSWORD'` vào bảng `password_reset_tokens`.
 
@@ -206,7 +206,7 @@ Kiểm tra xem settings có layout/sidebar riêng không. Nếu không có, khô
 ### Backend
 | File | Action |
 |------|--------|
-| `app/src/main/resources/db/migration/V25__password_reset_token_add_purpose.sql` | Create |
+| `app/src/main/resources/db/migration/V34__password_reset_token_add_purpose.sql` | Create |
 | `auth/.../persistence/PasswordResetTokenEntity.java` | Update — thêm `purpose` field |
 | `auth/.../persistence/PasswordResetTokenRepository.java` | Update — thêm query theo purpose |
 | `auth/.../persistence/UserSessionRepository.java` | Update — thêm `revokeAllExcept` |
