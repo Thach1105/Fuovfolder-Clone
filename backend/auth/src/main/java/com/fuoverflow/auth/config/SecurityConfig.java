@@ -88,6 +88,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/membership/plans")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/broadcasts/stream")
+                        .permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
