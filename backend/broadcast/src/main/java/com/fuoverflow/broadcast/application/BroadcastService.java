@@ -58,12 +58,12 @@ public class BroadcastService {
         logEvent(broadcast);
     }
 
-    @Transactional
-    public void logEvent(BroadcastMessage broadcast) {
+    private void logEvent(BroadcastMessage broadcast) {
         String dataJson;
         try {
             dataJson = objectMapper.writeValueAsString(broadcast.data());
         } catch (Exception e) {
+            log.warn("Failed to serialize broadcast event data for type '{}': {}", broadcast.eventType(), e.getMessage());
             dataJson = "{}";
         }
         BroadcastEventEntity event = BroadcastEventEntity.create(
@@ -75,6 +75,7 @@ public class BroadcastService {
         try {
             return objectMapper.readValue(json, new TypeReference<>() {});
         } catch (Exception e) {
+            log.warn("Failed to parse broadcast config JSON: {}", e.getMessage());
             return Map.of();
         }
     }
