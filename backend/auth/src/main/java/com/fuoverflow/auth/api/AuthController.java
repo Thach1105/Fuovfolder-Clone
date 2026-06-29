@@ -2,7 +2,6 @@ package com.fuoverflow.auth.api;
 
 import com.fuoverflow.auth.api.dto.*;
 import com.fuoverflow.auth.application.AuthService;
-import com.fuoverflow.auth.application.ChangePasswordService;
 import com.fuoverflow.auth.application.CompletePendingProfileService;
 import com.fuoverflow.auth.application.CookieService;
 import com.fuoverflow.auth.application.EmailVerificationService;
@@ -36,7 +35,6 @@ public class AuthController {
     private final CompletePendingProfileService completePendingProfileService;
     private final EmailVerificationService emailVerificationService;
     private final PasswordResetService passwordResetService;
-    private final ChangePasswordService changePasswordService;
     private final SetPasswordService setPasswordService;
     private final CookieService cookieService;
     private final AuthProperties authProperties;
@@ -47,7 +45,6 @@ public class AuthController {
             CompletePendingProfileService completePendingProfileService,
             EmailVerificationService emailVerificationService,
             PasswordResetService passwordResetService,
-            ChangePasswordService changePasswordService,
             SetPasswordService setPasswordService,
             CookieService cookieService,
             AuthProperties authProperties,
@@ -56,7 +53,6 @@ public class AuthController {
         this.completePendingProfileService = completePendingProfileService;
         this.emailVerificationService = emailVerificationService;
         this.passwordResetService = passwordResetService;
-        this.changePasswordService = changePasswordService;
         this.setPasswordService = setPasswordService;
         this.cookieService = cookieService;
         this.authProperties = authProperties;
