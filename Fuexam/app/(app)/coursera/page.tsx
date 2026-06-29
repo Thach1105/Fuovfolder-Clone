@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { PromoBanner } from "@/components/layout/PromoBanner";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { AuthGuard } from "@/components/shared/auth-guard";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
   type CatalogItem,
@@ -56,7 +59,7 @@ function CatalogCourseButton({
 
 export default function CourseraPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [featuredCourses, setFeaturedCourses] = useState<CatalogItem[]>([]);
   const [browseCourses, setBrowseCourses] = useState<CatalogItem[]>([]);
   const [search, setSearch] = useState("");
@@ -192,11 +195,8 @@ export default function CourseraPage() {
     }
   }
 
-  if (authLoading) {
-    return <p className="text-sm text-slate-500">Đang tải...</p>;
-  }
-
   return (
+    <AuthGuard>
     <div className="space-y-4">
       <PromoBanner />
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -229,12 +229,10 @@ export default function CourseraPage() {
               </p>
             </div>
 
-            {catalogError && (
-              <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{catalogError}</p>
-            )}
+            <ErrorBanner message={catalogError} className="mt-4" />
 
             {loadingCatalog ? (
-              <p className="mt-4 text-sm text-slate-500">Đang tải danh mục...</p>
+              <LoadingState message="Đang tải danh mục..." className="mt-4" />
             ) : (
               <>
                 {!isSearchMode && (
@@ -359,9 +357,7 @@ export default function CourseraPage() {
                   placeholder="Yêu cầu thêm về khóa học, deadline..."
                 />
               </div>
-              {error && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
-              )}
+              <ErrorBanner message={error} />
               {selected && (
                 <p className="text-sm text-slate-600">
                   Tổng thanh toán:{" "}
@@ -422,5 +418,6 @@ export default function CourseraPage() {
         </aside>
       </div>
     </div>
+    </AuthGuard>
   );
 }

@@ -436,10 +436,12 @@ export default function AdminSourceQuestionsPage() {
                             {q.questionImageUrls.map((url, idx) => {
                               const imgUrl = sourceMediaUrl(url);
                               return (
+                                // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                   key={`${url}-${idx}`}
                                   src={imgUrl ?? undefined}
                                   alt={`Anh ${idx + 1}`}
+                                  loading="lazy"
                                   className="max-h-32 rounded-lg border border-border object-cover"
                                 />
                               );
@@ -484,6 +486,7 @@ export default function AdminSourceQuestionsPage() {
                                   <img
                                     src={optionImage}
                                     alt=""
+                                    loading="lazy"
                                     className="mt-2 max-h-28 rounded border border-border"
                                   />
                                 )}

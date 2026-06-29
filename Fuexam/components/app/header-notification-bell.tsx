@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { NOTIFICATION_PREVIEW_SIZE } from "@/lib/constants/pagination";
 import {
   getUnreadNotificationCount,
   listNotifications,
@@ -69,7 +70,7 @@ export function HeaderNotificationBell() {
     }
     setLoading(true);
     try {
-      const result = await listNotifications({ page: 0, size: 8 });
+      const result = await listNotifications({ page: 0, size: NOTIFICATION_PREVIEW_SIZE });
       setItems(result.items);
     } catch {
       setItems([]);
@@ -80,10 +81,22 @@ export function HeaderNotificationBell() {
 
   useEffect(() => {
     refreshCount();
-    const timer = window.setInterval(refreshCount, NOTIFICATION_POLL_MS);
+    let timer = window.setInterval(refreshCount, NOTIFICATION_POLL_MS);
+
+    function handleVisibility() {
+      if (document.hidden) {
+        window.clearInterval(timer);
+      } else {
+        refreshCount();
+        timer = window.setInterval(refreshCount, NOTIFICATION_POLL_MS);
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("focus", refreshCount);
     return () => {
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("focus", refreshCount);
     };
   }, [refreshCount]);

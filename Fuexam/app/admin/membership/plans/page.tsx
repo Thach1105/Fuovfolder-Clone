@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { useSubmit } from "@/hooks/use-submit";
 import * as adminMembershipApi from "@/lib/api/admin-membership";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { can } from "@/lib/auth/permissions";
@@ -23,11 +26,7 @@ const EMPTY_FORM = {
 const inputClass =
   "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20";
 
-const STATUS_LABEL: Record<string, string> = {
-  active: "Đang bán",
-  inactive: "Tạm ẩn",
-  archived: "Lưu trữ",
-};
+import { MEMBERSHIP_PLAN_STATUS_LABELS, toSelectOptions } from "@/lib/constants/status-labels";
 
 export default function AdminMembershipPlansPage() {
   const { user } = useAuth();
@@ -37,29 +36,22 @@ export default function AdminMembershipPlansPage() {
   const [roles, setRoles] = useState<MembershipRoleOptionResponse[]>([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const { loading, error: loadError, run } = useAsyncAction("Không tải được gói membership.");
+  const { submitting, error: submitError, submit } = useSubmit("Lưu thất bại.");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [planData, roleData] = await Promise.all([
-        adminMembershipApi.listAdminMembershipPlans(),
-        adminMembershipApi.listMembershipRoleOptions(),
-      ]);
-      setPlans(planData);
-      setRoles(roleData);
-      setForm((prev) =>
-        prev.roleSlug || editingId ? prev : { ...prev, roleSlug: roleData[0]?.slug ?? "" },
-      );
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được gói membership.");
-    } finally {
-      setLoading(false);
-    }
-  }, [editingId]);
+  const error = loadError || submitError;
+
+  const load = useCallback(() => run(async () => {
+    const [planData, roleData] = await Promise.all([
+      adminMembershipApi.listAdminMembershipPlans(),
+      adminMembershipApi.listMembershipRoleOptions(),
+    ]);
+    setPlans(planData);
+    setRoles(roleData);
+    setForm((prev) =>
+      prev.roleSlug || editingId ? prev : { ...prev, roleSlug: roleData[0]?.slug ?? "" },
+    );
+  }), [run, editingId]);
 
   useEffect(() => {
     load();
@@ -95,21 +87,16 @@ export default function AdminMembershipPlansPage() {
     const pricePoints = parseInt(form.pricePoints, 10);
     const durationDays = parseInt(form.durationDays, 10);
     if (!form.name.trim() || Number.isNaN(pricePoints) || pricePoints < 1 || Number.isNaN(durationDays) || durationDays < 1) {
-      setError("Vui lòng điền đầy đủ thông tin hợp lệ.");
       return;
     }
     if (!editingId && !form.slug.trim()) {
-      setError("Vui lòng nhập slug gói.");
       return;
     }
     if (!form.roleSlug) {
-      setError("Vui lòng chọn role membership.");
       return;
     }
 
-    setSubmitting(true);
-    setError(null);
-    try {
+    const result = await submit(async () => {
       const body = {
         name: form.name.trim(),
         description: form.description.trim() || undefined,
@@ -127,12 +114,11 @@ export default function AdminMembershipPlansPage() {
           ...body,
         });
       }
+      return true;
+    });
+    if (result) {
       resetForm();
       await load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Lưu thất bại.");
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -154,13 +140,9 @@ export default function AdminMembershipPlansPage() {
         )}
       </div>
 
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} className="mb-6" />
 
-      {loading && <p className="text-sm text-slate-400">Đang tải...</p>}
+      {loading && <LoadingState />}
 
       {!loading && (
         <div className="grid gap-8 lg:grid-cols-2">
@@ -262,9 +244,9 @@ export default function AdminMembershipPlansPage() {
                     value={form.status}
                     onChange={(e) => setForm({ ...form, status: e.target.value })}
                   >
-                    <option value="active">Đang bán</option>
-                    <option value="inactive">Tạm ẩn</option>
-                    <option value="archived">Lưu trữ</option>
+                    {toSelectOptions(MEMBERSHIP_PLAN_STATUS_LABELS).map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
                   </select>
                 </label>
               </div>
@@ -313,7 +295,7 @@ export default function AdminMembershipPlansPage() {
                           : "bg-slate-700 text-slate-400"
                     }`}
                   >
-                    {STATUS_LABEL[plan.status] ?? plan.status}
+                    {MEMBERSHIP_PLAN_STATUS_LABELS[plan.status] ?? plan.status}
                   </span>
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-400">

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CreateThreadForm } from "@/components/forum/CreateThreadForm";
 import { PromoBanner } from "@/components/layout/PromoBanner";
+import { AuthGuard } from "@/components/shared/auth-guard";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { can } from "@/lib/auth/permissions";
 import { ApiError } from "@/lib/api/client";
@@ -13,7 +14,7 @@ import { type Category, getCategory, listCategories } from "@/lib/api/forum";
 export default function CreateThreadPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const forumSlug = typeof params.slug === "string" ? params.slug : "";
   const categorySlug = typeof params.categorySlug === "string" ? params.categorySlug : "";
 
@@ -22,15 +23,11 @@ export default function CreateThreadPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.replace(`/login?next=/forums/${forumSlug}/${categorySlug}/post`);
-      return;
-    }
+    if (!user) return;
     if (!can(user, "forum.thread:create")) {
       router.replace("/membership");
     }
-  }, [authLoading, user, router, forumSlug, categorySlug]);
+  }, [user, router]);
 
   useEffect(() => {
     if (!forumSlug || !categorySlug) return;
@@ -48,10 +45,6 @@ export default function CreateThreadPage() {
       );
   }, [forumSlug, categorySlug]);
 
-  if (authLoading || !user) {
-    return <p className="text-sm text-slate-500">Đang kiểm tra đăng nhập...</p>;
-  }
-
   if (error || !category) {
     return (
       <div className="card p-6 text-sm text-slate-600">
@@ -67,6 +60,7 @@ export default function CreateThreadPage() {
   }
 
   return (
+    <AuthGuard>
     <div className="space-y-5">
       <PromoBanner />
       <nav className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
@@ -91,5 +85,6 @@ export default function CreateThreadPage() {
         parentTitle={parentTitle}
       />
     </div>
+    </AuthGuard>
   );
 }

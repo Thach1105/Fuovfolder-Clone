@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { useSubmit } from "@/hooks/use-submit";
 import * as rbacApi from "@/lib/api/rbac";
 import type { EffectivePermissions, RoleSummaryResponse } from "@/types/api";
 
@@ -15,28 +18,21 @@ export default function AdminUserPermissionsPage() {
   const [rolesCatalog, setRolesCatalog] = useState<RoleSummaryResponse[]>([]);
   const [assignedRoles, setAssignedRoles] = useState<string[]>([]);
   const [effective, setEffective] = useState<EffectivePermissions | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { loading, error: loadError, run } = useAsyncAction("Không tải được quyền user.");
+  const { submitting: saving, error: saveError, submit } = useSubmit("Không lưu được role.");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [catalog, assigned, permissions] = await Promise.all([
-        rbacApi.listRoles(),
-        rbacApi.getUserRoles(userId),
-        rbacApi.getUserEffectivePermissions(userId),
-      ]);
-      setRolesCatalog(catalog);
-      setAssignedRoles(assigned);
-      setEffective(permissions);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được quyền user.");
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
+  const error = loadError || saveError;
+
+  const load = useCallback(() => run(async () => {
+    const [catalog, assigned, permissions] = await Promise.all([
+      rbacApi.listRoles(),
+      rbacApi.getUserRoles(userId),
+      rbacApi.getUserEffectivePermissions(userId),
+    ]);
+    setRolesCatalog(catalog);
+    setAssignedRoles(assigned);
+    setEffective(permissions);
+  }), [run, userId]);
 
   useEffect(() => {
     load();
@@ -49,17 +45,11 @@ export default function AdminUserPermissionsPage() {
   };
 
   const saveRoles = async () => {
-    setSaving(true);
-    setError(null);
-    try {
+    await submit(async () => {
       const updated = await rbacApi.updateUserRoles(userId, assignedRoles);
       setAssignedRoles(updated);
       setEffective(await rbacApi.getUserEffectivePermissions(userId));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không lưu được role.");
-    } finally {
-      setSaving(false);
-    }
+    });
   };
 
   const assignableRoles = rolesCatalog.filter((r) => r.roleType !== "system" || r.slug === "USER");
@@ -70,13 +60,9 @@ export default function AdminUserPermissionsPage() {
         ← Danh sách người dùng
       </Link>
 
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} className="mb-6" />
 
-      {loading && <p className="text-sm text-slate-400">Đang tải...</p>}
+      {loading && <LoadingState />}
 
       {!loading && (
         <div className="grid gap-8 lg:grid-cols-2">

@@ -1,9 +1,11 @@
 import type { ApiEnvelope, AuthTokenResponse } from "@/types/api";
 import { translateApiError, translateFieldMessage } from "@/lib/api/error-messages";
 
+import { API_V1 } from "@/lib/constants/api";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-const REFRESH_PATH = "/api/v1/auth/refresh";
-const NO_REFRESH_RETRY_PATHS = new Set([REFRESH_PATH, "/api/v1/auth/logout"]);
+const REFRESH_PATH = `${API_V1}/auth/refresh`;
+const NO_REFRESH_RETRY_PATHS = new Set([REFRESH_PATH, `${API_V1}/auth/logout`]);
 
 export const AUTH_SESSION_REFRESHED_EVENT = "fuexam:auth-session-refreshed";
 export const AUTH_SESSION_EXPIRED_EVENT = "fuexam:auth-session-expired";

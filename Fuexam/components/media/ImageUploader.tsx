@@ -44,7 +44,7 @@ export function ImageUploader({
       {previewUrl && (
         <div className="relative inline-block">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={previewUrl} alt="" className="max-h-32 rounded-xl border border-ink-200 object-cover" />
+          <img src={previewUrl} alt="" loading="lazy" className="max-h-32 rounded-xl border border-ink-200 object-cover" />
           <button
             type="button"
             className="absolute right-1.5 top-1.5 rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-red-600 shadow-sm hover:bg-white"

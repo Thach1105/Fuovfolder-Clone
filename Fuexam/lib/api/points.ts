@@ -1,3 +1,4 @@
+import { API_V1 } from "@/lib/constants/api";
 import { apiFetch } from "@/lib/api/client";
 
 export interface PointsBalance {
@@ -29,16 +30,16 @@ export function requestPointsBalanceRefresh() {
 }
 
 export function getPointsBalance() {
-  return apiFetch<PointsBalance>("/api/v1/me/points/balance");
+  return apiFetch<PointsBalance>(`${API_V1}/me/points/balance`);
 }
 
 export function getPointsLedger(page = 0, size = 20) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
-  return apiFetch<PointsLedgerPage>(`/api/v1/me/points/ledger?${params}`);
+  return apiFetch<PointsLedgerPage>(`${API_V1}/me/points/ledger?${params}`);
 }
 
 export function adjustUserPoints(userId: string, delta: number, reason?: string) {
-  return apiFetch<PointsLedgerEntry>(`/api/v1/admin/users/${userId}/points/adjust`, {
+  return apiFetch<PointsLedgerEntry>(`${API_V1}/admin/users/${userId}/points/adjust`, {
     method: "POST",
     body: JSON.stringify({ delta, reason }),
   });

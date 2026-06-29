@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import { ApiError } from "@/lib/api/client";
 import type { Post } from "@/lib/api/forum";
 import {
@@ -13,22 +16,16 @@ import { formatDateTime } from "@/lib/format-datetime";
 
 export default function AdminModerationQueuePage() {
   const [items, setItems] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error: loadError, run } = useAsyncAction("Không tải được hàng chờ");
+  const [actionError, setActionError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const page = await listModerationQueue(0, 50);
-      setItems(page.items);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được hàng chờ");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const error = loadError || actionError;
+
+  const load = useCallback(() => run(async () => {
+    const page = await listModerationQueue(0, 50);
+    setItems(page.items);
+  }), [run]);
 
   useEffect(() => {
     load();
@@ -36,11 +33,12 @@ export default function AdminModerationQueuePage() {
 
   async function approve(postId: string) {
     setActingId(postId);
+    setActionError(null);
     try {
       await approveModerationPost(postId);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không duyệt được bài");
+      setActionError(err instanceof ApiError ? err.message : "Không duyệt được bài");
     } finally {
       setActingId(null);
     }
@@ -48,11 +46,12 @@ export default function AdminModerationQueuePage() {
 
   async function reject(postId: string) {
     setActingId(postId);
+    setActionError(null);
     try {
       await rejectModerationPost(postId);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không từ chối được bài");
+      setActionError(err instanceof ApiError ? err.message : "Không từ chối được bài");
     } finally {
       setActingId(null);
     }
@@ -60,14 +59,10 @@ export default function AdminModerationQueuePage() {
 
   return (
     <AdminShell title="Moderation — Hàng chờ duyệt" description="Duyệt bài viết từ thành viên chưa VIP">
-      {error && (
-        <div className="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} className="mb-4" />
 
       {loading ? (
-        <p className="text-sm text-slate-400">Đang tải...</p>
+        <LoadingState />
       ) : items.length === 0 ? (
         <p className="text-sm text-slate-400">Không có bài chờ duyệt.</p>
       ) : (

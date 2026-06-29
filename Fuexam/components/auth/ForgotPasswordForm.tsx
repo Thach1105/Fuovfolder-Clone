@@ -1,17 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { forgotPasswordSchema, type ForgotPasswordFormValues } from "@/lib/schemas/auth";
 import { ApiError } from "@/lib/api/client";
 import * as authApi from "@/lib/api/auth";
+import { ErrorBanner } from "@/components/ui/error-banner";
 
 const COOLDOWN = 120;
 
 export function ForgotPasswordForm() {
-  const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+
+  const form = useForm<ForgotPasswordFormValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: { email: "" },
+  });
 
   const [countdown, setCountdown] = useState(0);
   const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -34,25 +40,18 @@ export function ForgotPasswordForm() {
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
+  async function onSubmit(values: ForgotPasswordFormValues) {
     setMessage(null);
-    setSubmitting(true);
     try {
-      await authApi.forgotPassword(email);
+      await authApi.forgotPassword(values.email);
       setMessage(
         "Nếu email tồn tại trong hệ thống, chúng tôi đã gửi liên kết đặt lại mật khẩu.",
       );
       startCooldown();
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Không gửi được yêu cầu. Vui lòng thử lại.");
-      }
-    } finally {
-      setSubmitting(false);
+      form.setError("root", {
+        message: err instanceof ApiError ? err.message : "Không gửi được yêu cầu. Vui lòng thử lại.",
+      });
     }
   }
 
@@ -61,7 +60,7 @@ export function ForgotPasswordForm() {
     setResendError(null);
     setResendStatus("sending");
     try {
-      await authApi.forgotPassword(email);
+      await authApi.forgotPassword(form.getValues("email"));
       setResendStatus("sent");
       startCooldown();
     } catch (err) {
@@ -111,12 +110,8 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <ErrorBanner message={form.formState.errors.root?.message} />
 
       <p className="text-sm text-slate-600">
         Nhập email đã đăng ký. Chúng tôi sẽ gửi liên kết đặt lại mật khẩu nếu tài khoản tồn tại.
@@ -129,16 +124,17 @@ export function ForgotPasswordForm() {
         <input
           id="email"
           type="email"
-          required
           className="input-field"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
+          {...form.register("email")}
         />
+        {form.formState.errors.email && (
+          <p className="text-xs text-red-600 mt-1">{form.formState.errors.email.message}</p>
+        )}
       </div>
 
-      <button type="submit" disabled={submitting} className="btn-primary w-full">
-        {submitting ? "Đang gửi..." : "Gửi liên kết đặt lại"}
+      <button type="submit" disabled={form.formState.isSubmitting} className="btn-primary w-full">
+        {form.formState.isSubmitting ? "Đang gửi..." : "Gửi liên kết đặt lại"}
       </button>
 
       <p className="text-center text-sm text-slate-500">

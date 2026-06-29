@@ -12,7 +12,10 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { PaginationBar } from "@/components/shared/pagination-bar";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { usePagination } from "@/hooks/use-pagination";
 import { getPointsBalance } from "@/lib/api/points";
 import {
   type SourceCatalogItem,
@@ -30,7 +33,7 @@ const SORT_OPTIONS = [
   { value: "popular", label: "Phổ biến" },
 ];
 
-const PAGE_SIZE = 24;
+import { LARGE_PAGE_SIZE } from "@/lib/constants/pagination";
 
 function SourceCard({ item }: { item: SourceCatalogItem }) {
   const coverUrl = resolveMediaUrl(item.coverImageUrl);
@@ -42,7 +45,7 @@ function SourceCard({ item }: { item: SourceCatalogItem }) {
       <div className="relative h-32 w-full overflow-hidden">
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={coverUrl} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <img src={coverUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
         ) : (
           <div
             className="flex h-full items-center justify-center font-display text-2xl text-white transition-transform duration-500 group-hover:scale-105"
@@ -89,33 +92,23 @@ export default function SuocPage() {
   const [items, setItems] = useState<SourceCatalogItem[]>([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("default");
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
+  const pagination = usePagination();
   const [balance, setBalance] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error, run } = useAsyncAction("Không tải được danh sách Source");
 
-  const loadCatalog = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const loadCatalog = useCallback(() => {
+    setItems([]);
+    run(async () => {
       const result = await browseSourceCatalog({
         q: search.trim() || undefined,
         sort: sort !== "default" ? sort : undefined,
-        page,
-        size: PAGE_SIZE,
+        page: pagination.page,
+        size: LARGE_PAGE_SIZE,
       });
       setItems(result.items);
-      setTotalPages(result.totalPages);
-      setTotalElements(result.totalElements);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được danh sách Source");
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [search, sort, page]);
+      pagination.updateFromResponse(result);
+    });
+  }, [search, sort, pagination.page, run]);
 
   useEffect(() => {
     getFeaturedSource(8).then(setFeatured).catch(() => setFeatured([]));
@@ -171,9 +164,9 @@ export default function SuocPage() {
           className="h-10 min-w-[220px] flex-1"
           placeholder="Tìm theo mã môn — VD: MLN111, CSI106"
           value={search}
-          onChange={(e) => { setPage(0); setSearch(e.target.value); }}
+          onChange={(e) => { pagination.setPage(0); setSearch(e.target.value); }}
         />
-        <Select value={sort} onValueChange={(v) => { setPage(0); setSort(v); }}>
+        <Select value={sort} onValueChange={(v) => { pagination.setPage(0); setSort(v); }}>
           <SelectTrigger className="h-10 w-[180px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             {SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
@@ -184,10 +177,10 @@ export default function SuocPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="app-eyebrow">Danh sách Source</h2>
-          <span className="font-mono text-xs text-muted-foreground">{totalElements} tài liệu</span>
+          <span className="font-mono text-xs text-muted-foreground">{pagination.totalElements} tài liệu</span>
         </div>
 
-        {error && <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        <ErrorBanner message={error} />
 
         {loading ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -204,13 +197,12 @@ export default function SuocPage() {
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-4 pt-2 text-sm">
-            <button className="rounded-full border border-foreground/15 px-4 py-1.5 disabled:opacity-40" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>← Trước</button>
-            <span className="font-mono text-muted-foreground">{page + 1} / {totalPages}</span>
-            <button className="rounded-full border border-foreground/15 px-4 py-1.5 disabled:opacity-40" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>Sau →</button>
-          </div>
-        )}
+        <PaginationBar
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+          className="flex items-center justify-center gap-4 pt-2 text-sm"
+        />
       </section>
     </div>
   );

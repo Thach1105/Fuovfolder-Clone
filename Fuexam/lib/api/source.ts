@@ -1,4 +1,5 @@
-import { API_BASE, apiFetch } from "@/lib/api/client";
+import { API_V1 } from "@/lib/constants/api";
+import { API_BASE,  apiFetch } from "@/lib/api/client";
 
 export interface SourceCatalogItem {
   id: string;
@@ -190,12 +191,7 @@ export interface AdminSourceCatalogBody {
   sortOrder?: number;
 }
 
-export const SOURCE_PURCHASE_STATUS_LABELS: Record<string, string> = {
-  active: "Còn hạn",
-  expired: "Hết hạn",
-  refunded: "Đã hoàn",
-  cancelled: "Đã hủy",
-};
+export { SOURCE_PURCHASE_STATUS_LABELS } from "@/lib/constants/status-labels";
 
 export function browseSourceCatalog(opts?: {
   q?: string;
@@ -211,15 +207,15 @@ export function browseSourceCatalog(opts?: {
   if (opts?.q) params.set("q", opts.q);
   if (opts?.featured) params.set("featured", "true");
   if (opts?.sort) params.set("sort", opts.sort);
-  return apiFetch<SourceCatalogPage>(`/api/v1/source/catalog?${params}`);
+  return apiFetch<SourceCatalogPage>(`${API_V1}/source/catalog?${params}`);
 }
 
 export function getFeaturedSource(limit = 8) {
-  return apiFetch<SourceCatalogItem[]>(`/api/v1/source/catalog/featured?limit=${limit}`);
+  return apiFetch<SourceCatalogItem[]>(`${API_V1}/source/catalog/featured?limit=${limit}`);
 }
 
 export function getSourceDetail(idOrCode: string) {
-  return apiFetch<SourceCatalogDetail>(`/api/v1/source/catalog/${encodeURIComponent(idOrCode)}`);
+  return apiFetch<SourceCatalogDetail>(`${API_V1}/source/catalog/${encodeURIComponent(idOrCode)}`);
 }
 
 function resolvePurchaseIdempotencyKey(catalogItemId: string, idempotencyKey?: string): string {
@@ -241,7 +237,7 @@ export function clearSourcePurchaseIdempotency(catalogItemId: string) {
 export async function purchaseSource(catalogItemId: string, idempotencyKey?: string) {
   const key = resolvePurchaseIdempotencyKey(catalogItemId, idempotencyKey);
   const headers: Record<string, string> = { "Idempotency-Key": key };
-  const result = await apiFetch<SourcePurchase>("/api/v1/source/purchases", {
+  const result = await apiFetch<SourcePurchase>(`${API_V1}/source/purchases`, {
     method: "POST",
     headers,
     body: JSON.stringify({ catalogItemId }),
@@ -252,37 +248,37 @@ export async function purchaseSource(catalogItemId: string, idempotencyKey?: str
 
 export function listMyPurchases(filter: "active" | "expired" | "all" = "all", page = 0, size = 50) {
   const params = new URLSearchParams({ filter, page: String(page), size: String(size) });
-  return apiFetch<SourcePurchasePage>(`/api/v1/source/purchases?${params}`);
+  return apiFetch<SourcePurchasePage>(`${API_V1}/source/purchases?${params}`);
 }
 
 export function getMyPurchaseStats() {
-  return apiFetch<SourcePurchaseStats>("/api/v1/source/purchases/stats");
+  return apiFetch<SourcePurchaseStats>(`${API_V1}/source/purchases/stats`);
 }
 
 export function getSourceOverview() {
-  return apiFetch<SourceOverview>("/api/v1/admin/source/overview");
+  return apiFetch<SourceOverview>(`${API_V1}/admin/source/overview`);
 }
 
 export function listAdminSourceCatalog() {
-  return apiFetch<AdminSourceCatalogItem[]>("/api/v1/admin/source/catalog");
+  return apiFetch<AdminSourceCatalogItem[]>(`${API_V1}/admin/source/catalog`);
 }
 
 export function createSourceCatalogItem(body: AdminSourceCatalogBody) {
-  return apiFetch<AdminSourceCatalogItem>("/api/v1/admin/source/catalog", {
+  return apiFetch<AdminSourceCatalogItem>(`${API_V1}/admin/source/catalog`, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
 export function updateSourceCatalogItem(id: string, body: Partial<AdminSourceCatalogBody>) {
-  return apiFetch<AdminSourceCatalogItem>(`/api/v1/admin/source/catalog/${id}`, {
+  return apiFetch<AdminSourceCatalogItem>(`${API_V1}/admin/source/catalog/${id}`, {
     method: "PUT",
     body: JSON.stringify(body),
   });
 }
 
 export function deleteSourceCatalogItem(id: string) {
-  return apiFetch<void>(`/api/v1/admin/source/catalog/${id}`, { method: "DELETE" });
+  return apiFetch<void>(`${API_V1}/admin/source/catalog/${id}`, { method: "DELETE" });
 }
 
 const STORAGE_PUBLIC_BASE =
@@ -296,11 +292,11 @@ export function sourceMediaUrl(urlOrKey: string | null | undefined): string | nu
 }
 
 export function listAdminQuestions(catalogItemId: string) {
-  return apiFetch<AdminQuestion[]>(`/api/v1/admin/source/catalog/${catalogItemId}/questions`);
+  return apiFetch<AdminQuestion[]>(`${API_V1}/admin/source/catalog/${catalogItemId}/questions`);
 }
 
 export function createQuestion(catalogItemId: string, body: QuestionBody) {
-  return apiFetch<AdminQuestion>(`/api/v1/admin/source/catalog/${catalogItemId}/questions`, {
+  return apiFetch<AdminQuestion>(`${API_V1}/admin/source/catalog/${catalogItemId}/questions`, {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -308,7 +304,7 @@ export function createQuestion(catalogItemId: string, body: QuestionBody) {
 
 export function updateQuestion(catalogItemId: string, questionId: string, body: QuestionBody) {
   return apiFetch<AdminQuestion>(
-    `/api/v1/admin/source/catalog/${catalogItemId}/questions/${questionId}`,
+    `${API_V1}/admin/source/catalog/${catalogItemId}/questions/${questionId}`,
     {
       method: "PUT",
       body: JSON.stringify(body),
@@ -318,13 +314,13 @@ export function updateQuestion(catalogItemId: string, questionId: string, body: 
 
 export function deleteQuestion(catalogItemId: string, questionId: string) {
   return apiFetch<void>(
-    `/api/v1/admin/source/catalog/${catalogItemId}/questions/${questionId}`,
+    `${API_V1}/admin/source/catalog/${catalogItemId}/questions/${questionId}`,
     { method: "DELETE" },
   );
 }
 
 export function reorderQuestions(catalogItemId: string, questionIds: string[]) {
-  return apiFetch<void>(`/api/v1/admin/source/catalog/${catalogItemId}/questions/reorder`, {
+  return apiFetch<void>(`${API_V1}/admin/source/catalog/${catalogItemId}/questions/reorder`, {
     method: "PUT",
     body: JSON.stringify({ questionIds }),
   });
@@ -338,7 +334,7 @@ export interface SourceMediaUploadResult {
 export async function uploadSourceMedia(file: File): Promise<SourceMediaUploadResult> {
   const formData = new FormData();
   formData.append("file", file);
-  const res = await fetch(`${API_BASE}/api/v1/admin/source/media`, {
+  const res = await fetch(`${API_BASE}${API_V1}/admin/source/media`, {
     method: "POST",
     credentials: "include",
     body: formData,
@@ -359,7 +355,7 @@ export async function uploadSourceMedia(file: File): Promise<SourceMediaUploadRe
 
 export function getSourceQuestions(idOrCode: string) {
   return apiFetch<PublicQuestion[]>(
-    `/api/v1/source/catalog/${encodeURIComponent(idOrCode)}/questions`,
+    `${API_V1}/source/catalog/${encodeURIComponent(idOrCode)}/questions`,
   );
 }
 
@@ -379,11 +375,11 @@ export function listAdminSourcePurchases(opts?: {
   if (opts?.catalogItemId) params.set("catalogItemId", opts.catalogItemId);
   if (opts?.status) params.set("status", opts.status);
   if (opts?.code) params.set("code", opts.code);
-  return apiFetch<AdminSourcePurchasePage>(`/api/v1/admin/source/purchases?${params}`);
+  return apiFetch<AdminSourcePurchasePage>(`${API_V1}/admin/source/purchases?${params}`);
 }
 
 export function refundSourcePurchase(id: string, reason?: string) {
-  return apiFetch<AdminSourcePurchase>(`/api/v1/admin/source/purchases/${id}/refund`, {
+  return apiFetch<AdminSourcePurchase>(`${API_V1}/admin/source/purchases/${id}/refund`, {
     method: "POST",
     body: JSON.stringify({ reason }),
   });

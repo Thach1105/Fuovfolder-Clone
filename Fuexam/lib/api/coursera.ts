@@ -1,3 +1,4 @@
+import { API_V1 } from "@/lib/constants/api";
 import { apiFetch } from "@/lib/api/client";
 
 export interface CatalogItem {
@@ -110,13 +111,13 @@ export function listCatalog(q?: string, featured?: boolean) {
   if (q) params.set("q", q);
   if (featured) params.set("featured", "true");
   const qs = params.toString();
-  return apiFetch<CatalogItem[]>(`/api/v1/coursera/catalog${qs ? `?${qs}` : ""}`);
+  return apiFetch<CatalogItem[]>(`${API_V1}/coursera/catalog${qs ? `?${qs}` : ""}`);
 }
 
 export function createCourseraRequest(payload: CreateRequestPayload, idempotencyKey?: string) {
   const headers: Record<string, string> = {};
   if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
-  return apiFetch<RequestDetail>("/api/v1/coursera/requests", {
+  return apiFetch<RequestDetail>(`${API_V1}/coursera/requests`, {
     method: "POST",
     headers,
     body: JSON.stringify(payload),
@@ -126,19 +127,19 @@ export function createCourseraRequest(payload: CreateRequestPayload, idempotency
 export function listMyRequests(status?: string, page = 0, size = 20) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (status) params.set("status", status);
-  return apiFetch<RequestPage>(`/api/v1/coursera/requests?${params}`);
+  return apiFetch<RequestPage>(`${API_V1}/coursera/requests?${params}`);
 }
 
 export function getMyRequestStats() {
-  return apiFetch<RequestStats>("/api/v1/coursera/requests/stats");
+  return apiFetch<RequestStats>(`${API_V1}/coursera/requests/stats`);
 }
 
 export function getCourseraOverview() {
-  return apiFetch<CourseraOverview>("/api/v1/admin/coursera/overview");
+  return apiFetch<CourseraOverview>(`${API_V1}/admin/coursera/overview`);
 }
 
 export function listAdminCatalog() {
-  return apiFetch<AdminCatalogItem[]>("/api/v1/admin/coursera/catalog");
+  return apiFetch<AdminCatalogItem[]>(`${API_V1}/admin/coursera/catalog`);
 }
 
 export function createCatalogItem(body: {
@@ -150,7 +151,7 @@ export function createCatalogItem(body: {
   featured?: boolean;
   sortOrder?: number;
 }) {
-  return apiFetch<AdminCatalogItem>("/api/v1/admin/coursera/catalog", {
+  return apiFetch<AdminCatalogItem>(`${API_V1}/admin/coursera/catalog`, {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -168,14 +169,14 @@ export function updateCatalogItem(
     sortOrder: number;
   }>,
 ) {
-  return apiFetch<AdminCatalogItem>(`/api/v1/admin/coursera/catalog/${id}`, {
+  return apiFetch<AdminCatalogItem>(`${API_V1}/admin/coursera/catalog/${id}`, {
     method: "PUT",
     body: JSON.stringify(body),
   });
 }
 
 export function deleteCatalogItem(id: string) {
-  return apiFetch<void>(`/api/v1/admin/coursera/catalog/${id}`, { method: "DELETE" });
+  return apiFetch<void>(`${API_V1}/admin/coursera/catalog/${id}`, { method: "DELETE" });
 }
 
 export function listAdminRequests(opts?: {
@@ -194,15 +195,15 @@ export function listAdminRequests(opts?: {
   if (opts?.catalogItemId) params.set("catalogItemId", opts.catalogItemId);
   if (opts?.status) params.set("status", opts.status);
   if (opts?.period) params.set("period", opts.period);
-  return apiFetch<RequestPage>(`/api/v1/admin/coursera/requests?${params}`);
+  return apiFetch<RequestPage>(`${API_V1}/admin/coursera/requests?${params}`);
 }
 
 export function getAdminRequest(id: string) {
-  return apiFetch<AdminRequestDetail>(`/api/v1/admin/coursera/requests/${id}`);
+  return apiFetch<AdminRequestDetail>(`${API_V1}/admin/coursera/requests/${id}`);
 }
 
 export function updateRequestStatus(id: string, status: string, note?: string) {
-  return apiFetch<AdminRequestDetail>(`/api/v1/admin/coursera/requests/${id}/status`, {
+  return apiFetch<AdminRequestDetail>(`${API_V1}/admin/coursera/requests/${id}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status, note }),
   });

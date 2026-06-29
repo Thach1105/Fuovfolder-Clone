@@ -8,6 +8,7 @@ import { resolveMediaUrl } from "@/lib/api/media";
 import { getPointsBalance } from "@/lib/api/points";
 import * as membershipApi from "@/lib/api/membership";
 import type { MembershipStatusResponse } from "@/types/api";
+import { UserAvatar } from "@/components/shared/user-avatar";
 
 /**
  * Thẻ hồ sơ nổi bật ("VIP"): avatar lớn, huy hiệu membership, số dư điểm,
@@ -56,18 +57,7 @@ export function ProfileHero() {
         <div className="-mt-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex items-end gap-4">
             <div className="relative">
-              {avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={avatar}
-                  alt={user.displayName}
-                  className="h-24 w-24 rounded-2xl border-4 border-background object-cover shadow-md"
-                />
-              ) : (
-                <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-background bg-foreground text-3xl font-bold text-background shadow-md">
-                  {user.displayName.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <UserAvatar src={avatar} displayName={user.displayName} size="xl" className="rounded-2xl border-4 border-background shadow-md" />
               {isVip && (
                 <span className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-amber-400 text-amber-950 shadow ring-2 ring-background">
                   <Crown className="h-4 w-4" />

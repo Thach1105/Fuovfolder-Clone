@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { AuthGuard } from "@/components/shared/auth-guard";
 import {
   type SourcePurchase,
   type SourcePurchaseStats,
@@ -40,8 +40,7 @@ const STATUS_CLASS: Record<string, string> = {
 };
 
 export default function MySuocPage() {
-  const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [stats, setStats] = useState<SourcePurchaseStats | null>(null);
   const [items, setItems] = useState<SourcePurchase[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,17 +56,10 @@ export default function MySuocPage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!authLoading && !user) router.push("/login?next=/suoc/my-purchases");
-  }, [authLoading, user, router]);
-
   useEffect(() => { if (user) load(); }, [user, load]);
 
-  if (authLoading || !user) {
-    return <p className="text-sm text-muted-foreground">Đang tải...</p>;
-  }
-
   return (
+    <AuthGuard>
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
@@ -133,5 +125,6 @@ export default function MySuocPage() {
         )}
       </div>
     </div>
+    </AuthGuard>
   );
 }

@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { useSubmit } from "@/hooks/use-submit";
 import * as rbacApi from "@/lib/api/rbac";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { can } from "@/lib/auth/permissions";
@@ -23,28 +26,21 @@ export default function AdminCreateRolePage() {
   const [name, setName] = useState("");
   const [parentRoleSlug, setParentRoleSlug] = useState("USER");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const { loading, error: loadError, run } = useAsyncAction("Không tải được dữ liệu.");
+  const { submitting, error: submitError, submit } = useSubmit("Không tạo được role.");
+
+  const error = loadError || submitError;
 
   const canCreate = can(user, "rbac.role:update");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [rolesData, catalogData] = await Promise.all([
-        rbacApi.listRoles(),
-        rbacApi.listPermissions(),
-      ]);
-      setRoles(rolesData);
-      setCatalog(catalogData);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được dữ liệu.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(() => run(async () => {
+    const [rolesData, catalogData] = await Promise.all([
+      rbacApi.listRoles(),
+      rbacApi.listPermissions(),
+    ]);
+    setRoles(rolesData);
+    setCatalog(catalogData);
+  }), [run]);
 
   useEffect(() => {
     load();
@@ -66,7 +62,7 @@ export default function AdminCreateRolePage() {
     });
   };
 
-  const submit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!canCreate) {
       return;
@@ -74,24 +70,19 @@ export default function AdminCreateRolePage() {
     const trimmedSlug = slug.trim();
     const trimmedName = name.trim();
     if (!trimmedSlug || !trimmedName) {
-      setError("Vui lòng nhập slug và tên role.");
       return;
     }
 
-    setSubmitting(true);
-    setError(null);
-    try {
-      const created = await rbacApi.createRole({
+    const created = await submit(async () => {
+      return await rbacApi.createRole({
         slug: trimmedSlug,
         name: trimmedName,
         parentRoleSlug: parentRoleSlug || null,
         permissions: Array.from(selected).sort(),
       });
+    });
+    if (created) {
       router.push(`/admin/rbac/roles/${created.id}`);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tạo được role.");
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -115,16 +106,12 @@ export default function AdminCreateRolePage() {
         ← Danh sách role
       </Link>
 
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} className="mb-6" />
 
-      {loading && <p className="text-sm text-slate-400">Đang tải...</p>}
+      {loading && <LoadingState />}
 
       {!loading && (
-        <form onSubmit={submit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-8">
           <section className="rounded-xl border border-slate-800 bg-slate-950 p-6">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-400">
               Thông tin cơ bản

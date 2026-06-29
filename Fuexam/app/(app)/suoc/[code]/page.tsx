@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { resolveMediaUrl } from "@/lib/api/media";
 import { getPointsBalance, requestPointsBalanceRefresh } from "@/lib/api/points";
 import { SourceQuestionRunner } from "@/components/source/source-question-runner";
@@ -180,7 +181,7 @@ export default function SuocDetailPage() {
               {coverUrl ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={coverUrl} alt={detail.title} className="h-full w-full object-cover" />
+                  <img src={coverUrl} alt={detail.title} loading="lazy" className="h-full w-full object-cover" />
                   <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent" />
                   <span className="absolute bottom-4 left-5 font-display text-4xl text-white drop-shadow-lg">{detail.code}</span>
                 </>
@@ -258,7 +259,7 @@ export default function SuocDetailPage() {
                 )}
               </div>
 
-              {error && <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+              <ErrorBanner message={error} className="mt-3" />
               {balance !== null && <p className="mt-3 text-center font-mono text-xs text-muted-foreground">Số dư: {formatPoints(balance)}</p>}
 
               <dl className="mt-4 space-y-2 border-t border-foreground/10 pt-4 text-sm">

@@ -1,3 +1,4 @@
+import { API_V1 } from "@/lib/constants/api";
 import { apiFetch } from "@/lib/api/client";
 import type { Post, PostPage } from "@/lib/api/forum";
 
@@ -26,7 +27,7 @@ export function createContentFlag(payload: {
   reason: string;
   note?: string;
 }) {
-  return apiFetch<FlagItem>("/api/v1/flags", {
+  return apiFetch<FlagItem>(`${API_V1}/flags`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -38,11 +39,11 @@ export function listModerationFlags(status = "open", page = 0, size = 20) {
     page: String(page),
     size: String(size),
   });
-  return apiFetch<FlagPage>(`/api/v1/admin/moderation/flags?${params}`);
+  return apiFetch<FlagPage>(`${API_V1}/admin/moderation/flags?${params}`);
 }
 
 export function resolveModerationFlag(flagId: string, action: string, reason?: string) {
-  return apiFetch<FlagItem>(`/api/v1/admin/moderation/flags/${flagId}/resolve`, {
+  return apiFetch<FlagItem>(`${API_V1}/admin/moderation/flags/${flagId}/resolve`, {
     method: "POST",
     body: JSON.stringify({ action, reason }),
   });
@@ -50,17 +51,17 @@ export function resolveModerationFlag(flagId: string, action: string, reason?: s
 
 export function listModerationQueue(page = 0, size = 20) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
-  return apiFetch<PostPage>(`/api/v1/admin/moderation/queue?${params}`);
+  return apiFetch<PostPage>(`${API_V1}/admin/moderation/queue?${params}`);
 }
 
 export function approveModerationPost(postId: string) {
-  return apiFetch<void>(`/api/v1/admin/moderation/queue/${postId}/approve`, {
+  return apiFetch<void>(`${API_V1}/admin/moderation/queue/${postId}/approve`, {
     method: "POST",
   });
 }
 
 export function rejectModerationPost(postId: string) {
-  return apiFetch<void>(`/api/v1/admin/moderation/queue/${postId}/reject`, {
+  return apiFetch<void>(`${API_V1}/admin/moderation/queue/${postId}/reject`, {
     method: "POST",
   });
 }

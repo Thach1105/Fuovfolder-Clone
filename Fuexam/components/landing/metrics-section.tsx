@@ -77,8 +77,28 @@ export function MetricsSection() {
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    function start() {
+      if (interval) return;
+      setTime(new Date());
+      interval = setInterval(() => setTime(new Date()), 1000);
+    }
+
+    function stop() {
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+
+    function handleVisibility() {
+      if (document.hidden) stop(); else start();
+    }
+
+    start();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   useEffect(() => {

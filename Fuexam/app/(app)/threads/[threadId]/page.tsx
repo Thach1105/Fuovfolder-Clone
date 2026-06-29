@@ -7,21 +7,24 @@ import { PostList } from "@/components/forum/PostList";
 import { ReplyForm } from "@/components/forum/ReplyForm";
 import { ThreadWatchButton } from "@/components/forum/ThreadWatchButton";
 import { PromoBanner } from "@/components/layout/PromoBanner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { PaginationBar } from "@/components/shared/pagination-bar";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { can } from "@/lib/auth/permissions";
-import { ApiError } from "@/lib/api/client";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { usePagination } from "@/hooks/use-pagination";
 import { threadTypeLabel } from "@/lib/forum-thread-types";
 import {
   type Post,
   type ThreadDetail,
-  authorInitial,
   getThread,
   listThreadPosts,
 } from "@/lib/api/forum";
+import { getInitial } from "@/lib/utils/text";
 import { ReportContentDialog } from "@/components/forum/ReportContentDialog";
 import { formatDateTime } from "@/lib/format-datetime";
 
-const PAGE_SIZE = 20;
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants/pagination";
 
 export default function ThreadDetailPage() {
   const params = useParams();
@@ -29,51 +32,40 @@ export default function ThreadDetailPage() {
 
   const [thread, setThread] = useState<ThreadDetail | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [postsLoading, setPostsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const pagination = usePagination();
+  const { loading, error, run } = useAsyncAction("Không tải được chủ đề");
+  const { loading: postsLoading, error: postsError, run: runPosts } = useAsyncAction("Không tải được bài viết");
   const { user } = useAuth();
   const canReply = can(user, "forum.post:create");
 
   useEffect(() => {
     if (!threadId) return;
-    setLoading(true);
-    getThread(threadId)
-      .then(setThread)
-      .catch((err) =>
-        setError(err instanceof ApiError ? err.message : "Không tải được chủ đề"),
-      )
-      .finally(() => setLoading(false));
-  }, [threadId]);
+    run(async () => {
+      setThread(await getThread(threadId));
+    });
+  }, [threadId, run]);
 
-  const loadPosts = useCallback(async () => {
+  const loadPosts = useCallback(() => {
     if (!threadId) return;
-    setPostsLoading(true);
-    try {
-      const result = await listThreadPosts(threadId, page, PAGE_SIZE);
+    runPosts(async () => {
+      const result = await listThreadPosts(threadId, pagination.page, DEFAULT_PAGE_SIZE);
       setPosts(result.items);
-      setTotalPages(result.totalPages);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được bài viết");
-    } finally {
-      setPostsLoading(false);
-    }
-  }, [threadId, page]);
+      pagination.updateFromResponse(result);
+    });
+  }, [threadId, pagination.page, runPosts]);
 
   useEffect(() => {
     loadPosts();
   }, [loadPosts]);
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Đang tải chủ đề...</p>;
+    return <LoadingState message="Đang tải chủ đề..." />;
   }
 
   if (!thread) {
     return (
       <div className="card p-6 text-sm text-slate-600">
-        <p>{error ?? "Không tìm thấy chủ đề."}</p>
+        <p>{error ?? postsError ?? "Không tìm thấy chủ đề."}</p>
         <Link href="/" className="mt-3 inline-block font-medium text-fuo-600 hover:underline">
           ← Về trang chủ
         </Link>
@@ -104,7 +96,7 @@ export default function ThreadDetailPage() {
           <div className="mt-2 flex flex-wrap gap-3 text-sm text-slate-500">
             <span className="flex items-center gap-1.5">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-fuo-50 text-xs font-bold text-fuo-700">
-                {authorInitial(thread.authorHandle)}
+                {getInitial(thread.authorHandle)}
               </span>
               {thread.authorHandle ?? "Ẩn danh"}
             </span>
@@ -136,33 +128,15 @@ export default function ThreadDetailPage() {
           </h2>
         </div>
         {postsLoading ? (
-          <p className="px-4 py-8 text-sm text-slate-500">Đang tải bài viết...</p>
+          <LoadingState message="Đang tải bài viết..." className="px-4 py-8" />
         ) : (
           <PostList posts={posts} threadId={threadId} onChanged={loadPosts} />
         )}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-3 border-t border-slate-100 py-3">
-            <button
-              type="button"
-              className="btn-secondary"
-              disabled={page === 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
-              ← Trước
-            </button>
-            <span className="text-sm text-slate-600">
-              Trang {page + 1} / {totalPages}
-            </span>
-            <button
-              type="button"
-              className="btn-secondary"
-              disabled={page + 1 >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Sau →
-            </button>
-          </div>
-        )}
+        <PaginationBar
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
         {canReply ? (
           <ReplyForm threadId={threadId} onPosted={loadPosts} />
         ) : user ? (

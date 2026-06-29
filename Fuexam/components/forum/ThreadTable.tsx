@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ThreadSummary } from "@/lib/api/forum";
-import { authorInitial } from "@/lib/api/forum";
+import { getInitial } from "@/lib/utils/text";
 import { formatDateTime } from "@/lib/format-datetime";
 import { threadTypeLabel } from "@/lib/forum-thread-types";
 
@@ -65,7 +65,7 @@ export function ThreadTable({
               <td className="px-3 py-3">
                 <div className="flex items-center gap-2">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
-                    {authorInitial(thread.authorHandle)}
+                    {getInitial(thread.authorHandle)}
                   </span>
                   <span className="text-slate-700">{thread.authorHandle ?? "Ẩn danh"}</span>
                 </div>

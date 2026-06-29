@@ -2,8 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { createThreadSchema, type CreateThreadFormValues } from "@/lib/schemas/forum";
+import { createThread } from "@/lib/api/forum";
 import { ApiError } from "@/lib/api/client";
-import { createThread, type ThreadType } from "@/lib/api/forum";
 import { RichTextEditor } from "@/components/forum/RichTextEditor";
 import { DocumentUploader, type StagedFile } from "@/components/media/DocumentUploader";
 import {
@@ -12,6 +15,7 @@ import {
   SEMESTER_OPTIONS,
   THREAD_TYPES,
 } from "@/lib/forum-thread-types";
+import { ErrorBanner } from "@/components/ui/error-banner";
 
 interface CreateThreadFormProps {
   categoryId: string;
@@ -27,50 +31,49 @@ export function CreateThreadForm({
   parentTitle,
 }: CreateThreadFormProps) {
   const router = useRouter();
-  const [threadType, setThreadType] = useState<ThreadType>("article");
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [campus, setCampus] = useState("");
-  const [semester, setSemester] = useState("");
-  const [materialType, setMaterialType] = useState("");
-  const [tags, setTags] = useState("");
+  const form = useForm<CreateThreadFormValues>({
+    resolver: zodResolver(createThreadSchema),
+    defaultValues: {
+      threadType: "article",
+      title: "",
+      body: "",
+      campus: "",
+      semester: "",
+      materialType: "",
+      tags: "",
+      watchThread: true,
+    },
+  });
   const [pollOptions, setPollOptions] = useState(["", ""]);
-  const [watchThread, setWatchThread] = useState(true);
   const [attachments, setAttachments] = useState<StagedFile[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setSubmitting(true);
-    setError(null);
+  const threadType = form.watch("threadType");
+
+  async function onSubmit(values: CreateThreadFormValues) {
     try {
       const thread = await createThread({
         categoryId,
-        title,
-        body,
-        threadType,
-        campus: campus || undefined,
-        semester: semester || undefined,
-        materialType: materialType || undefined,
-        tags: tags || undefined,
+        ...values,
+        campus: values.campus || undefined,
+        semester: values.semester || undefined,
+        materialType: values.materialType || undefined,
+        tags: values.tags || undefined,
         pollOptions:
-          threadType === "poll"
+          values.threadType === "poll"
             ? pollOptions.map((option) => option.trim()).filter(Boolean)
             : undefined,
-        watchThread,
         attachmentFileIds: attachments.map((file) => file.fileId),
       });
       router.push(`/threads/${thread.id}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không thể đăng bài");
-    } finally {
-      setSubmitting(false);
+      form.setError("root", {
+        message: err instanceof ApiError ? err.message : "Không thể đăng bài",
+      });
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="card space-y-5 p-5">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="card space-y-5 p-5">
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Đăng bài</p>
         <h1 className="text-xl font-bold text-slate-900">
@@ -87,7 +90,7 @@ export function CreateThreadForm({
           <button
             key={type.id}
             type="button"
-            onClick={() => setThreadType(type.id)}
+            onClick={() => form.setValue("threadType", type.id)}
             className={
               threadType === type.id
                 ? "rounded-lg bg-fuo-600 px-4 py-2 text-sm font-medium text-white"
@@ -103,22 +106,32 @@ export function CreateThreadForm({
         <label className="mb-1 block text-sm font-medium text-slate-700">Tựa đề</label>
         <input
           className="input-field"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
+          {...form.register("title")}
           placeholder="Nhập tiêu đề bài đăng"
-          required
           maxLength={300}
         />
+        {form.formState.errors.title && (
+          <p className="mt-1 text-xs text-rose-500">{form.formState.errors.title.message}</p>
+        )}
       </div>
 
       <div>
         <label className="mb-1 block text-sm font-medium text-slate-700">Nội dung</label>
-        <RichTextEditor
-          value={body}
-          onChange={setBody}
-          minHeight={220}
-          placeholder="Nội dung bài viết..."
+        <Controller
+          control={form.control}
+          name="body"
+          render={({ field }) => (
+            <RichTextEditor
+              value={field.value}
+              onChange={field.onChange}
+              minHeight={220}
+              placeholder="Nội dung bài viết..."
+            />
+          )}
         />
+        {form.formState.errors.body && (
+          <p className="mt-1 text-xs text-rose-500">{form.formState.errors.body.message}</p>
+        )}
       </div>
 
       <DocumentUploader value={attachments} onChange={setAttachments} />
@@ -153,30 +166,32 @@ export function CreateThreadForm({
         <FieldSelect
           label="Cơ sở"
           required
-          value={campus}
-          onChange={setCampus}
+          value={form.watch("campus")}
+          onChange={(v) => form.setValue("campus", v)}
           options={CAMPUS_OPTIONS}
+          error={form.formState.errors.campus?.message}
         />
         <FieldSelect
           label="Học kỳ"
           required
-          value={semester}
-          onChange={setSemester}
+          value={form.watch("semester")}
+          onChange={(v) => form.setValue("semester", v)}
           options={SEMESTER_OPTIONS}
+          error={form.formState.errors.semester?.message}
         />
         <FieldSelect
           label="Loại tài liệu"
           required
-          value={materialType}
-          onChange={setMaterialType}
+          value={form.watch("materialType")}
+          onChange={(v) => form.setValue("materialType", v)}
           options={MATERIAL_TYPE_OPTIONS}
+          error={form.formState.errors.materialType?.message}
         />
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Thẻ</label>
           <input
             className="input-field"
-            value={tags}
-            onChange={(event) => setTags(event.target.value)}
+            {...form.register("tags")}
             placeholder="Nhiều thẻ có thể được phân cách bởi dấu phẩy"
           />
         </div>
@@ -185,17 +200,16 @@ export function CreateThreadForm({
       <label className="flex items-center gap-2 text-sm text-slate-600">
         <input
           type="checkbox"
-          checked={watchThread}
-          onChange={(event) => setWatchThread(event.target.checked)}
+          {...form.register("watchThread")}
           className="rounded border-slate-300"
         />
         Theo dõi tin đăng này...
       </label>
 
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
+      <ErrorBanner message={form.formState.errors.root?.message} />
 
-      <button type="submit" className="btn-primary" disabled={submitting}>
-        {submitting ? "Đang đăng..." : "Đăng bài"}
+      <button type="submit" className="btn-primary" disabled={form.formState.isSubmitting}>
+        {form.formState.isSubmitting ? "Đang đăng..." : "Đăng bài"}
       </button>
     </form>
   );
@@ -207,12 +221,14 @@ function FieldSelect({
   onChange,
   options,
   required,
+  error,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
   required?: boolean;
+  error?: string;
 }) {
   return (
     <div>
@@ -224,7 +240,6 @@ function FieldSelect({
         className="input-field"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        required={required}
       >
         {options.map((option) => (
           <option key={option.value || "default"} value={option.value}>
@@ -232,6 +247,7 @@ function FieldSelect({
           </option>
         ))}
       </select>
+      {error && <p className="mt-1 text-xs text-rose-500">{error}</p>}
     </div>
   );
 }

@@ -8,8 +8,11 @@ import { ThreadTabs } from "@/components/forum/ThreadTabs";
 import { TopContributors } from "@/components/forum/TopContributors";
 import { BackendStatus } from "@/components/layout/BackendStatus";
 import { PromoBanner } from "@/components/layout/PromoBanner";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { ApiError } from "@/lib/api/client";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { HOME_PAGE_SIZE } from "@/lib/constants/pagination";
 import {
   type Forum,
   type ThreadSummary,
@@ -23,27 +26,19 @@ export default function HomePage() {
   const [tab, setTab] = useState<ThreadTab>("discussion");
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [forums, setForums] = useState<Forum[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error, run } = useAsyncAction("Không tải được diễn đàn");
   const { user } = useAuth();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const load = useCallback(() => {
+    run(async () => {
       const [forumList, threadPage] = await Promise.all([
         listForums(),
-        browseThreads({ page: 0, size: 30 }),
+        browseThreads({ page: 0, size: HOME_PAGE_SIZE }),
       ]);
       setForums(forumList);
       setThreads(threadPage.items);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được diễn đàn");
-      setThreads([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    });
+  }, [run]);
 
   useEffect(() => {
     load();
@@ -102,13 +97,9 @@ export default function HomePage() {
 
           <div className="card overflow-hidden">
             <ThreadTabs active={tab} onChange={setTab} />
-            {error && (
-              <p className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-800">
-                {error}
-              </p>
-            )}
+            <ErrorBanner message={error} />
             {loading ? (
-              <p className="px-4 py-8 text-sm text-slate-500">Đang tải chủ đề...</p>
+              <LoadingState message="Đang tải chủ đề..." className="px-4 py-8" />
             ) : (
               <ThreadTable
                 threads={visibleThreads}

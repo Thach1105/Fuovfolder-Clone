@@ -1,3 +1,4 @@
+import { API_V1 } from "@/lib/constants/api";
 import { apiFetch } from "@/lib/api/client";
 import type {
   AdminMembershipPlanResponse,
@@ -5,11 +6,11 @@ import type {
 } from "@/types/api";
 
 export function listAdminMembershipPlans() {
-  return apiFetch<AdminMembershipPlanResponse[]>("/api/v1/admin/membership/plans");
+  return apiFetch<AdminMembershipPlanResponse[]>(`${API_V1}/admin/membership/plans`);
 }
 
 export function listMembershipRoleOptions() {
-  return apiFetch<MembershipRoleOptionResponse[]>("/api/v1/admin/membership/roles");
+  return apiFetch<MembershipRoleOptionResponse[]>(`${API_V1}/admin/membership/roles`);
 }
 
 export function createMembershipPlan(body: {
@@ -22,7 +23,7 @@ export function createMembershipPlan(body: {
   durationDays: number;
   status: string;
 }) {
-  return apiFetch<AdminMembershipPlanResponse>("/api/v1/admin/membership/plans", {
+  return apiFetch<AdminMembershipPlanResponse>(`${API_V1}/admin/membership/plans`, {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -40,7 +41,7 @@ export function updateMembershipPlan(
     status: string;
   },
 ) {
-  return apiFetch<AdminMembershipPlanResponse>(`/api/v1/admin/membership/plans/${planId}`, {
+  return apiFetch<AdminMembershipPlanResponse>(`${API_V1}/admin/membership/plans/${planId}`, {
     method: "PUT",
     body: JSON.stringify(body),
   });

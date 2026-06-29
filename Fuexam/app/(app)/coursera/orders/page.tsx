@@ -3,27 +3,20 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { AuthGuard } from "@/components/shared/auth-guard";
 import {
-  REQUEST_STATUS_LABELS,
   formatPoints,
   getMyRequestStats,
   listMyRequests,
   type RequestStats,
   type RequestSummary,
 } from "@/lib/api/coursera";
-import { useRouter } from "next/navigation";
+import { REQUEST_STATUS_LABELS, toFilterOptions } from "@/lib/constants/status-labels";
 
-const STATUS_OPTIONS = [
-  { value: "", label: "Tất cả" },
-  { value: "pending", label: "Chờ xử lý" },
-  { value: "in_progress", label: "Đang thực hiện" },
-  { value: "completed", label: "Hoàn thành" },
-  { value: "cancelled", label: "Đã hủy" },
-];
+const STATUS_OPTIONS = toFilterOptions(REQUEST_STATUS_LABELS);
 
 export default function CourseraOrdersPage() {
-  const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [stats, setStats] = useState<RequestStats | null>(null);
   const [items, setItems] = useState<RequestSummary[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
@@ -44,18 +37,11 @@ export default function CourseraOrdersPage() {
   }, [statusFilter]);
 
   useEffect(() => {
-    if (!authLoading && !user) router.push("/login");
-  }, [authLoading, user, router]);
-
-  useEffect(() => {
     if (user) load();
   }, [user, load]);
 
-  if (authLoading || !user) {
-    return <p className="text-sm text-slate-500">Đang tải...</p>;
-  }
-
   return (
+    <AuthGuard>
     <div className="space-y-6">
       <div>
         <p className="text-sm text-fuo-600">
@@ -164,6 +150,7 @@ export default function CourseraOrdersPage() {
         </div>
       </div>
     </div>
+    </AuthGuard>
   );
 }
 

@@ -5,7 +5,10 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { SourceMediaUploader } from "@/components/source/SourceMediaUploader";
-import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { useSubmit } from "@/hooks/use-submit";
 import {
   type AdminQuestion,
   type QuestionBody,
@@ -35,8 +38,8 @@ export default function AdminSourceQuestionsPage() {
 
   const [catalogCode, setCatalogCode] = useState("");
   const [questions, setQuestions] = useState<AdminQuestion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error: loadError, run } = useAsyncAction();
+  const { error: submitError, submit } = useSubmit("Lưu thất bại");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [questionText, setQuestionText] = useState("");
   const [questionImageUrl, setQuestionImageUrl] = useState<string | null>(null);
@@ -44,20 +47,17 @@ export default function AdminSourceQuestionsPage() {
   const [options, setOptions] = useState<QuestionOptionBody[]>([EMPTY_OPTION(), EMPTY_OPTION()]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [catalogItems, questionList] = await Promise.all([
-        listAdminSourceCatalog(),
-        listAdminQuestions(catalogItemId),
-      ]);
-      const item = catalogItems.find((c) => c.id === catalogItemId);
-      setCatalogCode(item?.code ?? catalogItemId);
-      setQuestions(questionList);
-    } finally {
-      setLoading(false);
-    }
-  }, [catalogItemId]);
+  const error = loadError || submitError;
+
+  const load = useCallback(() => run(async () => {
+    const [catalogItems, questionList] = await Promise.all([
+      listAdminSourceCatalog(),
+      listAdminQuestions(catalogItemId),
+    ]);
+    const item = catalogItems.find((c) => c.id === catalogItemId);
+    setCatalogCode(item?.code ?? catalogItemId);
+    setQuestions(questionList);
+  }), [run, catalogItemId]);
 
   useEffect(() => {
     load();
@@ -114,18 +114,18 @@ export default function AdminSourceQuestionsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     const body = buildBody();
-    try {
+    const result = await submit(async () => {
       if (editingId) {
         await updateQuestion(catalogItemId, editingId, body);
       } else {
         await createQuestion(catalogItemId, body);
       }
+      return true;
+    });
+    if (result) {
       resetForm();
       await load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Lưu thất bại");
     }
   }
 
@@ -238,7 +238,7 @@ export default function AdminSourceQuestionsPage() {
             ))}
           </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          <ErrorBanner message={error} />
           <div className="flex gap-2">
             <button type="submit" className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950">
               {editingId ? "Cập nhật" : "Tạo câu hỏi"}
@@ -257,7 +257,7 @@ export default function AdminSourceQuestionsPage() {
 
         <div className="overflow-hidden rounded-xl border border-slate-800">
           {loading ? (
-            <p className="p-4 text-slate-400">Đang tải...</p>
+            <LoadingState className="p-4" />
           ) : questions.length === 0 ? (
             <p className="p-4 text-slate-400">Chưa có câu hỏi.</p>
           ) : (
@@ -335,6 +335,7 @@ export default function AdminSourceQuestionsPage() {
                             <img
                               src={questionImage}
                               alt=""
+                              loading="lazy"
                               className="mt-2 max-h-48 rounded-lg border border-slate-700"
                             />
                           </div>
@@ -375,6 +376,7 @@ export default function AdminSourceQuestionsPage() {
                                     <img
                                       src={optionImage}
                                       alt=""
+                                      loading="lazy"
                                       className="mt-2 max-h-28 rounded border border-slate-700"
                                     />
                                   )}

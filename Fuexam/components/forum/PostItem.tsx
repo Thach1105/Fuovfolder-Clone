@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ApiError } from "@/lib/api/client";
+import { memo, useState } from "react";
 import { deletePost, type Post, updatePost } from "@/lib/api/forum";
-import { authorInitial } from "@/lib/api/forum";
 import { formatDateTime } from "@/lib/format-datetime";
 import { RichTextEditor } from "@/components/forum/RichTextEditor";
 import { PostReactions } from "@/components/forum/PostReactions";
@@ -12,6 +10,9 @@ import { ReplyForm } from "@/components/forum/ReplyForm";
 import { mediaDownloadUrl } from "@/lib/api/media";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { can } from "@/lib/auth/permissions";
+import { useSubmit } from "@/hooks/use-submit";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { UserAvatar } from "@/components/shared/user-avatar";
 
 interface PostItemProps {
   post: Post;
@@ -21,13 +22,12 @@ interface PostItemProps {
   onChanged: () => void;
 }
 
-export function PostItem({ post, index, threadId, nested = false, onChanged }: PostItemProps) {
+export const PostItem = memo(function PostItem({ post, index, threadId, nested = false, onChanged }: PostItemProps) {
   const { user } = useAuth();
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState("");
   const [replyOpen, setReplyOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { submitting, error, submit } = useSubmit();
 
   const isOwner = user?.id === post.authorUserId;
   const canEdit = isOwner && can(user, "forum.post:update");
@@ -36,48 +36,31 @@ export function PostItem({ post, index, threadId, nested = false, onChanged }: P
 
   async function handleSave(event: React.FormEvent) {
     event.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
+    const result = await submit(async () => {
       await updatePost(threadId, post.id, body);
+      return true;
+    });
+    if (result) {
       setEditing(false);
       onChanged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không thể lưu bài viết");
-    } finally {
-      setSubmitting(false);
     }
   }
 
   async function handleDelete() {
     if (!confirm("Xóa bài viết này?")) return;
-    setSubmitting(true);
-    setError(null);
-    try {
+    const result = await submit(async () => {
       await deletePost(threadId, post.id);
+      return true;
+    });
+    if (result) {
       onChanged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không thể xóa bài viết");
-    } finally {
-      setSubmitting(false);
     }
   }
 
   return (
     <article className={`flex gap-4 p-4 ${nested ? "border-l-2 border-slate-200 pl-6" : ""}`}>
       <div className="hidden shrink-0 sm:block">
-        {post.authorAvatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={post.authorAvatarUrl}
-            alt=""
-            className="h-12 w-12 rounded-full border border-slate-200 object-cover"
-          />
-        ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-fuo-50 text-sm font-bold text-fuo-700">
-            {authorInitial(post.authorHandle)}
-          </div>
-        )}
+        <UserAvatar src={post.authorAvatarUrl} displayName={post.authorHandle ?? "Ẩn danh"} size="md" />
         <p className="mt-2 max-w-[4.5rem] truncate text-center text-xs text-slate-600">
           {post.authorHandle ?? "Ẩn danh"}
         </p>
@@ -100,7 +83,7 @@ export function PostItem({ post, index, threadId, nested = false, onChanged }: P
         {editing ? (
           <form onSubmit={handleSave} className="space-y-3">
             <RichTextEditor value={body} onChange={setBody} />
-            {error && <p className="text-sm text-red-700">{error}</p>}
+            <ErrorBanner message={error} />
             <div className="flex gap-2">
               <button type="submit" className="btn-primary" disabled={submitting}>
                 {submitting ? "Đang lưu..." : "Lưu"}
@@ -204,4 +187,4 @@ export function PostItem({ post, index, threadId, nested = false, onChanged }: P
       </div>
     </article>
   );
-}
+});

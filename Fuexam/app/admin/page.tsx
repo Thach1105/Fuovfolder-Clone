@@ -4,42 +4,30 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { StatCard } from "@/components/admin/StatCard";
-import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import * as adminApi from "@/lib/api/admin";
 import type { AdminOverviewResponse } from "@/types/api";
 
 export default function AdminDashboardPage() {
   const [overview, setOverview] = useState<AdminOverviewResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { loading, error, run } = useAsyncAction("Không tải được dữ liệu tổng quan.");
 
   useEffect(() => {
-    adminApi
-      .getAdminOverview()
-      .then(setOverview)
-      .catch((err) => {
-        if (err instanceof ApiError) {
-          setError(err.message);
-        } else {
-          setError("Không tải được dữ liệu tổng quan.");
-        }
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    run(async () => {
+      const data = await adminApi.getAdminOverview();
+      setOverview(data);
+    });
+  }, [run]);
 
   return (
     <AdminShell
       title="Tổng quan"
       description="Thống kê người dùng và trạng thái hệ thống"
     >
-      {loading && (
-        <p className="text-sm text-slate-400">Đang tải thống kê...</p>
-      )}
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
+      {loading && <LoadingState message="Đang tải thống kê..." />}
+      <ErrorBanner message={error} className="mb-6" />
       {overview && (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

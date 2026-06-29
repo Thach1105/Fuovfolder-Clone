@@ -53,6 +53,7 @@ export function ImageUploader({
           <img
             src={previewUrl}
             alt=""
+            loading="lazy"
             className="max-h-32 rounded-lg border border-border object-cover"
           />
           <button

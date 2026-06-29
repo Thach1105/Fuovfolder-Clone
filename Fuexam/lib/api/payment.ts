@@ -1,3 +1,4 @@
+import { API_V1 } from "@/lib/constants/api";
 import { apiFetch } from "@/lib/api/client";
 
 export interface DepositTier {
@@ -41,18 +42,18 @@ export interface PaymentStatusResponse {
 }
 
 export function listDepositTiers() {
-  return apiFetch<DepositTier[]>("/api/v1/deposit/tiers");
+  return apiFetch<DepositTier[]>(`${API_V1}/deposit/tiers`);
 }
 
 export function createPaymentLink(payload: CreatePaymentLinkRequest) {
-  return apiFetch<PayOSPaymentLinkResponse>("/api/v1/payment/create", {
+  return apiFetch<PayOSPaymentLinkResponse>(`${API_V1}/payment/create`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export function createCustomPaymentLink(payload: CreateCustomPaymentLinkRequest) {
-  return apiFetch<PayOSPaymentLinkResponse>("/api/v1/payment/create-custom", {
+  return apiFetch<PayOSPaymentLinkResponse>(`${API_V1}/payment/create-custom`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -60,7 +61,7 @@ export function createCustomPaymentLink(payload: CreateCustomPaymentLinkRequest)
 
 export function getPaymentStatus(orderCode: string) {
   const params = new URLSearchParams({ orderCode });
-  return apiFetch<PaymentStatusResponse>(`/api/v1/payment/status?${params}`);
+  return apiFetch<PaymentStatusResponse>(`${API_V1}/payment/status?${params}`);
 }
 
 export interface DepositHistoryItem {
@@ -103,9 +104,9 @@ export function listMyDeposits(params: {
   if (params.page != null) q.set("page", String(params.page));
   if (params.size != null) q.set("size", String(params.size));
   if (params.status) q.set("status", params.status);
-  return apiFetch<DepositHistoryPage>(`/api/v1/payment/me/deposits?${q}`);
+  return apiFetch<DepositHistoryPage>(`${API_V1}/payment/me/deposits?${q}`);
 }
 
 export function resumeDeposit(orderId: string) {
-  return apiFetch<DepositResumeInfo>(`/api/v1/payment/me/deposits/${orderId}/resume`);
+  return apiFetch<DepositResumeInfo>(`${API_V1}/payment/me/deposits/${orderId}/resume`);
 }

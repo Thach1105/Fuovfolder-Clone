@@ -2,50 +2,42 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useState } from "react";
-import { ApiError } from "@/lib/api/client";
+import { Suspense, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { resetPasswordSchema, type ResetPasswordFormValues } from "@/lib/schemas/auth";
 import * as authApi from "@/lib/api/auth";
 import { PasswordInput } from "@/components/auth/PasswordInput";
+import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
 
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const form = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { password: "", confirmPassword: "" },
+  });
+
   const [success, setSuccess] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-
+  async function onSubmit(values: ResetPasswordFormValues) {
     if (!token) {
-      setError("Liên kết đặt lại mật khẩu không hợp lệ.");
+      form.setError("root", { message: "Liên kết đặt lại mật khẩu không hợp lệ." });
       return;
     }
-    if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.");
-      return;
-    }
-
-    setSubmitting(true);
     try {
-      await authApi.resetPassword(token, password);
+      await authApi.resetPassword(token, values.password);
       setSuccess(true);
       setTimeout(() => {
         router.push("/login");
       }, 2000);
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Không thể đặt lại mật khẩu. Liên kết có thể đã hết hạn.");
-      }
-    } finally {
-      setSubmitting(false);
+      form.setError("root", {
+        message: err instanceof ApiError ? err.message : "Không thể đặt lại mật khẩu. Liên kết có thể đã hết hạn.",
+      });
     }
   }
 
@@ -76,12 +68,8 @@ function ResetPasswordContent() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <ErrorBanner message={form.formState.errors.root?.message} />
 
       <div>
         <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
@@ -89,12 +77,12 @@ function ResetPasswordContent() {
         </label>
         <PasswordInput
           id="password"
-          required
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
+          {...form.register("password")}
         />
+        {form.formState.errors.password && (
+          <p className="text-xs text-red-600 mt-1">{form.formState.errors.password.message}</p>
+        )}
       </div>
 
       <div>
@@ -103,16 +91,16 @@ function ResetPasswordContent() {
         </label>
         <PasswordInput
           id="confirmPassword"
-          required
-          minLength={8}
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
           autoComplete="new-password"
+          {...form.register("confirmPassword")}
         />
+        {form.formState.errors.confirmPassword && (
+          <p className="text-xs text-red-600 mt-1">{form.formState.errors.confirmPassword.message}</p>
+        )}
       </div>
 
-      <button type="submit" disabled={submitting} className="btn-primary w-full">
-        {submitting ? "Đang cập nhật..." : "Đặt lại mật khẩu"}
+      <button type="submit" disabled={form.formState.isSubmitting} className="btn-primary w-full">
+        {form.formState.isSubmitting ? "Đang cập nhật..." : "Đặt lại mật khẩu"}
       </button>
     </form>
   );

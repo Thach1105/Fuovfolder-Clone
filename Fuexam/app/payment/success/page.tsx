@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { getPaymentStatus, type PaymentStatusResponse } from "@/lib/api/payment";
 import { requestPointsBalanceRefresh } from "@/lib/api/points";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -55,11 +56,7 @@ function SuccessInner() {
         </div>
       )}
 
-      {error && (
-        <div className="w-full rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-center text-sm text-red-300">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} className="w-full text-center" />
 
       {!loading && status && status.status === "paid" && (
         <div className="w-full text-center">

@@ -3,44 +3,14 @@
 import Link from "next/link";
 import type { AdminUserSummary } from "@/types/api";
 
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: "Hoạt động",
-  PENDING_EMAIL_VERIFICATION: "Chờ xác minh email",
-  DISABLED: "Vô hiệu",
-  DELETED: "Đã xóa",
-};
-
-function formatDate(iso: string | null) {
-  if (!iso) {
-    return "—";
-  }
-  return new Date(iso).toLocaleString("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-}
-
-function roleClass(role: string) {
-  if (role === "SUPER_ADMIN") {
-    return "rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-red-300";
-  }
-  if (role === "ADMIN") {
-    return "rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300";
-  }
-  if (role === "SUB_ADMIN") {
-    return "rounded bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-violet-300";
-  }
-  if (role.startsWith("FUO_")) {
-    return "rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300";
-  }
-  return "rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-300";
-}
+import { formatDateShort } from "@/lib/format-datetime";
+import { USER_STATUS_LABELS, getRoleClass } from "@/lib/constants/status-labels";
 
 function RoleBadges({ roles }: { roles: string[] }) {
   return (
     <div className="flex flex-wrap gap-1">
       {roles.map((role) => (
-        <span key={role} className={roleClass(role)}>
+        <span key={role} className={getRoleClass(role)}>
           {role}
         </span>
       ))}
@@ -82,13 +52,13 @@ export function AdminUsersTable({ users }: { users: AdminUserSummary[] }) {
                 <RoleBadges roles={user.roles} />
               </td>
               <td className="px-4 py-3">
-                <span className="text-slate-300">{STATUS_LABELS[user.status] ?? user.status}</span>
+                <span className="text-slate-300">{USER_STATUS_LABELS[user.status] ?? user.status}</span>
                 {!user.emailVerified && (
                   <p className="mt-0.5 text-xs text-amber-500">Email chưa xác minh</p>
                 )}
               </td>
-              <td className="px-4 py-3 text-slate-400">{formatDate(user.lastLoginAt)}</td>
-              <td className="px-4 py-3 text-slate-400">{formatDate(user.createdAt)}</td>
+              <td className="px-4 py-3 text-slate-400">{formatDateShort(user.lastLoginAt)}</td>
+              <td className="px-4 py-3 text-slate-400">{formatDateShort(user.createdAt)}</td>
               <td className="px-4 py-3">
                 <Link
                   href={`/admin/users/${user.id}/permissions`}

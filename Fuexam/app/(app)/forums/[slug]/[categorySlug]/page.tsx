@@ -5,9 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ThreadTable } from "@/components/forum/ThreadTable";
 import { PromoBanner } from "@/components/layout/PromoBanner";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { PaginationBar } from "@/components/shared/pagination-bar";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { can } from "@/lib/auth/permissions";
 import { ApiError } from "@/lib/api/client";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { usePagination } from "@/hooks/use-pagination";
 import {
   type Category,
   type Forum,
@@ -22,7 +27,7 @@ import {
   isDocumentChildForumSlug,
 } from "@/lib/forum-nav";
 
-const PAGE_SIZE = 20;
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants/pagination";
 
 export default function CategoryThreadsPage() {
   const params = useParams();
@@ -34,11 +39,9 @@ export default function CategoryThreadsPage() {
   const [category, setCategory] = useState<Category | null>(null);
   const [parentCategory, setParentCategory] = useState<Category | null>(null);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const pagination = usePagination();
+  const { loading, error, run } = useAsyncAction("Không tải được chủ đề");
+  const [metaError, setMetaError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!forumSlug || !categorySlug) return;
@@ -51,31 +54,24 @@ export default function CategoryThreadsPage() {
         }
       })
       .catch((err) =>
-        setError(err instanceof ApiError ? err.message : "Không tải được mục diễn đàn"),
+        setMetaError(err instanceof ApiError ? err.message : "Không tải được mục diễn đàn"),
       );
   }, [forumSlug, categorySlug]);
 
-  const loadThreads = useCallback(async () => {
+  const loadThreads = useCallback(() => {
     if (!forum || !category) return;
-    setLoading(true);
-    setError(null);
-    try {
+    setThreads([]);
+    run(async () => {
       const result = await browseThreads({
         forumId: forum.id,
         categoryId: category.id,
-        page,
-        size: PAGE_SIZE,
+        page: pagination.page,
+        size: DEFAULT_PAGE_SIZE,
       });
       setThreads(result.items);
-      setTotalPages(result.totalPages);
-      setTotalElements(result.totalElements);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được chủ đề");
-      setThreads([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [forum, category, page]);
+      pagination.updateFromResponse(result);
+    });
+  }, [forum, category, pagination.page, run]);
 
   useEffect(() => {
     loadThreads();
@@ -136,17 +132,13 @@ export default function CategoryThreadsPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
             Chủ đề
           </h2>
-          <span className="text-xs text-slate-500">{totalElements} chủ đề</span>
+          <span className="text-xs text-slate-500">{pagination.totalElements} chủ đề</span>
         </div>
 
-        {error && (
-          <p className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-800">
-            {error}
-          </p>
-        )}
+        <ErrorBanner message={metaError ?? error} />
 
         {loading ? (
-          <p className="px-4 py-8 text-sm text-slate-500">Đang tải chủ đề...</p>
+          <LoadingState message="Đang tải chủ đề..." className="px-4 py-8" />
         ) : (
           <ThreadTable
             threads={threads}
@@ -155,29 +147,11 @@ export default function CategoryThreadsPage() {
           />
         )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-3 border-t border-slate-100 py-3">
-            <button
-              type="button"
-              className="btn-secondary"
-              disabled={page === 0}
-              onClick={() => setPage((value) => Math.max(0, value - 1))}
-            >
-              ← Trước
-            </button>
-            <span className="text-sm text-slate-600">
-              Trang {page + 1} / {totalPages}
-            </span>
-            <button
-              type="button"
-              className="btn-secondary"
-              disabled={page + 1 >= totalPages}
-              onClick={() => setPage((value) => value + 1)}
-            >
-              Sau →
-            </button>
-          </div>
-        )}
+        <PaginationBar
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
       </div>
     </div>
   );

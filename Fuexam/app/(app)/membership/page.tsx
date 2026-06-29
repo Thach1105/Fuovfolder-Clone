@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,13 +106,9 @@ export default function MembershipPage() {
           )}
         </div>
 
-        {error && (
-          <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {error}
-          </div>
-        )}
+        <ErrorBanner message={error} className="mb-6" />
 
-        {loading && <p className="text-center text-sm text-muted-foreground">Đang tải gói...</p>}
+        {loading && <LoadingState message="Đang tải gói..." className="text-center" />}
 
         <div className="grid gap-6 md:grid-cols-3">
           {plans.map((plan) => {
@@ -135,6 +133,7 @@ export default function MembershipPage() {
                     <img
                       src={imageUrl}
                       alt=""
+                      loading="lazy"
                       className="h-full w-full object-cover"
                       onError={(e) => { e.currentTarget.style.display = "none"; }}
                     />

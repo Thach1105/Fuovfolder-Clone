@@ -2,27 +2,28 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useState } from "react";
-import { ApiError } from "@/lib/api/client";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema, type LoginFormValues } from "@/lib/schemas/auth";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { PasswordInput } from "@/components/auth/PasswordInput";
+import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
   const nextPath = searchParams.get("next");
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { identifier: "", password: "" },
+  });
+
+  async function onSubmit(values: LoginFormValues) {
     try {
-      await login({ identifier, password });
+      await login(values);
       const destination =
         nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
           ? nextPath
@@ -30,23 +31,15 @@ export function LoginForm() {
       router.push(destination);
       router.refresh();
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Đăng nhập thất bại. Vui lòng thử lại.");
-      }
-    } finally {
-      setSubmitting(false);
+      form.setError("root", {
+        message: err instanceof ApiError ? err.message : "Đăng nhập thất bại. Vui lòng thử lại.",
+      });
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <ErrorBanner message={form.formState.errors.root?.message} />
 
       <div>
         <label htmlFor="identifier" className="mb-1 block text-sm font-medium text-slate-700">
@@ -55,12 +48,13 @@ export function LoginForm() {
         <input
           id="identifier"
           type="text"
-          required
           className="input-field"
-          value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
           autoComplete="username"
+          {...form.register("identifier")}
         />
+        {form.formState.errors.identifier && (
+          <p className="text-xs text-red-600 mt-1">{form.formState.errors.identifier.message}</p>
+        )}
       </div>
 
       <div>
@@ -74,15 +68,16 @@ export function LoginForm() {
         </div>
         <PasswordInput
           id="password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
+          {...form.register("password")}
         />
+        {form.formState.errors.password && (
+          <p className="text-xs text-red-600 mt-1">{form.formState.errors.password.message}</p>
+        )}
       </div>
 
-      <button type="submit" disabled={submitting} className="btn-primary w-full">
-        {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
+      <button type="submit" disabled={form.formState.isSubmitting} className="btn-primary w-full">
+        {form.formState.isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
       </button>
 
       <p className="text-center text-sm text-slate-500">

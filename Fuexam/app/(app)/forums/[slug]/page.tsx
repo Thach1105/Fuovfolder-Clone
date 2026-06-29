@@ -7,7 +7,9 @@ import { CategoryTreeView } from "@/components/forum/CategoryTreeView";
 import { ForumHubView } from "@/components/forum/ForumHubView";
 import { ThreadTable } from "@/components/forum/ThreadTable";
 import { PromoBanner } from "@/components/layout/PromoBanner";
-import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import {
   type CategoryTreeNode,
   type Forum,
@@ -23,7 +25,7 @@ import {
   LEGACY_DOCUMENT_HUB_SLUG,
 } from "@/lib/forum-nav";
 
-const PAGE_SIZE = 20;
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants/pagination";
 const DOCUMENT_HUB_TITLE = "Tài liệu";
 
 export default function ForumDetailPage() {
@@ -34,8 +36,7 @@ export default function ForumDetailPage() {
   const [forum, setForum] = useState<Forum | null>(null);
   const [tree, setTree] = useState<CategoryTreeNode[]>([]);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error, run } = useAsyncAction("Không tải được diễn đàn");
 
   const isHub = isDocumentHubSlug(slug);
   const isDocumentForum = isDocumentChildForumSlug(slug);
@@ -49,31 +50,24 @@ export default function ForumDetailPage() {
   useEffect(() => {
     if (!slug || slug === LEGACY_DOCUMENT_HUB_SLUG) return;
 
-    setLoading(true);
-    setError(null);
+    run(async () => {
+      const loadForum = getForum(slug);
+      const loadTree = isDocumentForum
+        ? listCategoryTree(slug)
+        : Promise.resolve([] as CategoryTreeNode[]);
 
-    const loadForum = getForum(slug);
-    const loadTree = isDocumentForum
-      ? listCategoryTree(slug)
-      : Promise.resolve([] as CategoryTreeNode[]);
-
-    Promise.all([loadForum, loadTree])
-      .then(([forumData, treeData]) => {
-        setForum(forumData);
-        if (isDocumentForum) {
-          setTree(treeData);
-        }
-      })
-      .catch((err) =>
-        setError(err instanceof ApiError ? err.message : "Không tải được diễn đàn"),
-      )
-      .finally(() => setLoading(false));
-  }, [slug, isDocumentForum]);
+      const [forumData, treeData] = await Promise.all([loadForum, loadTree]);
+      setForum(forumData);
+      if (isDocumentForum) {
+        setTree(treeData);
+      }
+    });
+  }, [slug, isDocumentForum, run]);
 
   useEffect(() => {
     if (!forum || isDocumentForum || isHub) return;
 
-    browseThreads({ forumId: forum.id, page: 0, size: PAGE_SIZE })
+    browseThreads({ forumId: forum.id, page: 0, size: DEFAULT_PAGE_SIZE })
       .then((result) => setThreads(result.items))
       .catch(() => setThreads([]));
   }, [forum, isDocumentForum, isHub]);
@@ -114,12 +108,10 @@ export default function ForumDetailPage() {
         </Link>
       </div>
 
-      {error && (
-        <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-800">{error}</p>
-      )}
+      <ErrorBanner message={error} />
 
       {loading ? (
-        <p className="text-sm text-slate-500">Đang tải...</p>
+        <LoadingState />
       ) : isHub ? (
         <ForumHubView forums={hubChildren} />
       ) : isDocumentForum ? (

@@ -16,6 +16,8 @@ import {
 } from "@/lib/auth/profile-validation";
 import { FPT_CAMPUSES } from "@/lib/fpt-campuses";
 import { cn } from "@/lib/utils";
+import { useSubmit } from "@/hooks/use-submit";
+import { ErrorBanner } from "@/components/ui/error-banner";
 
 export type CompleteProfileFormState = ProfileIdentityFormState;
 export type CompleteProfileField = ProfileIdentityField;
@@ -43,11 +45,10 @@ export function CompleteProfileForm(): JSX.Element {
     Partial<Record<CompleteProfileField, boolean>>
   >({});
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { submitting, error, submit, clearError } = useSubmit("Hoàn tất hồ sơ thất bại. Vui lòng thử lại.");
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<CompleteProfileField, string>>
   >({});
-  const [submitting, setSubmitting] = useState(false);
 
   const errors = useMemo(() => validateCompleteProfileForm(form), [form]);
 
@@ -71,37 +72,37 @@ export function CompleteProfileForm(): JSX.Element {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitted(true);
-    setError(null);
+    clearError();
     setFieldErrors({});
 
     const nextErrors = validateCompleteProfileForm(form);
     if (Object.keys(nextErrors).length > 0) return;
 
-    setSubmitting(true);
-    try {
-      await authApi.completePendingProfile({
-        username: form.username.trim(),
-        campus: form.campus,
-        displayName: form.displayName.trim(),
-      });
+    const result = await submit(async () => {
+      try {
+        await authApi.completePendingProfile({
+          username: form.username.trim(),
+          campus: form.campus,
+          displayName: form.displayName.trim(),
+        });
+        return true;
+      } catch (err) {
+        if (err instanceof ApiError) {
+          const usernameError = err.fieldErrors.find(
+            (field) => field.field === "username",
+          );
+          if (usernameError) {
+            setFieldErrors({ username: usernameError.message });
+            return undefined;
+          }
+        }
+        throw err;
+      }
+    });
+    if (result) {
       await refreshUser();
       router.push("/suoc");
       router.refresh();
-    } catch (err) {
-      if (err instanceof ApiError) {
-        const usernameError = err.fieldErrors.find(
-          (field) => field.field === "username",
-        );
-        if (usernameError) {
-          setFieldErrors({ username: usernameError.message });
-        } else {
-          setError(err.message);
-        }
-      } else {
-        setError("Hoàn tất hồ sơ thất bại. Vui lòng thử lại.");
-      }
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -111,11 +112,7 @@ export function CompleteProfileForm(): JSX.Element {
   return (
     <div className="rounded-2xl border border-foreground/10 bg-background/70 p-6 shadow-lg backdrop-blur-xl sm:p-8">
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
-        {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </div>
-        )}
+        <ErrorBanner message={error} />
 
         {user?.email && (
           <div className="rounded-lg border border-foreground/10 bg-foreground/5 px-3 py-2 text-sm text-muted-foreground">

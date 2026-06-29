@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { useSubmit } from "@/hooks/use-submit";
 import * as rbacApi from "@/lib/api/rbac";
 import type { PermissionCatalogResponse, RoleDetailResponse } from "@/types/api";
 
@@ -15,27 +18,20 @@ export default function AdminRoleMatrixPage() {
   const [role, setRole] = useState<RoleDetailResponse | null>(null);
   const [catalog, setCatalog] = useState<PermissionCatalogResponse | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { loading, error: loadError, run } = useAsyncAction("Không tải được role.");
+  const { submitting: saving, error: saveError, submit } = useSubmit("Không lưu được permission.");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [roleData, catalogData] = await Promise.all([
-        rbacApi.getRole(roleId),
-        rbacApi.listPermissions(),
-      ]);
-      setRole(roleData);
-      setCatalog(catalogData);
-      setSelected(new Set(roleData.permissions));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được role.");
-    } finally {
-      setLoading(false);
-    }
-  }, [roleId]);
+  const error = loadError || saveError;
+
+  const load = useCallback(() => run(async () => {
+    const [roleData, catalogData] = await Promise.all([
+      rbacApi.getRole(roleId),
+      rbacApi.listPermissions(),
+    ]);
+    setRole(roleData);
+    setCatalog(catalogData);
+    setSelected(new Set(roleData.permissions));
+  }), [run, roleId]);
 
   useEffect(() => {
     load();
@@ -59,17 +55,11 @@ export default function AdminRoleMatrixPage() {
     if (!role?.editable) {
       return;
     }
-    setSaving(true);
-    setError(null);
-    try {
+    await submit(async () => {
       const updated = await rbacApi.updateRolePermissions(roleId, Array.from(selected).sort());
       setRole(updated);
       setSelected(new Set(updated.permissions));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không lưu được permission.");
-    } finally {
-      setSaving(false);
-    }
+    });
   };
 
   return (
@@ -81,13 +71,9 @@ export default function AdminRoleMatrixPage() {
         ← Danh sách role
       </Link>
 
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} className="mb-6" />
 
-      {loading && <p className="text-sm text-slate-400">Đang tải ma trận...</p>}
+      {loading && <LoadingState message="Đang tải ma trận..." />}
 
       {role && !loading && (
         <>

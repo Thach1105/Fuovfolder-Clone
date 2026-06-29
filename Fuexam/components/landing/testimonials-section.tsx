@@ -38,14 +38,33 @@ export function TestimonialsSection() {
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIsAnimating(true);
-      setTimeout(() => {
-        setActiveIndex((prev) => (prev + 1) % testimonials.length);
-        setIsAnimating(false);
-      }, 300);
-    }, 5000);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    function start() {
+      if (interval) return;
+      interval = setInterval(() => {
+        setIsAnimating(true);
+        setTimeout(() => {
+          setActiveIndex((prev) => (prev + 1) % testimonials.length);
+          setIsAnimating(false);
+        }, 300);
+      }, 5000);
+    }
+
+    function stop() {
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+
+    function handleVisibility() {
+      if (document.hidden) stop(); else start();
+    }
+
+    start();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   const activeTestimonial = testimonials[activeIndex];

@@ -2,60 +2,50 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
-import { ApiError } from "@/lib/api/client";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { registerSchema, type RegisterFormValues } from "@/lib/schemas/auth";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { PasswordInput } from "@/components/auth/PasswordInput";
 import { FPT_CAMPUSES } from "@/lib/fpt-campuses";
+import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
 
 export function RegisterForm() {
   const router = useRouter();
-  const { register } = useAuth();
-  const [form, setForm] = useState({
-    email: "",
-    username: "",
-    password: "",
-    displayName: "",
-    campus: "",
+  const { register: authRegister } = useAuth();
+
+  const form = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      email: "",
+      username: "",
+      password: "",
+      displayName: "",
+      campus: "",
+    },
   });
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
-  function updateField(field: keyof typeof form, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
+  async function onSubmit(values: RegisterFormValues) {
     try {
-      await register({
-        email: form.email,
-        username: form.username,
-        password: form.password,
-        displayName: form.displayName,
-        campus: form.campus || undefined,
+      await authRegister({
+        email: values.email,
+        username: values.username,
+        password: values.password,
+        displayName: values.displayName,
+        campus: values.campus || undefined,
       });
       router.push("/verify-email?sent=1");
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Đăng ký thất bại. Vui lòng thử lại.");
-      }
-    } finally {
-      setSubmitting(false);
+      form.setError("root", {
+        message: err instanceof ApiError ? err.message : "Đăng ký thất bại. Vui lòng thử lại.",
+      });
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <ErrorBanner message={form.formState.errors.root?.message} />
 
       <div>
         <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
@@ -64,12 +54,13 @@ export function RegisterForm() {
         <input
           id="email"
           type="email"
-          required
           className="input-field"
-          value={form.email}
-          onChange={(e) => updateField("email", e.target.value)}
           autoComplete="email"
+          {...form.register("email")}
         />
+        {form.formState.errors.email && (
+          <p className="text-xs text-red-600 mt-1">{form.formState.errors.email.message}</p>
+        )}
       </div>
 
       <div>
@@ -79,14 +70,13 @@ export function RegisterForm() {
         <input
           id="username"
           type="text"
-          required
-          minLength={3}
-          maxLength={64}
           className="input-field"
-          value={form.username}
-          onChange={(e) => updateField("username", e.target.value)}
           autoComplete="username"
+          {...form.register("username")}
         />
+        {form.formState.errors.username && (
+          <p className="text-xs text-red-600 mt-1">{form.formState.errors.username.message}</p>
+        )}
       </div>
 
       <div>
@@ -96,11 +86,12 @@ export function RegisterForm() {
         <input
           id="displayName"
           type="text"
-          required
           className="input-field"
-          value={form.displayName}
-          onChange={(e) => updateField("displayName", e.target.value)}
+          {...form.register("displayName")}
         />
+        {form.formState.errors.displayName && (
+          <p className="text-xs text-red-600 mt-1">{form.formState.errors.displayName.message}</p>
+        )}
       </div>
 
       <div>
@@ -110,10 +101,9 @@ export function RegisterForm() {
         <select
           id="campus"
           className="input-field"
-          value={form.campus}
-          onChange={(e) => updateField("campus", e.target.value)}
+          {...form.register("campus")}
         >
-          <option value="">— Chọn cơ sở —</option>
+          <option value="">-- Chọn cơ sở --</option>
           {FPT_CAMPUSES.map((campus) => (
             <option key={campus} value={campus}>
               {campus}
@@ -128,16 +118,16 @@ export function RegisterForm() {
         </label>
         <PasswordInput
           id="password"
-          required
-          minLength={8}
-          value={form.password}
-          onChange={(e) => updateField("password", e.target.value)}
           autoComplete="new-password"
+          {...form.register("password")}
         />
+        {form.formState.errors.password && (
+          <p className="text-xs text-red-600 mt-1">{form.formState.errors.password.message}</p>
+        )}
       </div>
 
-      <button type="submit" disabled={submitting} className="btn-primary w-full">
-        {submitting ? "Đang đăng ký..." : "Tạo tài khoản"}
+      <button type="submit" disabled={form.formState.isSubmitting} className="btn-primary w-full">
+        {form.formState.isSubmitting ? "Đang đăng ký..." : "Tạo tài khoản"}
       </button>
 
       <p className="text-center text-sm text-slate-500">

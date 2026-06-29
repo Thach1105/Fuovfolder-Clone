@@ -2,9 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { AuthGuard } from "@/components/shared/auth-guard";
+import { PaginationBar } from "@/components/shared/pagination-bar";
+import { usePagination } from "@/hooks/use-pagination";
 import {
   getPointsBalance,
   getPointsLedger,
@@ -14,24 +18,17 @@ import {
 import { formatDateTime } from "@/lib/format-datetime";
 import { formatPoints } from "@/lib/format-points";
 
-const PAGE_SIZE = 20;
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants/pagination";
 
 export default function PointsPage() {
-  const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
+  const pagination = usePagination();
 
   const [balance, setBalance] = useState<number | null>(null);
   const [ledger, setLedger] = useState<PointsLedgerPage | null>(null);
-  const [page, setPage] = useState(0);
   const [initialLoading, setInitialLoading] = useState(true);
   const [pageLoading, setPageLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace(`/login?next=${encodeURIComponent("/me/points")}`);
-    }
-  }, [authLoading, user, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -40,12 +37,12 @@ export default function PointsPage() {
     setInitialLoading(true);
     setError(null);
 
-    Promise.all([getPointsBalance(), getPointsLedger(0, PAGE_SIZE)])
+    Promise.all([getPointsBalance(), getPointsLedger(0, DEFAULT_PAGE_SIZE)])
       .then(([balanceResponse, ledgerResponse]) => {
         if (cancelled) return;
         setBalance(balanceResponse.balance);
         setLedger(ledgerResponse);
-        setPage(ledgerResponse.page);
+        pagination.setPage(ledgerResponse.page);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -65,13 +62,13 @@ export default function PointsPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!user || initialLoading || !ledger || page === ledger.page) return;
+    if (!user || initialLoading || !ledger || pagination.page === ledger.page) return;
 
     let cancelled = false;
     setPageLoading(true);
     setError(null);
 
-    getPointsLedger(page, PAGE_SIZE)
+    getPointsLedger(pagination.page, DEFAULT_PAGE_SIZE)
       .then((ledgerResponse) => {
         if (cancelled) return;
         setLedger(ledgerResponse);
@@ -83,7 +80,7 @@ export default function PointsPage() {
             ? err.message
             : "Không tải được lịch sử Fuexam Point.",
         );
-        setPage(ledger.page);
+        pagination.setPage(ledger.page);
       })
       .finally(() => {
         if (!cancelled) setPageLoading(false);
@@ -92,20 +89,12 @@ export default function PointsPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, user, initialLoading, ledger]);
+  }, [pagination.page, user, initialLoading, ledger]);
 
   const entries = useMemo<PointsLedgerEntry[]>(() => ledger?.items ?? [], [ledger]);
 
-  if (authLoading || (!user && !error)) {
-    return (
-      <div className="mx-auto max-w-5xl px-4 py-10">
-        <h1 className="font-display text-4xl tracking-tight">Fuexam Point của tôi</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Đang tải...</p>
-      </div>
-    );
-  }
-
   return (
+    <AuthGuard>
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="mb-8 text-center">
         <h1 className="font-display text-4xl tracking-tight">Fuexam Point của tôi</h1>
@@ -114,11 +103,7 @@ export default function PointsPage() {
         </p>
       </div>
 
-      {error && (
-        <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-center text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} className="mb-6 text-center" />
 
       <section className="mb-10 rounded-2xl border border-foreground/10 bg-background p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -151,7 +136,7 @@ export default function PointsPage() {
         </div>
 
         {initialLoading ? (
-          <p className="text-sm text-muted-foreground">Đang tải lịch sử...</p>
+          <LoadingState message="Đang tải lịch sử..." />
         ) : entries.length === 0 ? (
           <div className="rounded-lg border border-foreground/10 bg-background p-8 text-center text-sm text-muted-foreground">
             Chưa có giao dịch Fuexam Point nào.
@@ -194,37 +179,16 @@ export default function PointsPage() {
                 </li>
               ))}
             </ul>
-            <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-              <button
-                type="button"
-                onClick={() => setPage((current) => Math.max(0, current - 1))}
-                disabled={pageLoading || page === 0}
-                className="rounded-lg border border-foreground/15 px-3 py-1.5 transition hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Trước
-              </button>
-
-              <span>
-                Trang {page + 1}
-                {ledger ? ` / ${Math.max(1, ledger.totalPages)}` : ""}
-              </span>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setPage((current) =>
-                    ledger && current + 1 < ledger.totalPages ? current + 1 : current,
-                  )
-                }
-                disabled={pageLoading || !ledger || page + 1 >= ledger.totalPages}
-                className="rounded-lg border border-foreground/15 px-3 py-1.5 transition hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Sau
-              </button>
-            </div>
+            <PaginationBar
+              page={pagination.page}
+              totalPages={ledger ? Math.max(1, ledger.totalPages) : 1}
+              onPageChange={pagination.setPage}
+              className="mt-4 flex items-center justify-between text-sm text-muted-foreground"
+            />
           </>
         )}
       </section>
     </div>
+    </AuthGuard>
   );
 }

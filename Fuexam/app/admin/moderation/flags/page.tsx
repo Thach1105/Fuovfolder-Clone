@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import { ApiError } from "@/lib/api/client";
 import {
   type FlagItem,
@@ -12,22 +15,16 @@ import { formatDateTime } from "@/lib/format-datetime";
 
 export default function AdminModerationFlagsPage() {
   const [items, setItems] = useState<FlagItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error: loadError, run } = useAsyncAction("Không tải được báo cáo");
+  const [actionError, setActionError] = useState<string | null>(null);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const page = await listModerationFlags("open", 0, 50);
-      setItems(page.items);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được báo cáo");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const error = loadError || actionError;
+
+  const load = useCallback(() => run(async () => {
+    const page = await listModerationFlags("open", 0, 50);
+    setItems(page.items);
+  }), [run]);
 
   useEffect(() => {
     load();
@@ -35,11 +32,12 @@ export default function AdminModerationFlagsPage() {
 
   async function resolve(flagId: string, action: string) {
     setResolvingId(flagId);
+    setActionError(null);
     try {
       await resolveModerationFlag(flagId, action);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không xử lý được báo cáo");
+      setActionError(err instanceof ApiError ? err.message : "Không xử lý được báo cáo");
     } finally {
       setResolvingId(null);
     }
@@ -47,14 +45,10 @@ export default function AdminModerationFlagsPage() {
 
   return (
     <AdminShell title="Moderation — Báo cáo" description="Xử lý báo cáo nội dung từ thành viên">
-      {error && (
-        <div className="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} className="mb-4" />
 
       {loading ? (
-        <p className="text-sm text-slate-400">Đang tải...</p>
+        <LoadingState />
       ) : items.length === 0 ? (
         <p className="text-sm text-slate-400">Không có báo cáo đang mở.</p>
       ) : (

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import * as rbacApi from "@/lib/api/rbac";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { can } from "@/lib/auth/permissions";
@@ -12,22 +14,13 @@ import type { RoleSummaryResponse } from "@/types/api";
 export default function AdminRolesPage() {
   const { user } = useAuth();
   const [roles, setRoles] = useState<RoleSummaryResponse[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { loading, error, run } = useAsyncAction("Không tải được danh sách role.");
 
   const canCreate = can(user, "rbac.role:update");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setRoles(await rbacApi.listRoles());
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được danh sách role.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(() => run(async () => {
+    setRoles(await rbacApi.listRoles());
+  }), [run]);
 
   useEffect(() => {
     load();
@@ -61,12 +54,8 @@ export default function AdminRolesPage() {
         )}
       </div>
 
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
-      {loading && <p className="text-sm text-slate-400">Đang tải...</p>}
+      <ErrorBanner message={error} className="mb-6" />
+      {loading && <LoadingState />}
       {!loading &&
         Array.from(grouped.entries()).map(([type, items]) => (
           <section key={type} className="mb-8">

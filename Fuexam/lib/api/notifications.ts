@@ -1,3 +1,4 @@
+import { API_V1 } from "@/lib/constants/api";
 import { apiFetch } from "@/lib/api/client";
 
 export interface NotificationItem {
@@ -42,32 +43,32 @@ export function listNotifications(opts?: {
     size: String(opts?.size ?? 20),
     unreadOnly: String(opts?.unreadOnly ?? false),
   });
-  return apiFetch<NotificationPage>(`/api/v1/users/me/notifications?${params}`);
+  return apiFetch<NotificationPage>(`${API_V1}/users/me/notifications?${params}`);
 }
 
 export function getUnreadNotificationCount() {
-  return apiFetch<UnreadCount>("/api/v1/users/me/notifications/unread-count");
+  return apiFetch<UnreadCount>(`${API_V1}/users/me/notifications/unread-count`);
 }
 
 export function markNotificationRead(notificationId: string) {
   return apiFetch<NotificationItem>(
-    `/api/v1/users/me/notifications/${notificationId}/read`,
+    `${API_V1}/users/me/notifications/${notificationId}/read`,
     { method: "PATCH" },
   );
 }
 
 export function markAllNotificationsRead() {
-  return apiFetch<{ updated: number }>("/api/v1/users/me/notifications/mark-all-read", {
+  return apiFetch<{ updated: number }>(`${API_V1}/users/me/notifications/mark-all-read`, {
     method: "POST",
   });
 }
 
 export function getNotificationPreferences() {
-  return apiFetch<NotificationPreferences>("/api/v1/users/me/notification-preferences");
+  return apiFetch<NotificationPreferences>(`${API_V1}/users/me/notification-preferences`);
 }
 
 export function updateNotificationPreferences(body: NotificationPreferences) {
-  return apiFetch<NotificationPreferences>("/api/v1/users/me/notification-preferences", {
+  return apiFetch<NotificationPreferences>(`${API_V1}/users/me/notification-preferences`, {
     method: "PUT",
     body: JSON.stringify(body),
   });

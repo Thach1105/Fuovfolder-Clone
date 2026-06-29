@@ -105,6 +105,7 @@ export default function AdminAwardsPage() {
                       <img
                         src={icon}
                         alt=""
+                        loading="lazy"
                         className="h-12 w-12 rounded-lg border border-border object-cover"
                       />
                     ) : (

@@ -126,6 +126,7 @@ export function MultiImageUploader({
                 <img
                   src={previewUrl ?? undefined}
                   alt={`Anh ${index + 1}`}
+                  loading="lazy"
                   className="h-24 w-full rounded-lg object-cover"
                 />
                 <button

@@ -1,3 +1,4 @@
+import { API_V1 } from "@/lib/constants/api";
 import { apiFetch } from "@/lib/api/client";
 
 export type UploadPurpose =
@@ -22,7 +23,7 @@ export interface UploadResponse {
 export async function uploadMedia(file: File, purpose: UploadPurpose): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append("file", file);
-  return apiFetch<UploadResponse>(`/api/v1/media/uploads?purpose=${encodeURIComponent(purpose)}`, {
+  return apiFetch<UploadResponse>(`${API_V1}/media/uploads?purpose=${encodeURIComponent(purpose)}`, {
     method: "POST",
     body: formData,
   });
@@ -30,7 +31,7 @@ export async function uploadMedia(file: File, purpose: UploadPurpose): Promise<U
 
 export function mediaDownloadUrl(fileId: string): string {
   const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
-  return `${base}/api/v1/media/files/${fileId}`;
+  return `${base}${API_V1}/media/files/${fileId}`;
 }
 
 export function resolveMediaUrl(storedReference: string | null | undefined): string | null {

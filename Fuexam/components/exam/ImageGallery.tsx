@@ -30,6 +30,7 @@ export function ImageGallery({ images, alt }: Props) {
             <img
               src={url}
               alt={alt ? `${alt} ${index + 1}` : `Anh ${index + 1}`}
+              loading="lazy"
               className="h-32 w-full object-cover transition-transform group-hover:scale-105"
             />
             <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />

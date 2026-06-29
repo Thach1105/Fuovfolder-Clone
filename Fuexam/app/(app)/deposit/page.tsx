@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
 import { cn } from "@/lib/utils";
 import {
   createCustomPaymentLink,
@@ -29,17 +31,11 @@ import {
   type DepositHistoryPage,
 } from "@/lib/api/payment";
 
-const formatVnd = (n: number) => `${n.toLocaleString("vi-VN")} VND`;
-const formatPoints = (n: number) => `${n.toLocaleString("vi-VN")} Fuexam`;
-const formatDate = (s: string) =>
-  new Date(s).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
-
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  paid: { label: "Đã thanh toán", className: "bg-emerald-500/15 text-emerald-600" },
-  pending: { label: "Chờ thanh toán", className: "bg-yellow-500/15 text-yellow-600" },
-  expired: { label: "Hết hạn", className: "bg-muted text-muted-foreground" },
-  failed: { label: "Thất bại", className: "bg-red-500/15 text-red-600" },
-};
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants/pagination";
+import { DEPOSIT_STATUS_CONFIG, toFilterOptions } from "@/lib/constants/status-labels";
+import { formatVnd } from "@/lib/format-currency";
+import { formatDateShort } from "@/lib/format-datetime";
+import { formatPointsShort } from "@/lib/format-points";
 
 type PendingDeposit =
   | { type: "tier"; tier: DepositTier }
@@ -101,7 +97,7 @@ export default function DepositPage() {
   useEffect(() => {
     if (activeTab !== "history") return;
     setHistoryLoading(true);
-    listMyDeposits({ page: historyPage, size: 20, status: statusFilter || undefined })
+    listMyDeposits({ page: historyPage, size: DEFAULT_PAGE_SIZE, status: statusFilter || undefined })
       .then(setDeposits)
       .catch(() => toast.error("Không tải được lịch sử nạp tiền"))
       .finally(() => setHistoryLoading(false));
@@ -115,7 +111,7 @@ export default function DepositPage() {
         window.location.href = res.checkoutUrl;
       } else {
         toast.error(res.message || "Không thể tiếp tục thanh toán");
-        listMyDeposits({ page: historyPage, size: 20, status: statusFilter || undefined }).then(setDeposits);
+        listMyDeposits({ page: historyPage, size: DEFAULT_PAGE_SIZE, status: statusFilter || undefined }).then(setDeposits);
       }
     } catch {
       toast.error("Có lỗi xảy ra, vui lòng thử lại.");
@@ -258,7 +254,7 @@ export default function DepositPage() {
               </div>
               {customAmountValid && (
                 <p className="mt-3 text-sm text-muted-foreground">
-                  Bạn sẽ nhận được <span className="font-semibold text-emerald-700">{formatPoints(parsedCustomAmount)}</span>.
+                  Bạn sẽ nhận được <span className="font-semibold text-emerald-700">{formatPointsShort(parsedCustomAmount)}</span>.
                 </p>
               )}
             </div>
@@ -269,13 +265,9 @@ export default function DepositPage() {
               </p>
             )}
 
-            {error && (
-              <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-center text-sm text-destructive">
-                {error}
-              </div>
-            )}
+            <ErrorBanner message={error} className="mb-6 text-center" />
 
-            {loading && <p className="text-center text-sm text-muted-foreground">Đang tải mệnh giá...</p>}
+            {loading && <LoadingState message="Đang tải mệnh giá..." className="text-center" />}
 
             {!loading && tiers.length === 0 && (
               <div className="rounded-lg border border-foreground/10 bg-background p-8 text-center text-sm text-muted-foreground">
@@ -305,7 +297,7 @@ export default function DepositPage() {
                     <div className="mt-4 flex-1 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
                       <p className="text-xs text-muted-foreground">Bạn nhận được</p>
                       <p className="mt-1 text-2xl font-bold text-emerald-700">
-                        {formatPoints(tier.totalPoints)}
+                        {formatPointsShort(tier.totalPoints)}
                       </p>
                     </div>
 
@@ -335,16 +327,16 @@ export default function DepositPage() {
                 onChange={(e) => { setStatusFilter(e.target.value); setHistoryPage(0); }}
                 className="rounded-lg border border-foreground/15 bg-background px-3 py-1.5 text-sm outline-none focus:border-emerald-500"
               >
-                <option value="">Tất cả</option>
-                <option value="pending">Chờ thanh toán</option>
-                <option value="paid">Đã thanh toán</option>
-                <option value="failed">Thất bại</option>
-                <option value="expired">Hết hạn</option>
+                {toFilterOptions(
+                  Object.fromEntries(Object.entries(DEPOSIT_STATUS_CONFIG).map(([k, v]) => [k, v.label]))
+                ).map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </select>
             </div>
 
             {historyLoading && (
-              <p className="py-10 text-center text-sm text-muted-foreground">Đang tải lịch sử...</p>
+              <LoadingState message="Đang tải lịch sử..." className="py-10 text-center" />
             )}
 
             {!historyLoading && deposits && deposits.items.length === 0 && (
@@ -370,12 +362,12 @@ export default function DepositPage() {
                     </thead>
                     <tbody>
                       {deposits.items.map((item) => {
-                        const statusCfg = STATUS_CONFIG[item.status] ?? { label: item.status, className: "bg-muted text-muted-foreground" };
+                        const statusCfg = DEPOSIT_STATUS_CONFIG[item.status] ?? { label: item.status, className: "bg-muted text-muted-foreground" };
                         const isResuming = resumingId === item.orderId;
                         return (
                           <tr key={item.orderId} className="border-b border-foreground/5 last:border-0 hover:bg-muted/20 transition-colors">
                             <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                              {formatDate(item.createdAt)}
+                              {formatDateShort(item.createdAt)}
                             </td>
                             <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                               {item.orderCode}
@@ -387,7 +379,7 @@ export default function DepositPage() {
                               {item.tierLabel ?? "Nạp linh động"}
                             </td>
                             <td className="px-4 py-3 text-emerald-700 font-medium whitespace-nowrap">
-                              {item.pointsAwarded != null ? formatPoints(item.pointsAwarded) : "—"}
+                              {item.pointsAwarded != null ? formatPointsShort(item.pointsAwarded) : "—"}
                             </td>
                             <td className="px-4 py-3">
                               <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", statusCfg.className)}>
@@ -454,7 +446,7 @@ export default function DepositPage() {
             <AlertDialogTitle>Xác nhận nạp tiền?</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingSummary
-                ? `${pendingSummary.label}: thanh toán ${formatVnd(pendingSummary.amount)} và nhận ${formatPoints(pendingSummary.points)}.`
+                ? `${pendingSummary.label}: thanh toán ${formatVnd(pendingSummary.amount)} và nhận ${formatPointsShort(pendingSummary.points)}.`
                 : "Vui lòng kiểm tra số tiền trước khi tiếp tục."}
             </AlertDialogDescription>
           </AlertDialogHeader>

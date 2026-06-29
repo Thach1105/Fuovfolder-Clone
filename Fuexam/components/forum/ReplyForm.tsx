@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ApiError } from "@/lib/api/client";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { replySchema, type ReplyFormValues } from "@/lib/schemas/forum";
 import { createPost } from "@/lib/api/forum";
+import { ApiError } from "@/lib/api/client";
 import { RichTextEditor } from "@/components/forum/RichTextEditor";
 import { DocumentUploader, type StagedFile } from "@/components/media/DocumentUploader";
+import { ErrorBanner } from "@/components/ui/error-banner";
 
 interface ReplyFormProps {
   threadId: string;
@@ -13,44 +17,51 @@ interface ReplyFormProps {
 }
 
 export function ReplyForm({ threadId, parentPostId, onPosted }: ReplyFormProps) {
-  const [body, setBody] = useState("");
+  const form = useForm<ReplyFormValues>({
+    resolver: zodResolver(replySchema),
+    defaultValues: { body: "" },
+  });
   const [attachments, setAttachments] = useState<StagedFile[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setSubmitting(true);
-    setError(null);
+  async function onSubmit(values: ReplyFormValues) {
     try {
       await createPost(
         threadId,
-        body,
+        values.body,
         parentPostId,
         attachments.map((file) => file.fileId),
       );
-      setBody("");
+      form.reset();
       setAttachments([]);
       onPosted();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể gửi trả lời");
-    } finally {
-      setSubmitting(false);
+      form.setError("root", {
+        message: err instanceof ApiError ? err.message : "Không thể gửi trả lời",
+      });
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-slate-100 p-4">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="border-t border-slate-100 p-4">
       <h3 className="mb-2 text-sm font-semibold text-slate-800">
         {parentPostId ? "Trả lời bình luận" : "Trả lời"}
       </h3>
-      <RichTextEditor value={body} onChange={setBody} minHeight={120} />
+      <Controller
+        control={form.control}
+        name="body"
+        render={({ field }) => (
+          <RichTextEditor value={field.value} onChange={field.onChange} minHeight={120} />
+        )}
+      />
+      {form.formState.errors.body && (
+        <p className="mt-1 text-xs text-rose-500">{form.formState.errors.body.message}</p>
+      )}
       <div className="mt-3">
         <DocumentUploader value={attachments} onChange={setAttachments} />
       </div>
-      {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
-      <button type="submit" className="btn-primary mt-3" disabled={submitting}>
-        {submitting ? "Đang gửi..." : "Gửi trả lời"}
+      <ErrorBanner message={form.formState.errors.root?.message} className="mt-2" />
+      <button type="submit" className="btn-primary mt-3" disabled={form.formState.isSubmitting}>
+        {form.formState.isSubmitting ? "Đang gửi..." : "Gửi trả lời"}
       </button>
     </form>
   );

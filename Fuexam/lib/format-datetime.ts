@@ -10,3 +10,10 @@ export function formatDateTime(iso: string | null | undefined): string {
     minute: "2-digit",
   });
 }
+
+export function formatDateShort(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+}

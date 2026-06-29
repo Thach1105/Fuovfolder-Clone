@@ -179,8 +179,8 @@ export function SourceQuestionRunner({ questions }: Props) {
           <p className="text-base font-medium text-ink-900">{question.questionText}</p>
         )}
         {questionImage && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={questionImage} alt="" className="max-h-64 rounded-xl border border-ink-200" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={questionImage} alt="" loading="lazy" className="max-h-64 rounded-xl border border-ink-200" />
         )}
 
         <div className="space-y-2">
@@ -217,8 +217,8 @@ export function SourceQuestionRunner({ questions }: Props) {
                 <span className="flex-1 space-y-2">
                   {option.optionText && <span className="text-ink-700">{option.optionText}</span>}
                   {optionImage && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={optionImage} alt="" className="max-h-32 rounded-lg border border-ink-200" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={optionImage} alt="" loading="lazy" className="max-h-32 rounded-lg border border-ink-200" />
                   )}
                 </span>
                 {checked && isCorrect && <span className="text-emerald-600">✓</span>}

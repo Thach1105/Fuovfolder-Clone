@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { HeaderBalance } from "@/components/app/header-balance";
 import { HeaderNotificationBell } from "@/components/app/header-notification-bell";
 import { resolveMediaUrl } from "@/lib/api/media";
+import { UserAvatar } from "@/components/shared/user-avatar";
 
 const NAV_ITEMS = [
   { href: "/suoc", label: "Source" },
@@ -123,21 +124,7 @@ export function AppHeader() {
                   href="/profile"
                   className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-foreground/5"
                 >
-                  {(() => {
-                    const avatar = resolveMediaUrl(user.avatarUrl);
-                    return avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={avatar}
-                        alt={user.displayName}
-                        className="h-8 w-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
-                        {user.displayName.charAt(0).toUpperCase()}
-                      </span>
-                    );
-                  })()}
+                  <UserAvatar src={resolveMediaUrl(user.avatarUrl)} displayName={user.displayName} size="sm" />
                   <span className="hidden text-sm font-medium sm:inline">{user.displayName}</span>
                 </Link>
                 <Button

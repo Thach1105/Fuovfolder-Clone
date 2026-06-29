@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { useSubmit } from "@/hooks/use-submit";
 import {
   type AdminSourceCatalogItem,
   createSourceCatalogItem,
@@ -33,20 +36,17 @@ const inputClass =
 
 export default function AdminSourceCatalogPage() {
   const [items, setItems] = useState<AdminSourceCatalogItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error: loadError, run } = useAsyncAction();
+  const { error: submitError, submit } = useSubmit("Lưu thất bại");
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      setItems(await listAdminSourceCatalog());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const error = loadError || submitError;
+
+  const load = useCallback(() => run(async () => {
+    setItems(await listAdminSourceCatalog());
+  }), [run]);
 
   useEffect(() => {
     load();
@@ -77,7 +77,6 @@ export default function AdminSourceCatalogPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     const body = {
       code: form.code.trim(),
       title: form.title.trim(),
@@ -92,16 +91,17 @@ export default function AdminSourceCatalogPage() {
       featured: form.featured,
       sortOrder: parseInt(form.sortOrder, 10) || 0,
     };
-    try {
+    const result = await submit(async () => {
       if (editingId) {
         await updateSourceCatalogItem(editingId, body);
       } else {
         await createSourceCatalogItem(body);
       }
+      return true;
+    });
+    if (result) {
       resetForm();
       await load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Lưu thất bại");
     }
   }
 
@@ -261,7 +261,7 @@ export default function AdminSourceCatalogPage() {
               <span>Nổi bật</span>
             </label>
           </div>
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          <ErrorBanner message={error} />
           <div className="flex gap-2">
             <button type="submit" className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950">
               {editingId ? "Cập nhật" : "Tạo mới"}
@@ -280,7 +280,7 @@ export default function AdminSourceCatalogPage() {
 
         <div className="overflow-hidden rounded-xl border border-slate-800">
           {loading ? (
-            <p className="p-4 text-slate-400">Đang tải...</p>
+            <LoadingState className="p-4" />
           ) : (
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-900 text-xs uppercase text-slate-500">

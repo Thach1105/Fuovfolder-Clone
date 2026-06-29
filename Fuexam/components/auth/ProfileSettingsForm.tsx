@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { ApiError } from "@/lib/api/client";
 import * as usersApi from "@/lib/api/users";
 import { ImageUploader } from "@/components/media/ImageUploader";
 import { resolveMediaUrl } from "@/lib/api/media";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { useSubmit } from "@/hooks/use-submit";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { UserAvatar } from "@/components/shared/user-avatar";
 
 export function ProfileSettingsForm() {
   const { user, loading, refreshUser } = useAuth();
@@ -16,9 +18,8 @@ export function ProfileSettingsForm() {
     lastName: "",
     avatarUrl: "",
   });
-  const [error, setError] = useState<string | null>(null);
+  const { submitting, error, submit } = useSubmit("Cập nhật thất bại.");
   const [success, setSuccess] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -52,26 +53,19 @@ export function ProfileSettingsForm() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
     setSuccess(null);
-    setSubmitting(true);
-    try {
+    const result = await submit(async () => {
       await usersApi.updateProfile({
         displayName: form.displayName || undefined,
         firstName: form.firstName || undefined,
         lastName: form.lastName || undefined,
         avatarUrl: form.avatarUrl || undefined,
       });
+      return true;
+    });
+    if (result) {
       await refreshUser();
       setSuccess("Cập nhật hồ sơ thành công.");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Cập nhật thất bại.");
-      }
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -103,11 +97,7 @@ export function ProfileSettingsForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </div>
-        )}
+        <ErrorBanner message={error} />
         {success && (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             {success}
@@ -115,14 +105,7 @@ export function ProfileSettingsForm() {
         )}
 
         <div className="flex items-center gap-4">
-          {avatarPreview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarPreview} alt="" className="h-16 w-16 rounded-full object-cover" />
-          ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-foreground text-lg font-bold text-background">
-              {(form.displayName || user.username).charAt(0).toUpperCase()}
-            </div>
-          )}
+          <UserAvatar src={avatarPreview} displayName={form.displayName || user.username} size="lg" />
           <ImageUploader
             purpose="avatar"
             value={form.avatarUrl || null}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { CategoryTreeNode } from "@/lib/api/forum";
-import { authorInitial } from "@/lib/api/forum";
+import { getInitial } from "@/lib/utils/text";
 import { formatDateTime } from "@/lib/format-datetime";
 import { threadTypeLabel } from "@/lib/forum-thread-types";
 
@@ -65,7 +65,7 @@ function SemesterRow({ forumSlug, node }: { forumSlug: string; node: CategoryTre
         {node.latestActivity ? (
           <>
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fuo-50 text-xs font-bold text-fuo-700">
-              {authorInitial(node.latestActivity.authorHandle)}
+              {getInitial(node.latestActivity.authorHandle)}
             </span>
             <div className="min-w-0 text-xs">
               {node.latestActivity.threadType && (

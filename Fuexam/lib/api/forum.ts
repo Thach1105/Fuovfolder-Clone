@@ -1,3 +1,4 @@
+import { API_V1 } from "@/lib/constants/api";
 import { apiFetch } from "@/lib/api/client";
 
 
@@ -276,7 +277,7 @@ export type ThreadTab = "discussion" | "confession" | "popular";
 
 export function listForums() {
 
-  return apiFetch<Forum[]>("/api/v1/forums");
+  return apiFetch<Forum[]>(`${API_V1}/forums`);
 
 }
 
@@ -284,7 +285,7 @@ export function listForums() {
 
 export function getForum(forumSlug: string) {
 
-  return apiFetch<Forum>(`/api/v1/forums/${encodeURIComponent(forumSlug)}`);
+  return apiFetch<Forum>(`${API_V1}/forums/${encodeURIComponent(forumSlug)}`);
 
 }
 
@@ -292,7 +293,7 @@ export function getForum(forumSlug: string) {
 
 export function listCategories(forumSlug: string) {
 
-  return apiFetch<Category[]>(`/api/v1/forums/${encodeURIComponent(forumSlug)}/categories`);
+  return apiFetch<Category[]>(`${API_V1}/forums/${encodeURIComponent(forumSlug)}/categories`);
 
 }
 
@@ -302,7 +303,7 @@ export function listCategoryTree(forumSlug: string) {
 
   return apiFetch<CategoryTreeNode[]>(
 
-    `/api/v1/forums/${encodeURIComponent(forumSlug)}/categories/tree`,
+    `${API_V1}/forums/${encodeURIComponent(forumSlug)}/categories/tree`,
 
   );
 
@@ -314,7 +315,7 @@ export function getCategory(forumSlug: string, categorySlug: string) {
 
   return apiFetch<Category>(
 
-    `/api/v1/forums/${encodeURIComponent(forumSlug)}/categories/${encodeURIComponent(categorySlug)}`,
+    `${API_V1}/forums/${encodeURIComponent(forumSlug)}/categories/${encodeURIComponent(categorySlug)}`,
 
   );
 
@@ -346,7 +347,7 @@ export function browseThreads(opts?: {
 
   if (opts?.categoryId) params.set("categoryId", opts.categoryId);
 
-  return apiFetch<ThreadPage>(`/api/v1/threads?${params}`);
+  return apiFetch<ThreadPage>(`${API_V1}/threads?${params}`);
 
 }
 
@@ -354,7 +355,7 @@ export function browseThreads(opts?: {
 
 export function getThread(threadId: string) {
 
-  return apiFetch<ThreadDetail>(`/api/v1/threads/${threadId}`);
+  return apiFetch<ThreadDetail>(`${API_V1}/threads/${threadId}`);
 
 }
 
@@ -362,7 +363,7 @@ export function getThread(threadId: string) {
 
 export function createThread(payload: CreateThreadPayload) {
 
-  return apiFetch<ThreadDetail>("/api/v1/threads", {
+  return apiFetch<ThreadDetail>(`${API_V1}/threads`, {
 
     method: "POST",
 
@@ -378,7 +379,7 @@ export function listThreadPosts(threadId: string, page = 0, size = 20) {
 
   const params = new URLSearchParams({ page: String(page), size: String(size) });
 
-  return apiFetch<PostPage>(`/api/v1/threads/${threadId}/posts?${params}`);
+  return apiFetch<PostPage>(`${API_V1}/threads/${threadId}/posts?${params}`);
 
 }
 
@@ -390,7 +391,7 @@ export function createPost(
   parentPostId?: string,
   attachmentFileIds?: string[],
 ) {
-  return apiFetch<Post>(`/api/v1/threads/${threadId}/posts`, {
+  return apiFetch<Post>(`${API_V1}/threads/${threadId}/posts`, {
     method: "POST",
     body: JSON.stringify({
       body,
@@ -404,7 +405,7 @@ export function createPost(
 
 export function updatePost(threadId: string, postId: string, body: string) {
 
-  return apiFetch<Post>(`/api/v1/threads/${threadId}/posts/${postId}`, {
+  return apiFetch<Post>(`${API_V1}/threads/${threadId}/posts/${postId}`, {
 
     method: "PATCH",
 
@@ -418,7 +419,7 @@ export function updatePost(threadId: string, postId: string, body: string) {
 
 export function deletePost(threadId: string, postId: string) {
 
-  return apiFetch<void>(`/api/v1/threads/${threadId}/posts/${postId}`, {
+  return apiFetch<void>(`${API_V1}/threads/${threadId}/posts/${postId}`, {
 
     method: "DELETE",
 
@@ -432,7 +433,7 @@ export function listWatchedThreads(page = 0, size = 20) {
 
   const params = new URLSearchParams({ page: String(page), size: String(size) });
 
-  return apiFetch<ThreadPage>(`/api/v1/users/me/thread-bookmarks?${params}`);
+  return apiFetch<ThreadPage>(`${API_V1}/users/me/thread-bookmarks?${params}`);
 
 }
 
@@ -440,7 +441,7 @@ export function listWatchedThreads(page = 0, size = 20) {
 
 export function getThreadBookmarkStatus(threadId: string) {
 
-  return apiFetch<ThreadBookmarkStatus>(`/api/v1/threads/${threadId}/bookmark`);
+  return apiFetch<ThreadBookmarkStatus>(`${API_V1}/threads/${threadId}/bookmark`);
 
 }
 
@@ -448,7 +449,7 @@ export function getThreadBookmarkStatus(threadId: string) {
 
 export function watchThread(threadId: string) {
 
-  return apiFetch<ThreadBookmarkStatus>(`/api/v1/threads/${threadId}/bookmark`, {
+  return apiFetch<ThreadBookmarkStatus>(`${API_V1}/threads/${threadId}/bookmark`, {
 
     method: "POST",
 
@@ -460,7 +461,7 @@ export function watchThread(threadId: string) {
 
 export function unwatchThread(threadId: string) {
 
-  return apiFetch<ThreadBookmarkStatus>(`/api/v1/threads/${threadId}/bookmark`, {
+  return apiFetch<ThreadBookmarkStatus>(`${API_V1}/threads/${threadId}/bookmark`, {
 
     method: "DELETE",
 

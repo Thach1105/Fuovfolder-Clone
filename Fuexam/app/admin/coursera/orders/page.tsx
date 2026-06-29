@@ -8,7 +8,6 @@ import {
 } from "@/components/admin/ConfirmStatusDialog";
 import { listAdminUsers } from "@/lib/api/admin";
 import {
-  REQUEST_STATUS_LABELS,
   formatPoints,
   getAdminRequest,
   getCourseraOverview,
@@ -22,10 +21,12 @@ import {
   type RequestSummary,
 } from "@/lib/api/coursera";
 import { ApiError } from "@/lib/api/client";
+import { ADMIN_PAGE_SIZE } from "@/lib/constants/pagination";
+import { REQUEST_STATUS_LABELS, toFilterOptions } from "@/lib/constants/status-labels";
 import { formatDateTime } from "@/lib/format-datetime";
 import type { AdminUserSummary } from "@/types/api";
 
-const STATUS_FILTER_OPTIONS = ["", "pending", "in_progress", "completed", "cancelled"];
+const STATUS_FILTER_OPTIONS = toFilterOptions(REQUEST_STATUS_LABELS);
 
 const PERIOD_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "Mọi thời gian" },
@@ -94,7 +95,7 @@ export default function AdminCourseraOrdersPage() {
           userId: userFilter || undefined,
           catalogItemId: catalogFilter || undefined,
           page: 0,
-          size: 50,
+          size: ADMIN_PAGE_SIZE,
         }),
       ]);
       setOverview(ov);
@@ -205,9 +206,9 @@ export default function AdminCourseraOrdersPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             aria-label="Lọc theo trạng thái"
           >
-            {STATUS_FILTER_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s ? REQUEST_STATUS_LABELS[s] : "Tất cả trạng thái"}
+            {STATUS_FILTER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
               </option>
             ))}
           </select>

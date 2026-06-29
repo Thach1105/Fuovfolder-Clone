@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import { ApiError } from "@/lib/api/client";
+import { ADMIN_PAGE_SIZE } from "@/lib/constants/pagination";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { canRefundSource } from "@/lib/auth/roles";
 import {
@@ -14,14 +18,9 @@ import {
   listAdminSourcePurchases,
   refundSourcePurchase,
 } from "@/lib/api/source";
+import { toFilterOptions } from "@/lib/constants/status-labels";
 
-const STATUS_FILTER_OPTIONS = [
-  { value: "", label: "Tất cả" },
-  { value: "active", label: "Còn hạn" },
-  { value: "expired", label: "Hết hạn" },
-  { value: "refunded", label: "Đã hoàn" },
-  { value: "cancelled", label: "Đã hủy" },
-];
+const STATUS_FILTER_OPTIONS = toFilterOptions(SOURCE_PURCHASE_STATUS_LABELS);
 
 const selectClass =
   "rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white min-w-[140px]";
@@ -42,30 +41,24 @@ export default function AdminSourcePurchasesPage() {
   const [items, setItems] = useState<AdminSourcePurchase[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [codeFilter, setCodeFilter] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error: loadError, run } = useAsyncAction("Không tải được dữ liệu");
+  const [actionError, setActionError] = useState<string | null>(null);
   const [refundingId, setRefundingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [ov, page] = await Promise.all([
-        getSourceOverview(),
-        listAdminSourcePurchases({
-          status: statusFilter || undefined,
-          code: codeFilter.trim() || undefined,
-          size: 50,
-        }),
-      ]);
-      setOverview(ov);
-      setItems(page.items);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không tải được dữ liệu");
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, codeFilter]);
+  const error = loadError || actionError;
+
+  const load = useCallback(() => run(async () => {
+    const [ov, page] = await Promise.all([
+      getSourceOverview(),
+      listAdminSourcePurchases({
+        status: statusFilter || undefined,
+        code: codeFilter.trim() || undefined,
+        size: ADMIN_PAGE_SIZE,
+      }),
+    ]);
+    setOverview(ov);
+    setItems(page.items);
+  }), [run, statusFilter, codeFilter]);
 
   useEffect(() => {
     load();
@@ -75,12 +68,12 @@ export default function AdminSourcePurchasesPage() {
     const reason = prompt(`Lý do hoàn tiền cho ${purchase.code}? (tùy chọn)`);
     if (reason === null) return;
     setRefundingId(purchase.id);
-    setError(null);
+    setActionError(null);
     try {
       await refundSourcePurchase(purchase.id, reason.trim() || undefined);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Hoàn tiền thất bại");
+      setActionError(err instanceof ApiError ? err.message : "Hoàn tiền thất bại");
     } finally {
       setRefundingId(null);
     }
@@ -131,11 +124,11 @@ export default function AdminSourcePurchasesPage() {
         )}
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+      <ErrorBanner message={error} className="mt-4" />
 
       <div className="mt-4 overflow-hidden rounded-xl border border-slate-800">
         {loading ? (
-          <p className="p-4 text-slate-400">Đang tải...</p>
+          <LoadingState className="p-4" />
         ) : items.length === 0 ? (
           <p className="p-4 text-slate-400">Chưa có đơn mua nào.</p>
         ) : (

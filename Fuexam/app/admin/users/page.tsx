@@ -3,33 +3,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AdminUsersTable } from "@/components/admin/AdminUsersTable";
-import { ApiError } from "@/lib/api/client";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import * as adminApi from "@/lib/api/admin";
 import type { AdminUserPageResponse } from "@/types/api";
 
 export default function AdminUsersPage() {
   const [data, setData] = useState<AdminUserPageResponse | null>(null);
   const [page, setPage] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { loading, error, run } = useAsyncAction("Không tải được danh sách người dùng.");
 
-  const load = useCallback(async (pageIndex: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await adminApi.listAdminUsers(pageIndex, 20);
-      setData(response);
-      setPage(response.page);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Không tải được danh sách người dùng.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback((pageIndex: number) => run(async () => {
+    const response = await adminApi.listAdminUsers(pageIndex, 20);
+    setData(response);
+    setPage(response.page);
+  }), [run]);
 
   useEffect(() => {
     load(page);
@@ -40,15 +29,9 @@ export default function AdminUsersPage() {
       title="Người dùng"
       description="Danh sách tài khoản đã đăng ký trên hệ thống"
     >
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} className="mb-6" />
 
-      {loading && !data && (
-        <p className="text-sm text-slate-400">Đang tải danh sách...</p>
-      )}
+      {loading && !data && <LoadingState message="Đang tải danh sách..." />}
 
       {data && (
         <>

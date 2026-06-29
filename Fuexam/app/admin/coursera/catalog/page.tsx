@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { useSubmit } from "@/hooks/use-submit";
 import {
   type AdminCatalogItem,
   createCatalogItem,
@@ -10,12 +14,11 @@ import {
   listAdminCatalog,
   updateCatalogItem,
 } from "@/lib/api/coursera";
-import { ApiError } from "@/lib/api/client";
 
 export default function AdminCourseraCatalogPage() {
   const [items, setItems] = useState<AdminCatalogItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error: loadError, run } = useAsyncAction();
+  const { error: submitError, submit } = useSubmit("Lưu thất bại");
   const [form, setForm] = useState({
     code: "",
     title: "",
@@ -27,14 +30,11 @@ export default function AdminCourseraCatalogPage() {
   });
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      setItems(await listAdminCatalog());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const error = loadError || submitError;
+
+  const load = useCallback(() => run(async () => {
+    setItems(await listAdminCatalog());
+  }), [run]);
 
   useEffect(() => {
     load();
@@ -68,7 +68,6 @@ export default function AdminCourseraCatalogPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     const body = {
       code: form.code.trim(),
       title: form.title.trim(),
@@ -78,16 +77,17 @@ export default function AdminCourseraCatalogPage() {
       featured: form.featured,
       sortOrder: parseInt(form.sortOrder, 10) || 0,
     };
-    try {
+    const result = await submit(async () => {
       if (editingId) {
         await updateCatalogItem(editingId, body);
       } else {
         await createCatalogItem(body);
       }
+      return true;
+    });
+    if (result) {
       resetForm();
       await load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Lưu thất bại");
     }
   }
 
@@ -187,7 +187,7 @@ export default function AdminCourseraCatalogPage() {
               />
             </div>
           </fieldset>
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          <ErrorBanner message={error} />
           <div className="flex gap-2">
             <button type="submit" className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950">
               {editingId ? "Cập nhật" : "Tạo mới"}
@@ -202,7 +202,7 @@ export default function AdminCourseraCatalogPage() {
 
         <div className="rounded-xl border border-slate-800 overflow-hidden">
           {loading ? (
-            <p className="p-4 text-slate-400">Đang tải...</p>
+            <LoadingState className="p-4" />
           ) : (
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-900 text-xs uppercase text-slate-500">

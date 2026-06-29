@@ -303,7 +303,7 @@ export function SourceQuestionRunner({ questions, navPortalId }: Props) {
                     aria-label="Xem ảnh lớn"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt="" className="max-h-64 w-full object-cover transition-transform group-hover:scale-[1.02]" />
+                    <img src={url} alt="" loading="lazy" className="max-h-64 w-full object-cover transition-transform group-hover:scale-[1.02]" />
                     <span className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
                   </button>
                 ))}
@@ -344,7 +344,7 @@ export function SourceQuestionRunner({ questions, navPortalId }: Props) {
                       {option.optionText && <span>{option.optionText}</span>}
                       {optionImage && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={optionImage} alt="" className="max-h-32 rounded-lg border border-foreground/10" />
+                        <img src={optionImage} alt="" loading="lazy" className="max-h-32 rounded-lg border border-foreground/10" />
                       )}
                     </span>
                     {checked && isCorrect && <span className="text-emerald-700">✓</span>}
