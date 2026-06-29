@@ -42,7 +42,7 @@ export function SetPasswordRequestCard() {
           {error}
         </div>
       )}
-      <button onClick={handleRequest} disabled={loading} className="btn-primary">
+      <button type="button" onClick={handleRequest} disabled={loading} className="btn-primary">
         {loading ? "Đang gửi..." : "Gửi email xác nhận"}
       </button>
     </div>
