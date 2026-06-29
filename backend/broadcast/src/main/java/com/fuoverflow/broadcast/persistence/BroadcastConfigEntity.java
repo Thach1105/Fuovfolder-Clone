@@ -1,6 +1,8 @@
 package com.fuoverflow.broadcast.persistence;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -16,6 +18,7 @@ public class BroadcastConfigEntity {
     private String eventType;
 
     @Column(name = "config_json", nullable = false, columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String configJson;
 
     @Column(name = "enabled", nullable = false)

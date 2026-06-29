@@ -1,6 +1,8 @@
 package com.fuoverflow.broadcast.persistence;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -19,6 +21,7 @@ public class BroadcastEventEntity {
     private String message;
 
     @Column(name = "data_json", nullable = false, columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String dataJson;
 
     @Column(name = "created_at", nullable = false, updatable = false)
