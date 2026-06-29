@@ -70,6 +70,12 @@ class PaymentServiceTest {
     @Mock
     private DepositTierRepository tierRepo;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private com.fuoverflow.common.broadcast.UserDisplayNameLookup userDisplayNameLookup;
+
     private PaymentProperties paymentProperties;
 
     private PaymentService paymentService;
@@ -77,7 +83,7 @@ class PaymentServiceTest {
     @BeforeEach
     void setUp() {
         paymentProperties = new PaymentProperties(30);
-        paymentService = new PaymentService(orderRepo, paymentRepo, payOS, pointsWalletService, tierRepo, paymentProperties);
+        paymentService = new PaymentService(orderRepo, paymentRepo, payOS, pointsWalletService, tierRepo, paymentProperties, eventPublisher, userDisplayNameLookup);
     }
 
     @Test
