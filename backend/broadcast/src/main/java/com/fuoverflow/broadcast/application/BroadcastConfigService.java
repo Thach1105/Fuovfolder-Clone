@@ -7,6 +7,8 @@ import com.fuoverflow.broadcast.api.dto.BroadcastConfigResponse;
 import com.fuoverflow.broadcast.persistence.BroadcastConfigEntity;
 import com.fuoverflow.broadcast.persistence.BroadcastConfigRepository;
 import com.fuoverflow.common.exception.NotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +17,8 @@ import java.util.Map;
 
 @Service
 public class BroadcastConfigService {
+
+    private static final Logger log = LoggerFactory.getLogger(BroadcastConfigService.class);
 
     private final BroadcastConfigRepository configRepo;
     private final ObjectMapper objectMapper;
@@ -47,9 +51,7 @@ public class BroadcastConfigService {
                 })
                 .orElseGet(() -> {
                     BroadcastConfigEntity created = BroadcastConfigEntity.create(eventType, configJson);
-                    if (!request.enabled()) {
-                        created.updateConfig(configJson, false);
-                    }
+                    created.updateConfig(configJson, request.enabled());
                     return created;
                 });
         return toResponse(configRepo.save(entity));
@@ -89,6 +91,7 @@ public class BroadcastConfigService {
         try {
             return objectMapper.writeValueAsString(map);
         } catch (Exception e) {
+            log.warn("Failed to serialize broadcast config", e);
             return "{}";
         }
     }
