@@ -51,9 +51,7 @@ public class OAuthIdentityLinker {
             if (users.findAuthUserById(linkedUserId).isPresent()) {
                 return new LinkedIdentity(linkedUserId, false, false);
             }
-            // Linked user was soft-deleted — remove stale OAuth link before re-linking
-            oauthAccounts.delete(existing.get());
-            oauthAccounts.flush();
+            // Linked user was soft-deleted — fall through; saveOrUpdateOAuthAccount will re-link
         }
 
         // Case B: verified email matches existing user.
@@ -64,7 +62,7 @@ public class OAuthIdentityLinker {
         var userByEmail = users.findAuthUserByIdentifier(normalizedEmail);
         if (userByEmail.isPresent()) {
             UUID userId = userByEmail.get().id();
-            saveOAuthAccount(userId, profile);
+            saveOrUpdateOAuthAccount(userId, profile);
             return new LinkedIdentity(userId, false, true);
         }
 
@@ -78,16 +76,27 @@ public class OAuthIdentityLinker {
         RegisterUserCommand command = new RegisterUserCommand(
                 profile.email(), username, null, displayName, null, true, UserStatus.PENDING_PROFILE);
         AuthUserView newUser = registrations.register(command);
-        saveOAuthAccount(newUser.id(), profile);
+        saveOrUpdateOAuthAccount(newUser.id(), profile);
         return new LinkedIdentity(newUser.id(), true, false);
     }
 
-    private void saveOAuthAccount(UUID userId, ProviderProfile profile) {
-        Instant now = Instant.now();
-        UserOAuthAccountEntity entity = UserOAuthAccountEntity.create(
-                UUID.randomUUID(), userId, profile.provider(), profile.providerUserId(),
-                profile.email(), profile.displayName(), profile.avatarUrl(), now);
-        oauthAccounts.save(entity);
+    private void saveOrUpdateOAuthAccount(UUID userId, ProviderProfile profile) {
+        var existing = oauthAccounts.findByProviderAndProviderUserId(profile.provider(), profile.providerUserId());
+        if (existing.isPresent()) {
+            UserOAuthAccountEntity entity = existing.get();
+            entity.setUserId(userId);
+            entity.setEmail(profile.email());
+            entity.setDisplayName(profile.displayName());
+            entity.setAvatarUrl(profile.avatarUrl());
+            entity.setUpdatedAt(Instant.now());
+            oauthAccounts.save(entity);
+        } else {
+            Instant now = Instant.now();
+            UserOAuthAccountEntity entity = UserOAuthAccountEntity.create(
+                    UUID.randomUUID(), userId, profile.provider(), profile.providerUserId(),
+                    profile.email(), profile.displayName(), profile.avatarUrl(), now);
+            oauthAccounts.save(entity);
+        }
     }
 
     private String generateUsername(String email) {

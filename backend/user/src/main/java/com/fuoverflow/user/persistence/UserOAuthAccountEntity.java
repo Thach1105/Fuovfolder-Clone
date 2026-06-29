@@ -58,4 +58,10 @@ public class UserOAuthAccountEntity {
     public String getAvatarUrl() { return avatarUrl; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+
+    public void setUserId(UUID userId) { this.userId = userId; }
+    public void setEmail(String email) { this.email = email; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

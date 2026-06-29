@@ -62,8 +62,39 @@ class OAuthIdentityLinkerTest {
     }
 
     @Test
+    void link_existingOAuthAccount_userSoftDeleted_relinksToNewUser() {
+        UUID deletedUserId = UUID.randomUUID();
+        UserOAuthAccountEntity staleOAuth = UserOAuthAccountEntity.create(
+                UUID.randomUUID(), deletedUserId, "google", "google-sub-deleted", "user@example.com",
+                "Deleted User", null, Instant.now());
+        // First call from Case A, second call from saveOrUpdateOAuthAccount
+        when(oauthAccounts.findByProviderAndProviderUserId("google", "google-sub-deleted"))
+                .thenReturn(Optional.of(staleOAuth));
+        when(users.findAuthUserById(deletedUserId)).thenReturn(Optional.empty());
+        when(emailNormalizer.normalize("user@example.com")).thenReturn("user@example.com");
+        when(users.findAuthUserByIdentifier("user@example.com")).thenReturn(Optional.empty());
+
+        UUID newUserId = UUID.randomUUID();
+        AuthUserView newUser = new AuthUserView(newUserId, "user@example.com", "user_abc",
+                null, "New User", UserStatus.PENDING_PROFILE, List.of("USER"), 0L, List.of(),
+                false, true, null, null, null);
+        when(registrations.register(any())).thenReturn(newUser);
+
+        ProviderProfile profile = new ProviderProfile("google", "google-sub-deleted",
+                "user@example.com", true, "User Name", "https://avatar.url");
+        LinkedIdentity result = linker.link(profile);
+
+        assertThat(result.userId()).isEqualTo(newUserId);
+        assertThat(result.isNewUser()).isTrue();
+        // saveOrUpdateOAuthAccount should UPDATE existing record, not INSERT new
+        verify(oauthAccounts).save(staleOAuth);
+        assertThat(staleOAuth.getUserId()).isEqualTo(newUserId);
+    }
+
+    @Test
     void link_verifiedEmailMatch_linksExistingUser() {
         UUID userId = UUID.randomUUID();
+        // Case A: no existing OAuth account; saveOrUpdateOAuthAccount also queries — both return empty
         when(oauthAccounts.findByProviderAndProviderUserId("google", "google-sub-456"))
                 .thenReturn(Optional.empty());
         when(emailNormalizer.normalize("user@example.com")).thenReturn("user@example.com");
