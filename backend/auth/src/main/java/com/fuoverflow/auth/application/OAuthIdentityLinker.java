@@ -51,7 +51,9 @@ public class OAuthIdentityLinker {
             if (users.findAuthUserById(linkedUserId).isPresent()) {
                 return new LinkedIdentity(linkedUserId, false, false);
             }
-            // Linked user was deleted — fall through to email lookup / new user creation
+            // Linked user was soft-deleted — remove stale OAuth link before re-linking
+            oauthAccounts.delete(existing.get());
+            oauthAccounts.flush();
         }
 
         // Case B: verified email matches existing user.
