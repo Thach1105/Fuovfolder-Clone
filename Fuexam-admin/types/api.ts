@@ -259,6 +259,15 @@ export interface AdminOrderDetailResponse {
   payments: AdminOrderPaymentRecord[];
 }
 
+export interface BroadcastConfigResponse {
+  id: string;
+  eventType: string;
+  config: Record<string, unknown>;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PaymentAnalyticsResponse {
   totalRevenue: number;
   totalTransactions: number;

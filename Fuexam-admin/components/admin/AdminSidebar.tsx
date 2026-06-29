@@ -16,6 +16,7 @@ import {
   Inbox,
   Users,
   CreditCard,
+  Radio,
   Wallet,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -100,6 +101,12 @@ const NAV: NavSection[] = [
         label: "Quản lý nạp tiền",
         icon: Wallet,
         permission: "payment.admin:read",
+      },
+      {
+        href: "/broadcasts/configs",
+        label: "Thông báo server",
+        icon: Radio,
+        permission: "broadcast.admin:read",
       },
     ],
   },
