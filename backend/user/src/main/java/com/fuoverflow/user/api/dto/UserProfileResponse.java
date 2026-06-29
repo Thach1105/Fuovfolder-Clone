@@ -20,6 +20,7 @@ public record UserProfileResponse(
         List<String> permissions,
         boolean superAdmin,
         boolean emailVerified,
+        boolean hasPassword,
         Instant createdAt
 ) {
 }

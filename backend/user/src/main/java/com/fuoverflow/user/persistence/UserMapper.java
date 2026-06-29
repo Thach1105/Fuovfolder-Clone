@@ -68,6 +68,7 @@ public class UserMapper {
                 effective.permissions(),
                 effective.superAdmin(),
                 entity.getEmailVerifiedAt() != null,
+                entity.getPasswordHash() != null,
                 entity.getCreatedAt()
         );
     }
