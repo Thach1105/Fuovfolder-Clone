@@ -80,6 +80,7 @@ export interface UserProfileResponse {
   permissions: string[];
   superAdmin: boolean;
   emailVerified: boolean;
+  hasPassword: boolean;
   createdAt: string;
 }
 

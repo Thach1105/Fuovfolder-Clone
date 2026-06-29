@@ -70,3 +70,23 @@ export function completePendingProfile(data: CompletePendingProfileRequest) {
     },
   );
 }
+
+export function changePassword(currentPassword: string, newPassword: string) {
+  return apiFetch<void>(`${API_V1}/users/me/password`, {
+    method: "PATCH",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
+export function requestSetPassword() {
+  return apiFetch<{ message: string }>(`${API_V1}/auth/password/set-request`, {
+    method: "POST",
+  });
+}
+
+export function setPassword(token: string, password: string) {
+  return apiFetch<void>(`${API_V1}/auth/password/set`, {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  });
+}

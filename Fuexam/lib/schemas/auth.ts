@@ -33,3 +33,26 @@ export const resetPasswordSchema = z
     path: ["confirmPassword"],
   });
 export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Không được để trống"),
+    newPassword: z.string().min(8, "Tối thiểu 8 ký tự").max(128, "Tối đa 128 ký tự"),
+    confirmNewPassword: z.string(),
+  })
+  .refine((d) => d.newPassword === d.confirmNewPassword, {
+    message: "Mật khẩu xác nhận không khớp",
+    path: ["confirmNewPassword"],
+  });
+export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
+
+export const setPasswordSchema = z
+  .object({
+    password: z.string().min(8, "Tối thiểu 8 ký tự").max(128, "Tối đa 128 ký tự"),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Mật khẩu xác nhận không khớp",
+    path: ["confirmPassword"],
+  });
+export type SetPasswordFormValues = z.infer<typeof setPasswordSchema>;
