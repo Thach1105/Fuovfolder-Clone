@@ -23,6 +23,8 @@ public class PasswordResetTokenEntity {
     private Instant consumedAt;
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+    @Column(name = "purpose", nullable = false)
+    private String purpose = "RESET_PASSWORD";
 
     public static PasswordResetTokenEntity create(UUID id, UUID userId, String hash, Instant expiresAt, Instant now) {
         PasswordResetTokenEntity entity = new PasswordResetTokenEntity();
@@ -31,6 +33,17 @@ public class PasswordResetTokenEntity {
         entity.tokenHash = hash;
         entity.expiresAt = expiresAt;
         entity.createdAt = now;
+        return entity;
+    }
+
+    public static PasswordResetTokenEntity createSetPassword(UUID id, UUID userId, String hash, Instant expiresAt, Instant now) {
+        PasswordResetTokenEntity entity = new PasswordResetTokenEntity();
+        entity.id = id;
+        entity.userId = userId;
+        entity.tokenHash = hash;
+        entity.expiresAt = expiresAt;
+        entity.createdAt = now;
+        entity.purpose = "SET_PASSWORD";
         return entity;
     }
 
@@ -53,4 +66,6 @@ public class PasswordResetTokenEntity {
     public boolean activeAt(Instant now) {
         return consumedAt == null && expiresAt.isAfter(now);
     }
+
+    public String getPurpose() { return purpose; }
 }

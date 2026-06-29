@@ -1,0 +1,2 @@
+ALTER TABLE password_reset_tokens
+    ADD COLUMN purpose VARCHAR(32) NOT NULL DEFAULT 'RESET_PASSWORD';

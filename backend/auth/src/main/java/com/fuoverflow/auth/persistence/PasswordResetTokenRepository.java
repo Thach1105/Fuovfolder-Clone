@@ -11,6 +11,8 @@ import java.util.UUID;
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetTokenEntity, UUID> {
     Optional<PasswordResetTokenEntity> findByTokenHash(String tokenHash);
 
+    Optional<PasswordResetTokenEntity> findByTokenHashAndPurpose(String tokenHash, String purpose);
+
     @Modifying
     @Query("""
             update PasswordResetTokenEntity t
@@ -18,4 +20,12 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
             where t.userId = :userId and t.consumedAt is null
             """)
     int consumeActiveByUserId(UUID userId, Instant now);
+
+    @Modifying
+    @Query("""
+            update PasswordResetTokenEntity t
+            set t.consumedAt = :now
+            where t.userId = :userId and t.purpose = :purpose and t.consumedAt is null
+            """)
+    int consumeActiveByUserIdAndPurpose(UUID userId, String purpose, Instant now);
 }
