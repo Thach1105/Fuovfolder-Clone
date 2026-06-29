@@ -2,10 +2,12 @@ package com.fuoverflow.auth.api;
 
 import com.fuoverflow.auth.api.dto.*;
 import com.fuoverflow.auth.application.AuthService;
+import com.fuoverflow.auth.application.ChangePasswordService;
 import com.fuoverflow.auth.application.CompletePendingProfileService;
 import com.fuoverflow.auth.application.CookieService;
 import com.fuoverflow.auth.application.EmailVerificationService;
 import com.fuoverflow.auth.application.PasswordResetService;
+import com.fuoverflow.auth.application.SetPasswordService;
 import com.fuoverflow.auth.config.AuthProperties;
 import com.fuoverflow.auth.domain.ClientContext;
 import com.fuoverflow.auth.support.EmailVerificationLinks;
@@ -19,6 +21,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -32,6 +36,8 @@ public class AuthController {
     private final CompletePendingProfileService completePendingProfileService;
     private final EmailVerificationService emailVerificationService;
     private final PasswordResetService passwordResetService;
+    private final ChangePasswordService changePasswordService;
+    private final SetPasswordService setPasswordService;
     private final CookieService cookieService;
     private final AuthProperties authProperties;
     private final CorsProperties corsProperties;
@@ -41,6 +47,8 @@ public class AuthController {
             CompletePendingProfileService completePendingProfileService,
             EmailVerificationService emailVerificationService,
             PasswordResetService passwordResetService,
+            ChangePasswordService changePasswordService,
+            SetPasswordService setPasswordService,
             CookieService cookieService,
             AuthProperties authProperties,
             CorsProperties corsProperties) {
@@ -48,6 +56,8 @@ public class AuthController {
         this.completePendingProfileService = completePendingProfileService;
         this.emailVerificationService = emailVerificationService;
         this.passwordResetService = passwordResetService;
+        this.changePasswordService = changePasswordService;
+        this.setPasswordService = setPasswordService;
         this.cookieService = cookieService;
         this.authProperties = authProperties;
         this.corsProperties = corsProperties;
@@ -107,6 +117,19 @@ public class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         passwordResetService.resetPassword(request.token(), request.password());
+    }
+
+    @PostMapping("/password/set-request")
+    public ApiResponse<Void> requestSetPassword(Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
+        setPasswordService.requestSetPassword(userId);
+        return ApiResponse.ok(null);
+    }
+
+    @PostMapping("/password/set")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void confirmSetPassword(@Valid @RequestBody SetPasswordRequest request) {
+        setPasswordService.confirmSetPassword(request.token(), request.password());
     }
 
     @PostMapping("/login")
