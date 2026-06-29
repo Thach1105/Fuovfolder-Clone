@@ -47,6 +47,9 @@ class OAuthIdentityLinkerTest {
                 "User Name", "https://avatar.url", Instant.now());
         when(oauthAccounts.findByProviderAndProviderUserId("google", "google-sub-123"))
                 .thenReturn(Optional.of(existing));
+        AuthUserView activeUser = new AuthUserView(userId, "user@example.com", "username", null,
+                "User Name", UserStatus.ACTIVE, List.of(), 0, List.of(), false, true, null, null, null);
+        when(users.findAuthUserById(userId)).thenReturn(Optional.of(activeUser));
 
         ProviderProfile profile = new ProviderProfile("google", "google-sub-123",
                 "user@example.com", true, "User Name", "https://avatar.url");

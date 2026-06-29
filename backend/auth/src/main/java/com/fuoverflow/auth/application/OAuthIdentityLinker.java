@@ -44,10 +44,14 @@ public class OAuthIdentityLinker {
             throw new OAuthEmailNotVerifiedException();
         }
 
-        // Case A: existing OAuth account
+        // Case A: existing OAuth account — verify linked user is still active (not soft-deleted)
         var existing = oauthAccounts.findByProviderAndProviderUserId(profile.provider(), profile.providerUserId());
         if (existing.isPresent()) {
-            return new LinkedIdentity(existing.get().getUserId(), false, false);
+            UUID linkedUserId = existing.get().getUserId();
+            if (users.findAuthUserById(linkedUserId).isPresent()) {
+                return new LinkedIdentity(linkedUserId, false, false);
+            }
+            // Linked user was deleted — fall through to email lookup / new user creation
         }
 
         // Case B: verified email matches existing user.
