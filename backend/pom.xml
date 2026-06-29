@@ -37,6 +37,7 @@
         <module>moderation</module>
         <module>admin</module>
         <module>worker</module>
+        <module>broadcast</module>
     </modules>
     <properties>
         <java.version>21</java.version>
