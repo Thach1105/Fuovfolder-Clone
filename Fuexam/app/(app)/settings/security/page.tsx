@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ChangePasswordForm } from "@/components/auth/ChangePasswordForm";
 import { SetPasswordRequestCard } from "@/components/auth/SetPasswordRequestCard";
+import { SettingsNav } from "@/components/settings/SettingsNav";
 
 function SecurityPageContent() {
   const { user, loading } = useAuth();
@@ -19,6 +20,7 @@ function SecurityPageContent() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
+      <SettingsNav />
       <h1 className="text-xl font-bold text-slate-900">Bảo mật</h1>
 
       {passwordSet && (
