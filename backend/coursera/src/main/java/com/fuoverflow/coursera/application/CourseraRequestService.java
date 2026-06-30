@@ -24,6 +24,8 @@ import com.fuoverflow.coursera.persistence.CourseraServiceRequestRepository;
 import com.fuoverflow.coursera.persistence.CourseraServiceRequestSpecifications;
 import com.fuoverflow.coursera.support.CredentialEncryptionService;
 import com.fuoverflow.user.domain.UserStatus;
+import com.fuoverflow.voucher.application.VoucherService;
+import com.fuoverflow.voucher.domain.VoucherDiscountResult;
 import com.fuoverflow.user.persistence.UserEntity;
 import com.fuoverflow.user.persistence.UserRepository;
 import org.springframework.data.domain.Page;
@@ -45,6 +47,7 @@ public class CourseraRequestService {
     private final UserRepository userRepository;
     private final PointsWalletService walletService;
     private final CredentialEncryptionService encryptionService;
+    private final VoucherService voucherService;
 
     public CourseraRequestService(
             CourseraServiceRequestRepository requestRepository,
@@ -54,7 +57,8 @@ public class CourseraRequestService {
             CourseraCatalogItemRepository catalogRepository,
             UserRepository userRepository,
             PointsWalletService walletService,
-            CredentialEncryptionService encryptionService) {
+            CredentialEncryptionService encryptionService,
+            VoucherService voucherService) {
         this.requestRepository = requestRepository;
         this.itemRepository = itemRepository;
         this.credentialRepository = credentialRepository;
@@ -63,6 +67,7 @@ public class CourseraRequestService {
         this.userRepository = userRepository;
         this.walletService = walletService;
         this.encryptionService = encryptionService;
+        this.voucherService = voucherService;
     }
 
     @Transactional
@@ -82,6 +87,11 @@ public class CourseraRequestService {
         int totalPoints = catalog.getPricePoints();
         Instant now = Instant.now();
         UUID requestId = UUID.randomUUID();
+        if (body.voucherCode() != null && !body.voucherCode().isBlank()) {
+            VoucherDiscountResult voucherResult = voucherService.redeem(
+                    body.voucherCode(), userId, "coursera", requestId, totalPoints);
+            totalPoints = voucherResult.finalPoints();
+        }
         UUID paymentLedgerId = null;
 
         if (totalPoints > 0) {

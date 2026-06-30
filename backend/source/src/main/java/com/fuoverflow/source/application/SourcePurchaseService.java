@@ -11,6 +11,8 @@ import com.fuoverflow.source.api.dto.PurchaseResponse;
 import com.fuoverflow.source.api.dto.PurchaseStatsResponse;
 import com.fuoverflow.source.config.SourceProperties;
 import com.fuoverflow.source.persistence.SourceCatalogItemEntity;
+import com.fuoverflow.voucher.application.VoucherService;
+import com.fuoverflow.voucher.domain.VoucherDiscountResult;
 import com.fuoverflow.source.persistence.SourceCatalogItemRepository;
 import com.fuoverflow.source.persistence.SourcePurchaseEntity;
 import com.fuoverflow.source.persistence.SourcePurchaseEventEntity;
@@ -40,6 +42,7 @@ public class SourcePurchaseService {
     private final UserRepository userRepository;
     private final PointsWalletService walletService;
     private final SourceProperties properties;
+    private final VoucherService voucherService;
 
     public SourcePurchaseService(
             SourcePurchaseRepository purchaseRepository,
@@ -47,17 +50,19 @@ public class SourcePurchaseService {
             SourceCatalogItemRepository catalogRepository,
             UserRepository userRepository,
             PointsWalletService walletService,
-            SourceProperties properties) {
+            SourceProperties properties,
+            VoucherService voucherService) {
         this.purchaseRepository = purchaseRepository;
         this.eventRepository = eventRepository;
         this.catalogRepository = catalogRepository;
         this.userRepository = userRepository;
         this.walletService = walletService;
         this.properties = properties;
+        this.voucherService = voucherService;
     }
 
     @Transactional
-    public PurchaseResponse purchase(UUID userId, UUID catalogItemId, String idempotencyKey) {
+    public PurchaseResponse purchase(UUID userId, UUID catalogItemId, String idempotencyKey, String voucherCode) {
         requireEligibleUser(userId);
         String key = trimToNull(idempotencyKey);
         if (key != null) {
@@ -83,6 +88,10 @@ public class SourcePurchaseService {
 
         UUID purchaseId = UUID.randomUUID();
         int price = catalog.getPricePoints();
+        if (voucherCode != null && !voucherCode.isBlank()) {
+            VoucherDiscountResult voucherResult = voucherService.redeem(voucherCode, userId, "source", purchaseId, price);
+            price = voucherResult.finalPoints();
+        }
         UUID paymentLedgerId = null;
         if (price > 0) {
             PointsLedgerEntity payment = walletService.debit(

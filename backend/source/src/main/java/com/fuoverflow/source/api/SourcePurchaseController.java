@@ -39,7 +39,7 @@ public class SourcePurchaseController {
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody CreatePurchaseRequest body) {
         UUID userId = UUID.fromString(authentication.getName());
-        return ApiResponse.ok(purchaseService.purchase(userId, body.catalogItemId(), idempotencyKey));
+        return ApiResponse.ok(purchaseService.purchase(userId, body.catalogItemId(), idempotencyKey, body.voucherCode()));
     }
 
     @GetMapping
