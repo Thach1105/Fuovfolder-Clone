@@ -17,6 +17,7 @@ import {
   Users,
   CreditCard,
   Radio,
+  Ticket,
   Wallet,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -107,6 +108,12 @@ const NAV: NavSection[] = [
         label: "Thông báo server",
         icon: Radio,
         permission: "broadcast.admin:read",
+      },
+      {
+        href: "/vouchers",
+        label: "Voucher",
+        icon: Ticket,
+        permission: "voucher.admin:read",
       },
     ],
   },
