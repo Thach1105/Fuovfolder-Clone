@@ -12,6 +12,8 @@ import com.fuoverflow.membership.persistence.MembershipEntity;
 import com.fuoverflow.membership.persistence.MembershipPlanEntity;
 import com.fuoverflow.membership.persistence.MembershipPlanRepository;
 import com.fuoverflow.membership.persistence.MembershipRepository;
+import com.fuoverflow.common.voucher.VoucherDiscountResult;
+import com.fuoverflow.common.voucher.VoucherRedemptionPort;
 import com.fuoverflow.membership.support.MembershipFeatures;
 import com.fuoverflow.user.domain.UserStatus;
 import com.fuoverflow.user.persistence.UserEntity;
@@ -33,18 +35,21 @@ public class MembershipService {
     private final PointsWalletService walletService;
     private final UserRepository userRepository;
     private final MembershipRoleSyncService roleSyncService;
+    private final VoucherRedemptionPort voucherRedemptionPort;
 
     public MembershipService(
             MembershipPlanRepository planRepository,
             MembershipRepository membershipRepository,
             PointsWalletService walletService,
             UserRepository userRepository,
-            MembershipRoleSyncService roleSyncService) {
+            MembershipRoleSyncService roleSyncService,
+            VoucherRedemptionPort voucherRedemptionPort) {
         this.planRepository = planRepository;
         this.membershipRepository = membershipRepository;
         this.walletService = walletService;
         this.userRepository = userRepository;
         this.roleSyncService = roleSyncService;
+        this.voucherRedemptionPort = voucherRedemptionPort;
     }
 
     @Transactional(readOnly = true)
@@ -76,6 +81,12 @@ public class MembershipService {
         membershipRepository.findActiveByUserId(userId, now).stream().findFirst().ifPresent(existing -> {
             throw new ConflictException("MEMBERSHIP_ACTIVE", "You already have an active membership");
         });
+
+        if (request.voucherCode() != null && !request.voucherCode().isBlank()) {
+            VoucherDiscountResult voucherResult = voucherRedemptionPort.redeem(
+                    request.voucherCode(), userId, "membership", plan.getId(), price);
+            price = voucherResult.finalPoints();
+        }
 
         walletService.debit(userId, price, "Membership: " + plan.getName(), SOURCE_MEMBERSHIP, plan.getId());
 

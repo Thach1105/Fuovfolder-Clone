@@ -4,7 +4,7 @@ import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.voucher.api.dto.VoucherPreviewRequest;
 import com.fuoverflow.voucher.api.dto.VoucherPreviewResponse;
 import com.fuoverflow.voucher.application.VoucherService;
-import com.fuoverflow.voucher.domain.VoucherDiscountResult;
+import com.fuoverflow.common.voucher.VoucherDiscountResult;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;

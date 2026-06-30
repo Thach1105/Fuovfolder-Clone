@@ -11,8 +11,8 @@ import com.fuoverflow.source.api.dto.PurchaseResponse;
 import com.fuoverflow.source.api.dto.PurchaseStatsResponse;
 import com.fuoverflow.source.config.SourceProperties;
 import com.fuoverflow.source.persistence.SourceCatalogItemEntity;
-import com.fuoverflow.voucher.application.VoucherService;
-import com.fuoverflow.voucher.domain.VoucherDiscountResult;
+import com.fuoverflow.common.voucher.VoucherDiscountResult;
+import com.fuoverflow.common.voucher.VoucherRedemptionPort;
 import com.fuoverflow.source.persistence.SourceCatalogItemRepository;
 import com.fuoverflow.source.persistence.SourcePurchaseEntity;
 import com.fuoverflow.source.persistence.SourcePurchaseEventEntity;
@@ -42,7 +42,7 @@ public class SourcePurchaseService {
     private final UserRepository userRepository;
     private final PointsWalletService walletService;
     private final SourceProperties properties;
-    private final VoucherService voucherService;
+    private final VoucherRedemptionPort voucherService;
 
     public SourcePurchaseService(
             SourcePurchaseRepository purchaseRepository,
@@ -51,7 +51,7 @@ public class SourcePurchaseService {
             UserRepository userRepository,
             PointsWalletService walletService,
             SourceProperties properties,
-            VoucherService voucherService) {
+            VoucherRedemptionPort voucherService) {
         this.purchaseRepository = purchaseRepository;
         this.eventRepository = eventRepository;
         this.catalogRepository = catalogRepository;

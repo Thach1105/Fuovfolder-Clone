@@ -24,8 +24,8 @@ import com.fuoverflow.coursera.persistence.CourseraServiceRequestRepository;
 import com.fuoverflow.coursera.persistence.CourseraServiceRequestSpecifications;
 import com.fuoverflow.coursera.support.CredentialEncryptionService;
 import com.fuoverflow.user.domain.UserStatus;
-import com.fuoverflow.voucher.application.VoucherService;
-import com.fuoverflow.voucher.domain.VoucherDiscountResult;
+import com.fuoverflow.common.voucher.VoucherDiscountResult;
+import com.fuoverflow.common.voucher.VoucherRedemptionPort;
 import com.fuoverflow.user.persistence.UserEntity;
 import com.fuoverflow.user.persistence.UserRepository;
 import org.springframework.data.domain.Page;
@@ -47,7 +47,7 @@ public class CourseraRequestService {
     private final UserRepository userRepository;
     private final PointsWalletService walletService;
     private final CredentialEncryptionService encryptionService;
-    private final VoucherService voucherService;
+    private final VoucherRedemptionPort voucherService;
 
     public CourseraRequestService(
             CourseraServiceRequestRepository requestRepository,
@@ -58,7 +58,7 @@ public class CourseraRequestService {
             UserRepository userRepository,
             PointsWalletService walletService,
             CredentialEncryptionService encryptionService,
-            VoucherService voucherService) {
+            VoucherRedemptionPort voucherService) {
         this.requestRepository = requestRepository;
         this.itemRepository = itemRepository;
         this.credentialRepository = credentialRepository;

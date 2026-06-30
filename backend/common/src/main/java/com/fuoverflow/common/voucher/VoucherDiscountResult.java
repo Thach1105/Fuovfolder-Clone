@@ -1,4 +1,4 @@
-package com.fuoverflow.voucher.domain;
+package com.fuoverflow.common.voucher;
 
 import java.util.UUID;
 

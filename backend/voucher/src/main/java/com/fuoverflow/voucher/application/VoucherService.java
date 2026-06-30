@@ -7,7 +7,8 @@ import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.membership.persistence.MembershipEntity;
 import com.fuoverflow.membership.persistence.MembershipPlanRepository;
 import com.fuoverflow.membership.persistence.MembershipRepository;
-import com.fuoverflow.voucher.domain.VoucherDiscountResult;
+import com.fuoverflow.common.voucher.VoucherDiscountResult;
+import com.fuoverflow.common.voucher.VoucherRedemptionPort;
 import com.fuoverflow.voucher.persistence.VoucherEntity;
 import com.fuoverflow.voucher.persistence.VoucherRedemptionEntity;
 import com.fuoverflow.voucher.persistence.VoucherRedemptionRepository;
@@ -24,7 +25,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-public class VoucherService {
+public class VoucherService implements VoucherRedemptionPort {
 
     private final VoucherRepository voucherRepository;
     private final VoucherRedemptionRepository redemptionRepository;

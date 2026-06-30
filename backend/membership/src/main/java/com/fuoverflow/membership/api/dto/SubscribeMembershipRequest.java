@@ -2,5 +2,5 @@ package com.fuoverflow.membership.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
 
-public record SubscribeMembershipRequest(@NotBlank String planSlug) {
+public record SubscribeMembershipRequest(@NotBlank String planSlug, String voucherCode) {
 }
