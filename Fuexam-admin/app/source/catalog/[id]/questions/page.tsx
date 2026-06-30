@@ -534,11 +534,18 @@ export default function AdminSourceQuestionsPage() {
                     <ul className="mt-1 list-disc space-y-1 pl-5">
                       {duplicateResult.questionMatches.map((m, i) => {
                         const idx = questions.findIndex((q) => q.id === m.existingQuestion.id) + 1;
-                        const preview = (m.existingQuestion.questionText ?? "").slice(0, 60);
                         return (
                           <li key={i}>
-                            Giống {Math.round(m.similarity * 100)}% với câu #{idx}:
-                            &ldquo;{preview}{(m.existingQuestion.questionText?.length ?? 0) > 60 ? "…" : ""}&rdquo;
+                            Giống {Math.round(m.similarity * 100)}% với câu #{idx}
+                            {m.existingQuestion.options.length ? (
+                              <ul className="mt-1 list-[circle] space-y-0.5 pl-5 text-xs text-muted-foreground">
+                                {m.existingQuestion.options.map((opt, oi) => (
+                                  <li key={oi} className={opt.isCorrect ? "font-semibold text-foreground" : undefined}>
+                                    {opt.optionText ?? "(ảnh)"}{opt.isCorrect ? " ✓" : ""}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
                           </li>
                         );
                       })}
@@ -553,9 +560,7 @@ export default function AdminSourceQuestionsPage() {
                         const idx = questions.findIndex((q) => q.id === m.existingQuestion.id) + 1;
                         return (
                           <li key={i}>
-                            Đáp án &ldquo;{m.newOptionText.slice(0, 40)}&rdquo; giống{" "}
-                            {Math.round(m.similarity * 100)}% với đáp án &ldquo;
-                            {m.existingOptionText.slice(0, 40)}&rdquo; trong câu #{idx}
+                            Đáp án giống {Math.round(m.similarity * 100)}% với đáp án trong câu #{idx}
                           </li>
                         );
                       })}
