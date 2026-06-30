@@ -20,6 +20,7 @@
         <module>common</module>
         <module>auth</module>
         <module>user</module>
+        <module>voucher</module>
         <module>forum</module>
         <module>thread</module>
         <module>post</module>

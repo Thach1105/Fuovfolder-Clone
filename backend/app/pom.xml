@@ -30,6 +30,11 @@
         </dependency>
         <dependency>
             <groupId>com.fuoverflow</groupId>
+            <artifactId>fuoverflow-voucher</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fuoverflow</groupId>
             <artifactId>fuoverflow-forum</artifactId>
             <version>${project.version}</version>
         </dependency>
