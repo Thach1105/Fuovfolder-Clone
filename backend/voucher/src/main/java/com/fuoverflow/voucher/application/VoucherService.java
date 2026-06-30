@@ -109,10 +109,9 @@ public class VoucherService {
                     .map(String::trim)
                     .collect(Collectors.toSet());
             List<MembershipEntity> activeMemberships = membershipRepository.findActiveByUserId(userId, now);
-            boolean hasRequired = activeMemberships.stream()
-                    .anyMatch(m -> membershipPlanRepository.findById(m.getPlanId())
-                            .map(plan -> requiredSlugs.contains(plan.getSlug()))
-                            .orElse(false));
+            List<UUID> planIds = activeMemberships.stream().map(MembershipEntity::getPlanId).toList();
+            boolean hasRequired = membershipPlanRepository.findAllById(planIds).stream()
+                    .anyMatch(plan -> requiredSlugs.contains(plan.getSlug()));
             if (!hasRequired) {
                 return VoucherDiscountResult.invalid("Voucher yêu cầu membership " +
                         String.join(", ", requiredSlugs));
