@@ -1,4 +1,4 @@
-package com.fuoverflow.payment.persistence;
+package com.fuoverflow.award.persistence;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -29,11 +29,11 @@ public class PointBalanceEntity {
     protected PointBalanceEntity() {}
 
     public static PointBalanceEntity create(UUID userId) {
-        PointBalanceEntity balance = new PointBalanceEntity();
-        balance.id = UUID.randomUUID();
-        balance.userId = userId;
-        balance.balancePoints = 0L;
-        return balance;
+        PointBalanceEntity e = new PointBalanceEntity();
+        e.id = UUID.randomUUID();
+        e.userId = userId;
+        e.balancePoints = 0L;
+        return e;
     }
 
     public UUID getId() { return id; }
@@ -41,5 +41,12 @@ public class PointBalanceEntity {
     public long getBalancePoints() { return balancePoints; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
-    public void setBalancePoints(long points) { this.balancePoints = points; }
+
+    public void adjustBalance(int delta) {
+        this.balancePoints += delta;
+    }
+
+    public void setBalancePoints(long points) {
+        this.balancePoints = points;
+    }
 }

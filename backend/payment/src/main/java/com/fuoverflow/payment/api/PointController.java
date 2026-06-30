@@ -3,7 +3,7 @@ package com.fuoverflow.payment.api;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.payment.application.PointService;
 import com.fuoverflow.payment.api.dto.*;
-import com.fuoverflow.payment.persistence.PointBalanceEntity;
+import com.fuoverflow.award.persistence.PointBalanceEntity;
 import com.fuoverflow.payment.support.AuthContext;
 import org.springframework.web.bind.annotation.*;
 

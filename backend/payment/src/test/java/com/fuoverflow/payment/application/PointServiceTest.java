@@ -1,7 +1,7 @@
 package com.fuoverflow.payment.application;
 
-import com.fuoverflow.payment.persistence.PointBalanceEntity;
-import com.fuoverflow.payment.persistence.PointBalanceRepository;
+import com.fuoverflow.award.persistence.PointBalanceEntity;
+import com.fuoverflow.award.persistence.PointBalanceRepository;
 import com.fuoverflow.payment.persistence.PointTransactionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

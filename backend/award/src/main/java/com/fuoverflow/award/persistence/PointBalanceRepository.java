@@ -1,4 +1,4 @@
-package com.fuoverflow.payment.persistence;
+package com.fuoverflow.award.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

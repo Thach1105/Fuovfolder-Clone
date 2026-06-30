@@ -1,8 +1,8 @@
 package com.fuoverflow.payment.application;
 
 import com.fuoverflow.common.exception.NotFoundException;
-import com.fuoverflow.payment.persistence.PointBalanceEntity;
-import com.fuoverflow.payment.persistence.PointBalanceRepository;
+import com.fuoverflow.award.persistence.PointBalanceEntity;
+import com.fuoverflow.award.persistence.PointBalanceRepository;
 import com.fuoverflow.payment.persistence.PointTransactionEntity;
 import com.fuoverflow.payment.persistence.PointTransactionRepository;
 import org.springframework.dao.DataIntegrityViolationException;
