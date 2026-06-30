@@ -104,6 +104,7 @@ export interface CreateRequestPayload {
   courseraEmail: string;
   courseraPassword: string;
   userNotes?: string;
+  voucherCode?: string;
 }
 
 export function listCatalog(q?: string, featured?: boolean) {

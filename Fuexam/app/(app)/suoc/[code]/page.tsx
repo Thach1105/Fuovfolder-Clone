@@ -30,6 +30,8 @@ import {
   getSourceQuestions,
   purchaseSource,
 } from "@/lib/api/source";
+import { Input } from "@/components/ui/input";
+import { type VoucherPreviewResponse, previewVoucher } from "@/lib/api/voucher";
 
 export default function SuocDetailPage() {
   const params = useParams<{ code: string }>();
@@ -46,6 +48,10 @@ export default function SuocDetailPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [questions, setQuestions] = useState<PublicQuestion[]>([]);
   const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherPreview, setVoucherPreview] = useState<VoucherPreviewResponse | null>(null);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [applyingVoucher, setApplyingVoucher] = useState(false);
 
   const refreshBalance = useCallback(() => {
     if (!user) {
@@ -82,12 +88,39 @@ export default function SuocDetailPage() {
       .finally(() => setQuestionsLoading(false));
   }, [detail?.hasActiveAccess, user, code]);
 
+  function resetVoucherState() {
+    setVoucherCode("");
+    setVoucherPreview(null);
+    setVoucherError(null);
+  }
+
   function requestPurchase() {
     if (!user) {
       router.push(`/login?next=/suoc/${code}`);
       return;
     }
+    resetVoucherState();
     setConfirmOpen(true);
+  }
+
+  async function handleApplyVoucher() {
+    if (!voucherCode.trim() || !detail) return;
+    setApplyingVoucher(true);
+    setVoucherError(null);
+    try {
+      const result = await previewVoucher(voucherCode.trim(), "source", detail.pricePoints);
+      if (result.valid) {
+        setVoucherPreview(result);
+      } else {
+        setVoucherError(result.message);
+        setVoucherPreview(null);
+      }
+    } catch (err) {
+      setVoucherError(err instanceof ApiError ? err.message : "Không thể áp dụng voucher");
+      setVoucherPreview(null);
+    } finally {
+      setApplyingVoucher(false);
+    }
   }
 
   async function handlePurchase() {
@@ -96,9 +129,10 @@ export default function SuocDetailPage() {
     setSuccess(null);
     setPurchasing(true);
     try {
-      await purchaseSource(detail.id);
+      await purchaseSource(detail.id, undefined, voucherPreview ? voucherCode.trim() : undefined);
       setSuccess("Mua thành công. Source đã được mở cho tài khoản của bạn.");
       setConfirmOpen(false);
+      resetVoucherState();
       refreshBalance();
       requestPointsBalanceRefresh();
       await load();
@@ -292,7 +326,7 @@ export default function SuocDetailPage() {
         </div>
       </div>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialog open={confirmOpen} onOpenChange={(open) => { setConfirmOpen(open); if (!open) resetVoucherState(); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận mua Source {detail.code}?</AlertDialogTitle>
@@ -301,6 +335,26 @@ export default function SuocDetailPage() {
               {balance !== null ? ` Số dư sau mua: ${formatPoints(Math.max(0, balanceAfterPurchase ?? 0))}.` : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Nhập mã voucher"
+                value={voucherCode}
+                onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                className="flex-1"
+              />
+              <Button variant="outline" onClick={handleApplyVoucher} disabled={applyingVoucher || !voucherCode.trim()}>
+                {applyingVoucher ? "..." : "Áp dụng"}
+              </Button>
+            </div>
+            {voucherError && <p className="text-sm text-destructive">{voucherError}</p>}
+            {voucherPreview && (
+              <div className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+                <p>{voucherPreview.message}</p>
+                <p>Giá gốc: {formatPoints(detail.pricePoints)} → Giá mới: {formatPoints(voucherPreview.finalPoints)} (giảm {formatPoints(voucherPreview.discountPoints)})</p>
+              </div>
+            )}
+          </div>
           {insufficientBalance && (
             <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
               Số dư hiện tại không đủ. Vui lòng nạp thêm Fuexam Point trước khi mua.

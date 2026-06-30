@@ -10,9 +10,11 @@ export function getMyMembership() {
   return apiFetch<MembershipStatusResponse>(`${API_V1}/membership/me`);
 }
 
-export function subscribeMembership(planSlug: string) {
+export function subscribeMembership(planSlug: string, voucherCode?: string) {
+  const body: Record<string, unknown> = { planSlug };
+  if (voucherCode) body.voucherCode = voucherCode;
   return apiFetch<MembershipStatusResponse>(`${API_V1}/membership/subscribe`, {
     method: "POST",
-    body: JSON.stringify({ planSlug }),
+    body: JSON.stringify(body),
   });
 }

@@ -234,13 +234,15 @@ export function clearSourcePurchaseIdempotency(catalogItemId: string) {
   sessionStorage.removeItem(`${PURCHASE_IDEMPOTENCY_PREFIX}${catalogItemId}`);
 }
 
-export async function purchaseSource(catalogItemId: string, idempotencyKey?: string) {
+export async function purchaseSource(catalogItemId: string, idempotencyKey?: string, voucherCode?: string) {
   const key = resolvePurchaseIdempotencyKey(catalogItemId, idempotencyKey);
   const headers: Record<string, string> = { "Idempotency-Key": key };
+  const body: Record<string, unknown> = { catalogItemId };
+  if (voucherCode) body.voucherCode = voucherCode;
   const result = await apiFetch<SourcePurchase>(`${API_V1}/source/purchases`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ catalogItemId }),
+    body: JSON.stringify(body),
   });
   clearSourcePurchaseIdempotency(catalogItemId);
   return result;

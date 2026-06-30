@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { LoadingState } from "@/components/ui/loading-state";
 import {
@@ -20,6 +21,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { ApiError } from "@/lib/api/client";
 import { requestPointsBalanceRefresh } from "@/lib/api/points";
 import * as membershipApi from "@/lib/api/membership";
+import { type VoucherPreviewResponse, previewVoucher } from "@/lib/api/voucher";
 import { resolveMediaUrl } from "@/lib/api/media";
 import type { MembershipPlanResponse, MembershipStatusResponse } from "@/types/api";
 
@@ -32,6 +34,10 @@ export default function MembershipPage() {
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState<string | null>(null);
   const [confirmPlanSlug, setConfirmPlanSlug] = useState<string | null>(null);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherPreview, setVoucherPreview] = useState<VoucherPreviewResponse | null>(null);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [applyingVoucher, setApplyingVoucher] = useState(false);
 
   const confirmPlan = useMemo(
     () => plans.find((plan) => plan.slug === confirmPlanSlug) ?? null,
@@ -57,22 +63,53 @@ export default function MembershipPage() {
       .catch(() => setStatus(null));
   }, [user]);
 
+  function resetVoucherState() {
+    setVoucherCode("");
+    setVoucherPreview(null);
+    setVoucherError(null);
+  }
+
   function requestSubscribe(planSlug: string) {
     if (!user) {
       router.push(`/login?next=${encodeURIComponent("/membership")}`);
       return;
     }
+    resetVoucherState();
     setConfirmPlanSlug(planSlug);
   }
+
+  const handleApplyVoucher = async () => {
+    if (!voucherCode.trim() || !confirmPlan) return;
+    setApplyingVoucher(true);
+    setVoucherError(null);
+    try {
+      const result = await previewVoucher(voucherCode.trim(), "membership", confirmPlan.pricePoints);
+      if (result.valid) {
+        setVoucherPreview(result);
+      } else {
+        setVoucherError(result.message);
+        setVoucherPreview(null);
+      }
+    } catch (err) {
+      setVoucherError(err instanceof ApiError ? err.message : "Không thể áp dụng voucher");
+      setVoucherPreview(null);
+    } finally {
+      setApplyingVoucher(false);
+    }
+  };
 
   const subscribe = async () => {
     if (!confirmPlan) return;
     setSubscribing(confirmPlan.slug);
     setError(null);
     try {
-      const result = await membershipApi.subscribeMembership(confirmPlan.slug);
+      const result = await membershipApi.subscribeMembership(
+        confirmPlan.slug,
+        voucherPreview ? voucherCode.trim() : undefined,
+      );
       setStatus(result);
       setConfirmPlanSlug(null);
+      resetVoucherState();
       requestPointsBalanceRefresh();
       await refreshUser();
     } catch (err) {
@@ -184,7 +221,7 @@ export default function MembershipPage() {
         </p>
       </div>
 
-      <AlertDialog open={Boolean(confirmPlan)} onOpenChange={(open) => !open && setConfirmPlanSlug(null)}>
+      <AlertDialog open={Boolean(confirmPlan)} onOpenChange={(open) => { if (!open) { setConfirmPlanSlug(null); resetVoucherState(); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận mua membership?</AlertDialogTitle>
@@ -194,6 +231,26 @@ export default function MembershipPage() {
                 : "Vui lòng kiểm tra lại gói trước khi xác nhận."}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Nhập mã voucher"
+                value={voucherCode}
+                onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                className="flex-1"
+              />
+              <Button variant="outline" onClick={handleApplyVoucher} disabled={applyingVoucher || !voucherCode.trim()}>
+                {applyingVoucher ? "..." : "Áp dụng"}
+              </Button>
+            </div>
+            {voucherError && <p className="text-sm text-destructive">{voucherError}</p>}
+            {voucherPreview && confirmPlan && (
+              <div className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+                <p>{voucherPreview.message}</p>
+                <p>Giá gốc: {confirmPlan.pricePoints.toLocaleString("vi-VN")} → Giá mới: {voucherPreview.finalPoints.toLocaleString("vi-VN")} (giảm {voucherPreview.discountPoints.toLocaleString("vi-VN")} Fuexam Point)</p>
+              </div>
+            )}
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction onClick={subscribe} disabled={!confirmPlan || subscribing === confirmPlan.slug}>

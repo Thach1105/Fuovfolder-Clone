@@ -17,6 +17,7 @@ import {
 } from "@/lib/api/coursera";
 import { getPointsBalance } from "@/lib/api/points";
 import { ApiError } from "@/lib/api/client";
+import { type VoucherPreviewResponse, previewVoucher } from "@/lib/api/voucher";
 
 function CatalogCourseButton({
   item,
@@ -75,6 +76,10 @@ export default function CourseraPage() {
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherPreview, setVoucherPreview] = useState<VoucherPreviewResponse | null>(null);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [applyingVoucher, setApplyingVoucher] = useState(false);
 
   const isSearchMode = search.trim().length > 0;
 
@@ -167,6 +172,26 @@ export default function CourseraPage() {
     featuredCourses.find((c) => c.id === selectedId) ??
     browseCourses.find((c) => c.id === selectedId);
 
+  async function handleApplyVoucher() {
+    if (!voucherCode.trim() || !selected) return;
+    setApplyingVoucher(true);
+    setVoucherError(null);
+    try {
+      const result = await previewVoucher(voucherCode.trim(), "coursera", selected.pricePoints);
+      if (result.valid) {
+        setVoucherPreview(result);
+      } else {
+        setVoucherError(result.message);
+        setVoucherPreview(null);
+      }
+    } catch (err) {
+      setVoucherError(err instanceof ApiError ? err.message : "Không thể áp dụng voucher");
+      setVoucherPreview(null);
+    } finally {
+      setApplyingVoucher(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) {
@@ -184,6 +209,7 @@ export default function CourseraPage() {
           courseraEmail: email.trim(),
           courseraPassword: password,
           userNotes: notes.trim() || undefined,
+          voucherCode: voucherPreview ? voucherCode.trim() : undefined,
         },
         idempotencyKey,
       );
@@ -356,6 +382,33 @@ export default function CourseraPage() {
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Yêu cầu thêm về khóa học, deadline..."
                 />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600">Mã voucher (không bắt buộc)</label>
+                <div className="mt-1 flex gap-2">
+                  <input
+                    className="input-field flex-1"
+                    placeholder="Nhập mã voucher"
+                    disabled={!user}
+                    value={voucherCode}
+                    onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                  />
+                  <button
+                    type="button"
+                    className="btn-secondary shrink-0"
+                    disabled={!user || applyingVoucher || !voucherCode.trim()}
+                    onClick={handleApplyVoucher}
+                  >
+                    {applyingVoucher ? "..." : "Áp dụng"}
+                  </button>
+                </div>
+                {voucherError && <p className="mt-1 text-xs text-red-600">{voucherError}</p>}
+                {voucherPreview && selected && (
+                  <div className="mt-1 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                    <p>{voucherPreview.message}</p>
+                    <p>Giá gốc: {formatPoints(selected.pricePoints)} → Giá mới: {formatPoints(voucherPreview.finalPoints)} (giảm {formatPoints(voucherPreview.discountPoints)})</p>
+                  </div>
+                )}
               </div>
               <ErrorBanner message={error} />
               {selected && (
