@@ -68,7 +68,7 @@ export default function AdminSourceQuestionsPage() {
   const [questionText, setQuestionText] = useState("");
   const [questionImageUrls, setQuestionImageUrls] = useState<string[]>([]);
   const [explanation, setExplanation] = useState("");
-  const [options, setOptions] = useState<LocalOption[]>([EMPTY_OPTION(), EMPTY_OPTION()]);
+  const [options, setOptions] = useState<LocalOption[]>([EMPTY_OPTION(), EMPTY_OPTION(), EMPTY_OPTION(), EMPTY_OPTION()]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -102,7 +102,7 @@ export default function AdminSourceQuestionsPage() {
     setQuestionText("");
     setQuestionImageUrls([]);
     setExplanation("");
-    setOptions([EMPTY_OPTION(), EMPTY_OPTION()]);
+    setOptions([EMPTY_OPTION(), EMPTY_OPTION(), EMPTY_OPTION(), EMPTY_OPTION()]);
   }
 
   function startEdit(question: AdminQuestion) {
