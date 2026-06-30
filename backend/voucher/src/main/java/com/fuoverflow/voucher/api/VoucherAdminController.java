@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -39,8 +38,10 @@ public class VoucherAdminController {
 
     @GetMapping
     @RequirePermission("voucher.admin:read")
-    public ApiResponse<List<VoucherResponse>> list() {
-        return ApiResponse.ok(adminService.listAll());
+    public ApiResponse<Page<VoucherResponse>> list(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok(adminService.listAll(page, size));
     }
 
     @GetMapping("/{id}")

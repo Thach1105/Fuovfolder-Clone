@@ -36,8 +36,10 @@ export interface CreateVoucherBody {
   endsAt: string;
 }
 
-export function listVouchers() {
-  return apiFetch<VoucherResponse[]>("/api/v1/admin/vouchers");
+export function listVouchers(page = 0, size = 100) {
+  return apiFetch<PageResponse<VoucherResponse>>(
+    `/api/v1/admin/vouchers?page=${page}&size=${size}`
+  );
 }
 
 export function getVoucher(id: string) {

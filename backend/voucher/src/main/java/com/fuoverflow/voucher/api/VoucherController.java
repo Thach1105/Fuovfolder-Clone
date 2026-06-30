@@ -1,5 +1,6 @@
 package com.fuoverflow.voucher.api;
 
+import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.voucher.api.dto.VoucherPreviewRequest;
 import com.fuoverflow.voucher.api.dto.VoucherPreviewResponse;
@@ -24,6 +25,7 @@ public class VoucherController {
     }
 
     @PostMapping("/preview")
+    @RequirePermission("points:read")
     public ApiResponse<VoucherPreviewResponse> preview(
             Authentication authentication,
             @Valid @RequestBody VoucherPreviewRequest request) {

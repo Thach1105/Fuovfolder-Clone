@@ -80,8 +80,8 @@ export default function AdminVouchersPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await voucherApi.listVouchers();
-      setVouchers(data);
+      const page = await voucherApi.listVouchers();
+      setVouchers(page.content);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không tải được danh sách voucher.");
     } finally {
@@ -303,8 +303,8 @@ export default function AdminVouchersPage() {
                       <Input
                         id="dvalue"
                         type="number"
-                        min={0.01}
-                        step={form.discountType === "percentage" ? 0.01 : 1}
+                        min={1}
+                        step={1}
                         max={form.discountType === "percentage" ? 100 : undefined}
                         value={form.discountValue}
                         onChange={(e) => setForm({ ...form, discountValue: e.target.value })}

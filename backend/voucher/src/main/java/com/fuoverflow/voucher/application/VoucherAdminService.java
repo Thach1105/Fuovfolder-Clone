@@ -39,10 +39,9 @@ public class VoucherAdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<VoucherResponse> listAll() {
-        return voucherRepository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<VoucherResponse> listAll(int page, int size) {
+        return voucherRepository.findAll(PageRequest.of(page, Math.min(size, 100)))
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
