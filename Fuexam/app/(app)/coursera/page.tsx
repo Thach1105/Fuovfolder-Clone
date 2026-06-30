@@ -414,7 +414,7 @@ export default function CourseraPage() {
               {selected && (
                 <p className="text-sm text-slate-600">
                   Tổng thanh toán:{" "}
-                  <span className="font-semibold text-fuo-700">{formatPoints(selected.pricePoints)}</span>
+                  <span className="font-semibold text-fuo-700">{formatPoints(voucherPreview ? voucherPreview.finalPoints : selected.pricePoints)}</span>
                 </p>
               )}
               <button

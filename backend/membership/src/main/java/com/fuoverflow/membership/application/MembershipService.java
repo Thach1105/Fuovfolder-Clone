@@ -82,9 +82,11 @@ public class MembershipService {
             throw new ConflictException("MEMBERSHIP_ACTIVE", "You already have an active membership");
         });
 
+        UUID membershipId = UUID.randomUUID();
+
         if (request.voucherCode() != null && !request.voucherCode().isBlank()) {
             VoucherDiscountResult voucherResult = voucherRedemptionPort.redeem(
-                    request.voucherCode(), userId, "membership", plan.getId(), price);
+                    request.voucherCode(), userId, "membership", membershipId, price);
             price = voucherResult.finalPoints();
         }
 
@@ -92,7 +94,7 @@ public class MembershipService {
 
         int durationDays = MembershipFeatures.durationDays(plan.getFeaturesJson(), 30);
         Instant endsAt = now.plus(durationDays, ChronoUnit.DAYS);
-        MembershipEntity membership = MembershipEntity.create(UUID.randomUUID(), userId, plan.getId(), now, endsAt, now);
+        MembershipEntity membership = MembershipEntity.create(membershipId, userId, plan.getId(), now, endsAt, now);
         membershipRepository.save(membership);
         roleSyncService.onMembershipActivated(userId, plan);
         return toStatus(membership, plan);

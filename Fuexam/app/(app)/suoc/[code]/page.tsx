@@ -176,7 +176,8 @@ export default function SuocDetailPage() {
   const accessEndsLabel = detail.activeAccessEndsAt
     ? new Date(detail.activeAccessEndsAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })
     : null;
-  const balanceAfterPurchase = balance === null ? null : balance - detail.pricePoints;
+  const effectivePrice = voucherPreview ? voucherPreview.finalPoints : detail.pricePoints;
+  const balanceAfterPurchase = balance === null ? null : balance - effectivePrice;
   const insufficientBalance = balanceAfterPurchase !== null && balanceAfterPurchase < 0;
 
   const perks = [
@@ -331,7 +332,7 @@ export default function SuocDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận mua Source {detail.code}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn sẽ bị trừ {formatPoints(detail.pricePoints)} và có quyền truy cập trong {detail.accessDays} ngày.
+              Bạn sẽ bị trừ {formatPoints(effectivePrice)} và có quyền truy cập trong {detail.accessDays} ngày.
               {balance !== null ? ` Số dư sau mua: ${formatPoints(Math.max(0, balanceAfterPurchase ?? 0))}.` : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
