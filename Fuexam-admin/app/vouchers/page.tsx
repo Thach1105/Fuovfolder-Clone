@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
@@ -474,11 +475,9 @@ export default function AdminVouchersPage() {
                       <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Trạng thái</th>
                       <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Áp dụng</th>
                       <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Thời hạn</th>
-                      {canWrite && (
-                        <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
-                          Hành động
-                        </th>
-                      )}
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
+                        Hành động
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -526,12 +525,12 @@ export default function AdminVouchersPage() {
                             {new Date(v.startsAt).toLocaleDateString("vi-VN")} –{" "}
                             {new Date(v.endsAt).toLocaleDateString("vi-VN")}
                           </td>
-                          {canWrite && (
-                            <td
-                              className="px-3 py-2"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="flex items-center gap-2">
+                          <td
+                            className="px-3 py-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {canWrite && (
                                 <button
                                   type="button"
                                   className="text-primary hover:underline text-xs"
@@ -539,23 +538,35 @@ export default function AdminVouchersPage() {
                                 >
                                   Sửa
                                 </button>
-                                {canUpdate && (
-                                  <button
-                                    type="button"
-                                    className="text-muted-foreground hover:underline text-xs"
-                                    onClick={() => handleToggle(v)}
-                                    disabled={togglingId === v.id}
-                                  >
-                                    {togglingId === v.id
-                                      ? "..."
-                                      : v.active
-                                        ? "Tắt"
-                                        : "Bật"}
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          )}
+                              )}
+                              {canUpdate && (
+                                <button
+                                  type="button"
+                                  className="text-muted-foreground hover:underline text-xs"
+                                  onClick={() => handleToggle(v)}
+                                  disabled={togglingId === v.id}
+                                >
+                                  {togglingId === v.id
+                                    ? "..."
+                                    : v.active
+                                      ? "Tắt"
+                                      : "Bật"}
+                                </button>
+                              )}
+                              <Link
+                                href={`/vouchers/${v.id}/assignments`}
+                                className="text-blue-500 hover:underline text-xs"
+                              >
+                                Assigns
+                              </Link>
+                              <Link
+                                href={`/vouchers/${v.id}/redemptions`}
+                                className="text-violet-500 hover:underline text-xs"
+                              >
+                                History
+                              </Link>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
