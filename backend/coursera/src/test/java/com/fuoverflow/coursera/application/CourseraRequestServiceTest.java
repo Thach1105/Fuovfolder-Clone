@@ -13,6 +13,7 @@ import com.fuoverflow.coursera.persistence.CourseraRequestStatusEventRepository;
 import com.fuoverflow.coursera.persistence.CourseraServiceRequestEntity;
 import com.fuoverflow.coursera.persistence.CourseraServiceRequestRepository;
 import com.fuoverflow.coursera.support.CredentialEncryptionService;
+import com.fuoverflow.common.voucher.VoucherRedemptionPort;
 import com.fuoverflow.user.domain.UserStatus;
 import com.fuoverflow.user.persistence.UserEntity;
 import com.fuoverflow.user.persistence.UserRepository;
@@ -56,6 +57,8 @@ class CourseraRequestServiceTest {
     private PointsWalletService walletService;
     @Mock
     private CredentialEncryptionService encryptionService;
+    @Mock
+    private VoucherRedemptionPort voucherRedemptionPort;
 
     private CourseraRequestService service;
     private UUID userId;
@@ -71,7 +74,8 @@ class CourseraRequestServiceTest {
                 catalogRepository,
                 userRepository,
                 walletService,
-                encryptionService);
+                encryptionService,
+                voucherRedemptionPort);
         userId = UUID.randomUUID();
         catalogId = UUID.randomUUID();
     }
@@ -89,7 +93,7 @@ class CourseraRequestServiceTest {
         when(encryptionService.keyId()).thenReturn("default");
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        var body = new CreateCourseraRequestBody(catalogId, "user@coursera.org", "secret", "note");
+        var body = new CreateCourseraRequestBody(catalogId, "user@coursera.org", "secret", "note", null);
         service.create(userId, body, null);
 
         verify(walletService).debit(eq(userId), eq(250000), anyString(), eq(PointsWalletService.SOURCE_COURSERA_REQUEST), any(UUID.class));
@@ -107,7 +111,7 @@ class CourseraRequestServiceTest {
         when(encryptionService.keyId()).thenReturn("default");
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        var body = new CreateCourseraRequestBody(catalogId, "user@coursera.org", "secret", "note");
+        var body = new CreateCourseraRequestBody(catalogId, "user@coursera.org", "secret", "note", null);
         service.create(userId, body, null);
 
         verify(walletService, never()).debit(any(), anyInt(), anyString(), anyString(), any());
@@ -130,7 +134,7 @@ class CourseraRequestServiceTest {
         when(walletService.debit(any(), anyInt(), anyString(), anyString(), any()))
                 .thenThrow(new ConflictException("INSUFFICIENT_POINTS", "Insufficient Fuexam Point balance"));
 
-        var body = new CreateCourseraRequestBody(catalogId, "user@coursera.org", "secret", null);
+        var body = new CreateCourseraRequestBody(catalogId, "user@coursera.org", "secret", null, null);
         assertThrows(ConflictException.class, () -> service.create(userId, body, null));
         verify(requestRepository, never()).save(any());
     }
@@ -141,7 +145,7 @@ class CourseraRequestServiceTest {
                 userId, "a@b.com", "a@b.com", "user", "user", "hash", "User", null, Instant.now());
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        var body = new CreateCourseraRequestBody(catalogId, "user@coursera.org", "secret", null);
+        var body = new CreateCourseraRequestBody(catalogId, "user@coursera.org", "secret", null, null);
         assertThrows(ForbiddenException.class, () -> service.create(userId, body, null));
     }
 
@@ -155,7 +159,7 @@ class CourseraRequestServiceTest {
         when(itemRepository.findByRequestId(requestId)).thenReturn(java.util.List.of());
         when(credentialRepository.findByRequestId(requestId)).thenReturn(Optional.empty());
 
-        var body = new CreateCourseraRequestBody(catalogId, "user@coursera.org", "secret", null);
+        var body = new CreateCourseraRequestBody(catalogId, "user@coursera.org", "secret", null, null);
         service.create(userId, body, "key-1");
 
         verify(walletService, never()).debit(any(), anyInt(), anyString(), anyString(), any());

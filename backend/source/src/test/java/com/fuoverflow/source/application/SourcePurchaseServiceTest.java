@@ -4,6 +4,7 @@ import com.fuoverflow.award.application.PointsWalletService;
 import com.fuoverflow.award.persistence.PointsLedgerEntity;
 import com.fuoverflow.common.exception.ConflictException;
 import com.fuoverflow.common.exception.ForbiddenException;
+import com.fuoverflow.common.voucher.VoucherRedemptionPort;
 import com.fuoverflow.source.config.SourceProperties;
 import com.fuoverflow.source.persistence.SourceCatalogItemEntity;
 import com.fuoverflow.source.persistence.SourceCatalogItemRepository;
@@ -46,6 +47,8 @@ class SourcePurchaseServiceTest {
     private UserRepository userRepository;
     @Mock
     private PointsWalletService walletService;
+    @Mock
+    private VoucherRedemptionPort voucherRedemptionPort;
 
     private SourcePurchaseService service;
     private UUID userId;
@@ -59,7 +62,8 @@ class SourcePurchaseServiceTest {
                 catalogRepository,
                 userRepository,
                 walletService,
-                new SourceProperties(true, 24));
+                new SourceProperties(true, 24),
+                voucherRedemptionPort);
         userId = UUID.randomUUID();
         catalogId = UUID.randomUUID();
     }
@@ -75,7 +79,7 @@ class SourcePurchaseServiceTest {
                 .thenReturn(PointsLedgerEntity.entry(UUID.randomUUID(), userId, -90000, "x", "source_purchase", UUID.randomUUID(), Instant.now()));
         when(purchaseRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        var response = service.purchase(userId, catalogId, null);
+        var response = service.purchase(userId, catalogId, null, null);
 
         assertEquals("active", response.status());
         assertTrue(response.active());
@@ -93,7 +97,7 @@ class SourcePurchaseServiceTest {
         when(walletService.debit(any(), anyInt(), anyString(), anyString(), any()))
                 .thenThrow(new ConflictException("INSUFFICIENT_POINTS", "Insufficient Fuexam Point balance"));
 
-        assertThrows(ConflictException.class, () -> service.purchase(userId, catalogId, null));
+        assertThrows(ConflictException.class, () -> service.purchase(userId, catalogId, null, null));
         verify(purchaseRepository, never()).saveAndFlush(any());
     }
 
@@ -103,7 +107,7 @@ class SourcePurchaseServiceTest {
                 userId, "a@b.com", "a@b.com", "user", "user", "hash", "User", null, Instant.now());
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        assertThrows(ForbiddenException.class, () -> service.purchase(userId, catalogId, null));
+        assertThrows(ForbiddenException.class, () -> service.purchase(userId, catalogId, null, null));
         verify(catalogRepository, never()).findByIdAndDeletedAtIsNull(any());
     }
 
@@ -115,7 +119,7 @@ class SourcePurchaseServiceTest {
                 Instant.now(), Instant.now().plus(60, ChronoUnit.DAYS), "key-1", Instant.now());
         when(purchaseRepository.findByUserIdAndIdempotencyKey(userId, "key-1")).thenReturn(Optional.of(existing));
 
-        service.purchase(userId, catalogId, "key-1");
+        service.purchase(userId, catalogId, "key-1", null);
 
         verify(walletService, never()).debit(any(), anyInt(), anyString(), anyString(), any());
         verify(catalogRepository, never()).findByIdAndDeletedAtIsNull(any());
@@ -131,7 +135,7 @@ class SourcePurchaseServiceTest {
         when(purchaseRepository.findFirstByUserIdAndCatalogItemIdAndStatusOrderByEndsAtDesc(userId, catalogId, "active"))
                 .thenReturn(Optional.of(active));
 
-        ConflictException ex = assertThrows(ConflictException.class, () -> service.purchase(userId, catalogId, null));
+        ConflictException ex = assertThrows(ConflictException.class, () -> service.purchase(userId, catalogId, null, null));
 
         assertEquals("ACTIVE_ACCESS_REMAINS", ex.code());
         assertEquals("Source này vẫn còn thời gian sử dụng", ex.getMessage());
