@@ -96,7 +96,7 @@ public class AuthService {
                 pair.accessExpiresAt(), pair.refreshExpiresAt(), context.ipAddress(), context.userAgent());
         sessions.save(replacement);
         oldSession.replaceWith(replacement.getId(), "ROTATED", now);
-        return bundle(pair, user, newSessionId);
+        return bundle(pair, user);
     }
 
     @Transactional
@@ -138,12 +138,12 @@ public class AuthService {
         sessions.save(UserSessionEntity.create(sessionId, user.id(), pair.refreshTokenHash(), sessionId,
                 pair.refreshTokenJti(), pair.accessTokenJti(), pair.issuedAt(), pair.accessExpiresAt(),
                 pair.refreshExpiresAt(), context.ipAddress(), context.userAgent()));
-        return bundle(pair, user, sessionId);
+        return bundle(pair, user);
     }
 
-    private AuthTokenBundle bundle(TokenPair pair, AuthUserView user, UUID sessionId) {
+    private AuthTokenBundle bundle(TokenPair pair, AuthUserView user) {
         AuthTokenResponse response = new AuthTokenResponse("Bearer", pair.accessExpiresAt(), pair.refreshExpiresAt(),
-                pair.issuedAt(), sessionId, userResponse(user));
+                pair.issuedAt(), userResponse(user));
         return new AuthTokenBundle(pair, response);
     }
 

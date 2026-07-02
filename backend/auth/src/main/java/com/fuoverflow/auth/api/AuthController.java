@@ -153,6 +153,7 @@ public class AuthController {
     }
 
     @PostMapping("/introspect")
+    @RequirePermission("auth.token:introspect")
     public ApiResponse<TokenIntrospectionResponse> introspect(@Valid @RequestBody TokenIntrospectionRequest request) {
         return ApiResponse.ok(authService.introspect(request));
     }

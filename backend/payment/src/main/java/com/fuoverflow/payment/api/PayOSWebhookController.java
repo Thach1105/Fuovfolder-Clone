@@ -41,13 +41,12 @@ public class PayOSWebhookController {
 
     @PostMapping("/webhook")
     public ResponseEntity<String> handleWebhook(@RequestBody String body) {
-        log.info("Received PayOS webhook: bodyLength={} body={}",
-                body != null ? body.length() : 0, body);
+        log.info("Received PayOS webhook: bodyLength={}",
+                body != null ? body.length() : 0);
         try {
             WebhookData webhookData = payOS.webhooks().verify(body);
-            log.info("PayOS webhook verified: orderCode={} code={} reference={} amount={} accountNumber={}",
-                    webhookData.getOrderCode(), webhookData.getCode(),
-                    webhookData.getReference(), webhookData.getAmount(), webhookData.getAccountNumber());
+            log.info("PayOS webhook verified: orderCode={} code={}",
+                    webhookData.getOrderCode(), webhookData.getCode());
 
             String orderCode = String.valueOf(webhookData.getOrderCode());
             String providerEventId = deriveProviderEventId(webhookData);
@@ -87,7 +86,7 @@ public class PayOSWebhookController {
 
             return ResponseEntity.ok("OK");
         } catch (PayOSException e) {
-            log.warn("Invalid PayOS webhook signature: {} body={}", e.getMessage(), body);
+            log.warn("Invalid PayOS webhook signature: {}", e.getMessage());
             String invalidEventId = invalidEventId(body);
             if (webhookRepo.findByProviderAndProviderEventId("payos", invalidEventId).isEmpty()
                     && isJsonPayload(body)) {

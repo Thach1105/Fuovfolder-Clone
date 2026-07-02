@@ -51,7 +51,7 @@ public class OAuthSessionIssuer {
 
         return new AuthService.AuthTokenBundle(pair,
                 new AuthTokenResponse("Bearer", pair.accessExpiresAt(),
-                        pair.refreshExpiresAt(), pair.issuedAt(), sessionId,
+                        pair.refreshExpiresAt(), pair.issuedAt(),
                         new AuthenticatedUserResponse(user.id(), user.email(),
                                 user.username(), user.displayName(), user.status(), user.emailVerified())));
     }

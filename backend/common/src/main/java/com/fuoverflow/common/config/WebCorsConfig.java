@@ -12,6 +12,15 @@ import java.util.List;
 @Configuration
 @EnableConfigurationProperties({CorsProperties.class, SupportProperties.class})
 public class WebCorsConfig {
+
+    private static final List<String> ALLOWED_METHODS = List.of(
+            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+    );
+
+    private static final List<String> ALLOWED_HEADERS = List.of(
+            "Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"
+    );
+
     private final CorsProperties corsProperties;
 
     public WebCorsConfig(CorsProperties corsProperties) {
@@ -24,8 +33,8 @@ public class WebCorsConfig {
         if (corsProperties.allowedOrigins() != null && !corsProperties.allowedOrigins().isEmpty()) {
             configuration.setAllowedOriginPatterns(corsProperties.allowedOrigins());
         }
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedMethods(ALLOWED_METHODS);
+        configuration.setAllowedHeaders(ALLOWED_HEADERS);
         configuration.setAllowCredentials(corsProperties.allowCredentials());
         configuration.setMaxAge(3600L);
 
