@@ -24,6 +24,8 @@ spring:
           writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT:5000}
 
 fuoverflow:
+  rate-limit:
+    enabled: false
   admin:
     seed:
       enabled: ${FUO_ADMIN_SEED_ENABLED:true}
@@ -40,6 +42,8 @@ fuoverflow:
       enabled: ${NOTIFICATION_PUSH_ENABLED:false}
 
 auth:
+  cookie:
+    secure: false
   email-verification:
     enabled: ${AUTH_EMAIL_VERIFICATION_ENABLED:true}
     from: ${MAIL_FROM:${spring.mail.username:}}

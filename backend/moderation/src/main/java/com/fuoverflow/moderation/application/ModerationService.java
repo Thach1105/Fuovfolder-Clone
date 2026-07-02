@@ -76,7 +76,7 @@ public class ModerationService {
     @Transactional(readOnly = true)
     public FlagPageResponse listFlags(String status, int page, int size) {
         String normalizedStatus = status == null || status.isBlank() ? "open" : status.trim();
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(size, 1));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
         Page<ContentFlagEntity> result = flagRepository.findByStatusOrderByCreatedAtDesc(normalizedStatus, pageable);
         return new FlagPageResponse(
                 result.getContent().stream().map(ModerationService::toResponse).toList(),

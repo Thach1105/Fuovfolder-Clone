@@ -17,6 +17,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.fuoverflow.common.config.RateLimitProperties;
+
 import com.fuoverflow.auth.oauth2.GoogleOAuth2UserService;
 import com.fuoverflow.auth.oauth2.OAuthAuthenticationSuccessHandler;
 import com.fuoverflow.auth.oauth2.OAuthAuthenticationFailureHandler;
@@ -25,20 +27,26 @@ import com.fuoverflow.auth.oauth2.OAuthAuthenticationFailureHandler;
 @EnableWebSecurity
 @EnableMethodSecurity
 @EnableAspectJAutoProxy
-@EnableConfigurationProperties({AuthProperties.class, OAuth2Properties.class})
+@EnableConfigurationProperties({AuthProperties.class, OAuth2Properties.class, RateLimitProperties.class})
 public class SecurityConfig {
     private final CookieAuthenticationFilter cookieAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
+    private final BotDetectionFilter botDetectionFilter;
     private final GoogleOAuth2UserService googleOAuth2UserService;
     private final OAuthAuthenticationSuccessHandler oauthSuccessHandler;
     private final OAuthAuthenticationFailureHandler oauthFailureHandler;
     private final AuthProperties authProperties;
 
     public SecurityConfig(CookieAuthenticationFilter cookieAuthenticationFilter,
+                         RateLimitFilter rateLimitFilter,
+                         BotDetectionFilter botDetectionFilter,
                          GoogleOAuth2UserService googleOAuth2UserService,
                          OAuthAuthenticationSuccessHandler oauthSuccessHandler,
                          OAuthAuthenticationFailureHandler oauthFailureHandler,
                          AuthProperties authProperties) {
         this.cookieAuthenticationFilter = cookieAuthenticationFilter;
+        this.rateLimitFilter = rateLimitFilter;
+        this.botDetectionFilter = botDetectionFilter;
         this.googleOAuth2UserService = googleOAuth2UserService;
         this.oauthSuccessHandler = oauthSuccessHandler;
         this.oauthFailureHandler = oauthFailureHandler;
@@ -53,12 +61,27 @@ public class SecurityConfig {
                 // SameSite=Lax prevents cross-origin POST requests from sending cookies.
                 // All state-change operations use POST/PUT/DELETE (never GET).
                 // If SameSite is changed to None, CSRF protection MUST be re-enabled.
+                .headers(headers -> headers
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .maxAgeInSeconds(31536000)
+                                .includeSubDomains(true))
+                        .contentSecurityPolicy(csp -> csp
+                                .policyDirectives("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:"))
+                        .referrerPolicy(ref -> ref
+                                .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .permissionsPolicy(pp -> pp
+                                .policy("geolocation=(), camera=(), microphone=()")))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/robots.txt",
+                                "/api/v1/admin/config",
+                                "/api/v1/users/export",
+                                "/api/v1/debug/dump",
+                                "/api/internal/graphql",
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh",
@@ -67,7 +90,6 @@ public class SecurityConfig {
                                 "/api/v1/auth/password/forgot",
                                 "/api/v1/auth/password/reset",
                                 "/api/v1/auth/password/set",
-                                "/api/v1/auth/introspect",
                                 "/oauth2/authorization/google",
                                 "/login/oauth2/code/google",
                                 "/api/v1/payment/payos/webhook",
@@ -100,7 +122,9 @@ public class SecurityConfig {
                                 .oidcUserService(googleOAuth2UserService))
                         .successHandler(oauthSuccessHandler)
                         .failureHandler(oauthFailureHandler))
-                .addFilterBefore(cookieAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(cookieAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(rateLimitFilter, CookieAuthenticationFilter.class)
+                .addFilterBefore(botDetectionFilter, RateLimitFilter.class);
         return http.build();
     }
 
