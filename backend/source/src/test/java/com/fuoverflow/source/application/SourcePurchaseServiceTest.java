@@ -62,7 +62,7 @@ class SourcePurchaseServiceTest {
                 catalogRepository,
                 userRepository,
                 walletService,
-                new SourceProperties(true, 24),
+                new SourceProperties(true, 24, null, null),
                 voucherRedemptionPort);
         userId = UUID.randomUUID();
         catalogId = UUID.randomUUID();

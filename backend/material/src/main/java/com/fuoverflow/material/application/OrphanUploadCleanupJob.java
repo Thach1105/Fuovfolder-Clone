@@ -24,7 +24,7 @@ public class OrphanUploadCleanupJob {
         this.uploadService = uploadService;
     }
 
-    @Scheduled(fixedDelayString = "${fuoverflow.upload.orphan-cleanup-interval-ms:3600000}")
+    @Scheduled(fixedDelayString = "${fuexam.upload.orphan-cleanup-interval-ms:3600000}")
     @Transactional
     public void cleanupOrphans() {
         Instant cutoff = Instant.now().minus(24, ChronoUnit.HOURS);

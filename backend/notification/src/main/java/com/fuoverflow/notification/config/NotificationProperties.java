@@ -2,7 +2,7 @@ package com.fuoverflow.notification.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "fuoverflow.notification")
+@ConfigurationProperties(prefix = "fuexam.notification")
 public record NotificationProperties(
         Email email,
         Push push

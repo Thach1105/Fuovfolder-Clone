@@ -13,13 +13,13 @@ import org.springframework.context.annotation.Configuration;
 public class ObjectStorageConfiguration {
 
     @Bean
-    @ConditionalOnProperty(name = "fuoverflow.storage.provider", havingValue = "local")
+    @ConditionalOnProperty(name = "fuexam.storage.provider", havingValue = "local")
     ObjectStorage localObjectStorage(ObjectStorageProperties properties, UploadProperties uploadProperties) {
         return new LocalObjectStorage(properties, uploadProperties);
     }
 
     @Bean
-    @ConditionalOnProperty(name = "fuoverflow.storage.provider", havingValue = "s3", matchIfMissing = true)
+    @ConditionalOnProperty(name = "fuexam.storage.provider", havingValue = "s3", matchIfMissing = true)
     ObjectStorage s3CompatibleObjectStorage(ObjectStorageProperties properties, UploadProperties uploadProperties) {
         S3CompatibleObjectStorage storage = new S3CompatibleObjectStorage(properties, uploadProperties);
         storage.ensureBucketExists();

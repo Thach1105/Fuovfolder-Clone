@@ -23,7 +23,7 @@ import java.time.Instant;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    static final String BOT_SCORE_ATTR = "fuoverflow.botScore";
+    static final String BOT_SCORE_ATTR = "fuexam.botScore";
 
     private final RateLimitService rateLimitService;
     private final RateLimitProperties properties;

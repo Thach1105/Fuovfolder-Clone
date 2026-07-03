@@ -2,7 +2,7 @@ package com.fuoverflow.common.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "fuoverflow.storage")
+@ConfigurationProperties(prefix = "fuexam.storage")
 public record ObjectStorageProperties(
         String provider,
         String uploadsPath,

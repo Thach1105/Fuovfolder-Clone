@@ -2,7 +2,7 @@ package com.fuoverflow.user.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "fuoverflow.admin.seed")
+@ConfigurationProperties(prefix = "fuexam.admin.seed")
 public record AdminSeedProperties(
         boolean enabled,
         String email,

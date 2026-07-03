@@ -23,7 +23,7 @@ public class SourcePurchaseExpiryService {
         this.purchaseRepository = purchaseRepository;
     }
 
-    @Scheduled(fixedDelayString = "${fuoverflow.source.expiry-scan-interval-ms:60000}")
+    @Scheduled(fixedDelayString = "${fuexam.source.expiry-scan-interval-ms:60000}")
     @Transactional
     public void expireElapsedPurchases() {
         int updated = purchaseRepository.markExpired(Instant.now());

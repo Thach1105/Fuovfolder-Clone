@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
 
-@ConfigurationProperties(prefix = "fuoverflow.rate-limit")
+@ConfigurationProperties(prefix = "fuexam.rate-limit")
 public record RateLimitProperties(
         boolean enabled,
         TierLimits auth,

@@ -54,7 +54,7 @@ management:
     tags:
       application: ${spring.application.name}
 
-fuoverflow:
+fuexam:
   upload:
     image-max-bytes: 5242880
     document-max-bytes: 20971520
@@ -78,6 +78,8 @@ fuoverflow:
     refund-enabled: ${SOURCE_REFUND_ENABLED:true}
     default-page-size: ${SOURCE_DEFAULT_PAGE_SIZE:24}
     expiry-scan-interval-ms: ${SOURCE_EXPIRY_SCAN_INTERVAL_MS:60000}
+    media-signing-secret: ${SOURCE_MEDIA_SIGNING_SECRET:dev-source-media-secret-change-me}
+    signed-url-ttl-seconds: ${SOURCE_MEDIA_URL_TTL:900}
   membership:
     expiry-cron: ${MEMBERSHIP_EXPIRY_CRON:0 0 0 * * *}
   scheduling:

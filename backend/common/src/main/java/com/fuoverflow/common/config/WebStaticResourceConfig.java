@@ -8,7 +8,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.nio.file.Path;
 
 @Configuration
-@ConditionalOnProperty(name = "fuoverflow.storage.provider", havingValue = "local")
+@ConditionalOnProperty(name = "fuexam.storage.provider", havingValue = "local")
 public class WebStaticResourceConfig implements WebMvcConfigurer {
     private final ObjectStorageProperties properties;
 

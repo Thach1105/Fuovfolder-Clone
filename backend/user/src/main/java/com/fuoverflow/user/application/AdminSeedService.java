@@ -45,7 +45,7 @@ public class AdminSeedService implements ApplicationRunner {
         }
         String password = properties.password();
         if (password == null || password.isBlank()) {
-            log.warn("Admin seed is enabled but fuoverflow.admin.seed.password is empty; skipping admin bootstrap");
+            log.warn("Admin seed is enabled but fuexam.admin.seed.password is empty; skipping admin bootstrap");
             return;
         }
         if (password.length() < 8 || password.length() > 128) {

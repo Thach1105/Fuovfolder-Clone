@@ -37,8 +37,8 @@ public class MembershipExpiryService {
         this.permissionResolver = permissionResolver;
     }
 
-    @Scheduled(cron = "${fuoverflow.membership.expiry-cron:0 0 0 * * *}",
-            zone = "${fuoverflow.scheduling.timezone:Asia/Ho_Chi_Minh}")
+    @Scheduled(cron = "${fuexam.membership.expiry-cron:0 0 0 * * *}",
+            zone = "${fuexam.scheduling.timezone:Asia/Ho_Chi_Minh}")
     @Transactional
     public void expireElapsedMemberships() {
         Instant now = Instant.now();

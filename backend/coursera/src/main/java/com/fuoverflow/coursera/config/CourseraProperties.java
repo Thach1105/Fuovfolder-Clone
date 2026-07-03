@@ -2,7 +2,7 @@ package com.fuoverflow.coursera.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "fuoverflow.coursera")
+@ConfigurationProperties(prefix = "fuexam.coursera")
 public record CourseraProperties(
         CredentialsEncryption credentials,
         boolean refundOnCancel

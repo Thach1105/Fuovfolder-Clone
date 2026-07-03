@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.List;
 
-@ConfigurationProperties(prefix = "fuoverflow.upload")
+@ConfigurationProperties(prefix = "fuexam.upload")
 public record UploadProperties(
         long imageMaxBytes,
         long documentMaxBytes,
