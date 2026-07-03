@@ -50,6 +50,7 @@ application-secrets.properties
 *.jks
 
 # Claude local settings
+.claude
 .claude/settings.local.json
 .claude/setting.json
 .claude/worktrees/
@@ -75,3 +76,6 @@ Thumbs.db
 
 # E2E tests (local only)
 e2e/
+
+.cursor/
+my-resource/

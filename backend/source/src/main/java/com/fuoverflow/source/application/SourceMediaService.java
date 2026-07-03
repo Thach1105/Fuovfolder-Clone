@@ -4,6 +4,7 @@ import com.fuoverflow.common.storage.StoredObject;
 import com.fuoverflow.material.api.dto.UploadResponse;
 import com.fuoverflow.material.application.UploadService;
 import com.fuoverflow.material.domain.UploadPurpose;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,7 +20,8 @@ public class SourceMediaService {
     }
 
     public StoredObject uploadQuestionImage(MultipartFile file, UUID adminUserId) {
-        UploadResponse uploaded = uploadService.upload(file, UploadPurpose.SOURCE_QUESTION, adminUserId);
+        UploadResponse uploaded = uploadService.upload(file, UploadPurpose.SOURCE_QUESTION, adminUserId,
+                SecurityContextHolder.getContext().getAuthentication());
         return new StoredObject(uploaded.objectKey(), uploaded.publicUrl());
     }
 

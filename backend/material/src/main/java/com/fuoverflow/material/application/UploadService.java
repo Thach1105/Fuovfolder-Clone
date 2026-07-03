@@ -15,8 +15,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -40,10 +45,15 @@ public class UploadService {
         this.uploadPermissionChecker = uploadPermissionChecker;
     }
 
+    private static final Set<String> RATE_LIMIT_EXEMPT_ROLES = Set.of("ROLE_ADMIN", "ROLE_SUPER_ADMIN");
+
     @Transactional
-    public UploadResponse upload(MultipartFile file, UploadPurpose purpose, UUID ownerUserId) {
+    public UploadResponse upload(MultipartFile file, UploadPurpose purpose, UUID ownerUserId,
+                                 Authentication authentication) {
         requirePurposePermission(ownerUserId, purpose);
-        rateLimiter.checkAllowed(ownerUserId, uploadProperties.maxUploadsPerHour());
+        if (!isRateLimitExempt(authentication)) {
+            rateLimiter.checkAllowed(ownerUserId, uploadProperties.maxUploadsPerHour());
+        }
 
         StoredObject stored = objectStorage.storeFile(file, purpose.folder(), purpose.fileKind());
         Instant now = Instant.now();
@@ -196,6 +206,19 @@ public class UploadService {
             case FORUM_IMAGE -> true;
             default -> false;
         };
+    }
+
+    private static boolean isRateLimitExempt(Authentication authentication) {
+        if (authentication == null) {
+            return false;
+        }
+        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+        if (authorities == null) {
+            return false;
+        }
+        return authorities.stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(RATE_LIMIT_EXEMPT_ROLES::contains);
     }
 
     private static String normalizeMime(String contentType) {

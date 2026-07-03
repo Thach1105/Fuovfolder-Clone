@@ -14,7 +14,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -60,10 +64,12 @@ class UploadServiceTest {
         when(uploadPermissionChecker.hasAnyPermission(userId, UploadPurpose.AVATAR.requiredPermissions()))
                 .thenReturn(false);
 
+        Authentication auth = userAuth(userId);
         assertThrows(ForbiddenException.class, () -> uploadService.upload(
                 new MockMultipartFile("file", "avatar.png", "image/png", new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47}),
                 UploadPurpose.AVATAR,
-                userId));
+                userId,
+                auth));
     }
 
     @Test
@@ -79,9 +85,33 @@ class UploadServiceTest {
                 .thenReturn(new StoredObject("avatars/key.png", "http://media/avatars/key.png"));
         when(uploadedFileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var response = uploadService.upload(file, UploadPurpose.AVATAR, userId);
+        var response = uploadService.upload(file, UploadPurpose.AVATAR, userId, userAuth(userId));
 
         assertEquals("avatars/key.png", response.objectKey());
         verify(rateLimiter).checkAllowed(userId, 30);
+    }
+
+    @Test
+    void adminSkipsRateLimit() {
+        UUID userId = UUID.randomUUID();
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "avatar.png", "image/png",
+                new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A});
+        when(uploadPermissionChecker.hasAnyPermission(eq(userId), any(Set.class))).thenReturn(true);
+        when(objectStorage.storeFile(file, UploadPurpose.AVATAR.folder(), FileKind.IMAGE))
+                .thenReturn(new StoredObject("avatars/key.png", "http://media/avatars/key.png"));
+        when(uploadedFileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Authentication adminAuth = new UsernamePasswordAuthenticationToken(
+                userId.toString(), null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+
+        uploadService.upload(file, UploadPurpose.AVATAR, userId, adminAuth);
+
+        org.mockito.Mockito.verifyNoInteractions(rateLimiter);
+    }
+
+    private static Authentication userAuth(UUID userId) {
+        return new UsernamePasswordAuthenticationToken(
+                userId.toString(), null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
     }
 }

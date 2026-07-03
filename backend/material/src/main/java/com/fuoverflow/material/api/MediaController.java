@@ -46,7 +46,7 @@ public class MediaController {
             @RequestParam("purpose") String purpose) {
         UUID userId = UUID.fromString(authentication.getName());
         UploadPurpose uploadPurpose = UploadPurpose.fromSlug(purpose.trim());
-        return ApiResponse.ok(uploadService.upload(file, uploadPurpose, userId));
+        return ApiResponse.ok(uploadService.upload(file, uploadPurpose, userId, authentication));
     }
 
     @GetMapping("/files/{fileId}")
