@@ -108,7 +108,8 @@ export default function AdminSourceQuestionsPage() {
   function startEdit(question: AdminQuestion) {
     setEditingId(question.id);
     setQuestionText(question.questionText ?? "");
-    setQuestionImageUrls(question.questionImageUrls ?? []);
+    const urls = mergeImageUrls(question.questionImageUrl, question.questionImageUrls);
+    setQuestionImageUrls(urls);
     setExplanation(question.explanation ?? "");
     setOptions(
       question.options.map((o) => ({
@@ -120,6 +121,17 @@ export default function AdminSourceQuestionsPage() {
       })),
     );
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function mergeImageUrls(
+    singular: string | null | undefined,
+    plural: string[] | null | undefined,
+  ): string[] {
+    const urls = plural && plural.length > 0 ? [...plural] : [];
+    if (singular && !urls.includes(singular)) {
+      urls.unshift(singular);
+    }
+    return urls;
   }
 
   function updateOption(index: number, patch: Partial<QuestionOptionBody>) {
@@ -431,9 +443,12 @@ export default function AdminSourceQuestionsPage() {
 
                     {expanded && (
                       <div className="space-y-4 border-t border-border bg-muted/20 px-4 py-4 pl-10">
-                        {q.questionImageUrls && q.questionImageUrls.length > 0 && (
+                        {(() => {
+                          const allImgUrls = mergeImageUrls(q.questionImageUrl, q.questionImageUrls);
+                          if (allImgUrls.length === 0) return null;
+                          return (
                           <div className="grid grid-cols-2 gap-2">
-                            {q.questionImageUrls.map((url, idx) => {
+                            {allImgUrls.map((url, idx) => {
                               const imgUrl = sourceMediaUrl(url);
                               return (
                                 // eslint-disable-next-line @next/next/no-img-element
@@ -446,8 +461,8 @@ export default function AdminSourceQuestionsPage() {
                                 />
                               );
                             })}
-                          </div>
-                        )}
+                          </div>);
+                        })()}
                         {q.explanation && (
                           <div>
                             <p className="text-xs font-semibold uppercase text-muted-foreground">
