@@ -70,7 +70,9 @@ public class SourceCatalogAdminService {
                 request.featured() != null && request.featured(),
                 request.sortOrder() != null ? request.sortOrder() : 0,
                 now);
-        return SourceCatalogMapper.toAdmin(catalogRepository.save(entity));
+        SourceCatalogItemEntity saved = catalogRepository.save(entity);
+        mediaService.markLinked(saved.getCoverImageUrl());
+        return SourceCatalogMapper.toAdmin(saved);
     }
 
     @Transactional
@@ -109,7 +111,7 @@ public class SourceCatalogAdminService {
             String oldCover = entity.getCoverImageUrl();
             String newCover = blankToNull(request.coverImageUrl());
             if (oldCover != null && !oldCover.equals(newCover)) {
-                mediaService.deleteStoredReference(oldCover);
+                mediaService.unlinkStoredReference(oldCover);
             }
             entity.setCoverImageUrl(newCover);
         }
@@ -126,7 +128,9 @@ public class SourceCatalogAdminService {
             entity.setSortOrder(request.sortOrder());
         }
         entity.setUpdatedAt(Instant.now());
-        return SourceCatalogMapper.toAdmin(catalogRepository.save(entity));
+        SourceCatalogItemEntity saved = catalogRepository.save(entity);
+        mediaService.markLinked(saved.getCoverImageUrl());
+        return SourceCatalogMapper.toAdmin(saved);
     }
 
     @Transactional

@@ -96,6 +96,7 @@ public class SourceQuestionAdminService {
                 now);
         questionRepository.save(question);
         saveOptions(questionId, validated.options(), now);
+        linkQuestionImages(validated, request.questionImageUrls());
 
         syncQuestionCount(catalogItemId);
         return get(catalogItemId, questionId);
@@ -138,6 +139,7 @@ public class SourceQuestionAdminService {
 
         optionRepository.deleteByQuestionId(questionId);
         saveOptions(questionId, validated.options(), now);
+        linkQuestionImages(validated, request.questionImageUrls());
 
         return get(catalogItemId, questionId);
     }
@@ -262,6 +264,14 @@ public class SourceQuestionAdminService {
         return new ValidatedQuestion(normalizedText, normalizedImage, correctCount > 1, validatedOptions);
     }
 
+    private void linkQuestionImages(ValidatedQuestion validated, List<String> questionImageUrls) {
+        mediaService.markLinked(validated.questionImageUrl());
+        mediaService.markLinkedAll(questionImageUrls);
+        for (ValidatedOption option : validated.options()) {
+            mediaService.markLinked(option.optionImageUrl());
+        }
+    }
+
     private void cleanupReplacedImages(
             String oldQuestionImage,
             String newQuestionImage,
@@ -270,14 +280,14 @@ public class SourceQuestionAdminService {
             List<SourceQuestionOptionEntity> oldOptions,
             List<ValidatedOption> newOptions) {
         if (oldQuestionImage != null && !oldQuestionImage.equals(newQuestionImage)) {
-            mediaService.deleteStoredReference(oldQuestionImage);
+            mediaService.unlinkStoredReference(oldQuestionImage);
         }
 
         Set<String> retainedUrls = new HashSet<>(newImageUrls != null ? newImageUrls : List.of());
         if (oldImageUrls != null) {
             for (String oldUrl : oldImageUrls) {
                 if (oldUrl != null && !retainedUrls.contains(oldUrl)) {
-                    mediaService.deleteStoredReference(oldUrl);
+                    mediaService.unlinkStoredReference(oldUrl);
                 }
             }
         }
@@ -291,7 +301,7 @@ public class SourceQuestionAdminService {
         for (SourceQuestionOptionEntity oldOption : oldOptions) {
             String imageUrl = oldOption.getOptionImageUrl();
             if (imageUrl != null && !retainedOptionImages.contains(imageUrl)) {
-                mediaService.deleteStoredReference(imageUrl);
+                mediaService.unlinkStoredReference(imageUrl);
             }
         }
     }

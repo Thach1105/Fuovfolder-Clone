@@ -33,4 +33,26 @@ public class SourceMediaService {
             deleteStoredReference(ref);
         }
     }
+
+    public void unlinkStoredReference(String objectKeyOrLegacyReference) {
+        uploadService.markUnlinkedByObjectKey(objectKeyOrLegacyReference);
+    }
+
+    public void unlinkStoredReferences(List<String> references) {
+        if (references == null) return;
+        for (String ref : references) {
+            unlinkStoredReference(ref);
+        }
+    }
+
+    public void markLinked(String objectKey) {
+        uploadService.markLinkedByStoragePath(objectKey);
+    }
+
+    public void markLinkedAll(List<String> objectKeys) {
+        if (objectKeys == null) return;
+        for (String key : objectKeys) {
+            markLinked(key);
+        }
+    }
 }

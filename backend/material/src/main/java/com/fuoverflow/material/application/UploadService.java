@@ -144,6 +144,34 @@ public class UploadService {
         objectStorage.delete(objectKeyOrLegacyReference);
     }
 
+    @Transactional
+    public void markLinkedByStoragePath(String objectKeyOrReference) {
+        if (objectKeyOrReference == null || objectKeyOrReference.isBlank()) {
+            return;
+        }
+        String normalized = objectStorage.normalizeToObjectKey(objectKeyOrReference);
+        uploadedFileRepository.findByStoragePathAndDeletedAtIsNull(normalized)
+                .ifPresent(file -> {
+                    if (file.getLinkedAt() == null) {
+                        file.setLinkedAt(Instant.now());
+                        uploadedFileRepository.save(file);
+                    }
+                });
+    }
+
+    @Transactional
+    public void markUnlinkedByObjectKey(String objectKeyOrReference) {
+        if (objectKeyOrReference == null || objectKeyOrReference.isBlank()) {
+            return;
+        }
+        String normalized = objectStorage.normalizeToObjectKey(objectKeyOrReference);
+        uploadedFileRepository.findByStoragePathAndDeletedAtIsNull(normalized)
+                .ifPresent(file -> {
+                    file.setLinkedAt(null);
+                    uploadedFileRepository.save(file);
+                });
+    }
+
     @Transactional(readOnly = true)
     public Optional<UploadedFileEntity> findByStoragePath(String objectKey) {
         return uploadedFileRepository.findByStoragePathAndDeletedAtIsNull(objectKey);
@@ -165,7 +193,7 @@ public class UploadService {
 
     private static boolean autoLinkOnUpload(UploadPurpose purpose) {
         return switch (purpose) {
-            case FORUM_IMAGE, SOURCE_QUESTION, SOURCE_COVER -> true;
+            case FORUM_IMAGE -> true;
             default -> false;
         };
     }
