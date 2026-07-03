@@ -10,6 +10,7 @@ public record AuthProperties(
         String audience,
         Duration accessTokenTtl,
         Duration refreshTokenTtl,
+        int maxDevices,
         String refreshTokenHashPepper,
         Cookie cookie,
         Jwt jwt,

@@ -147,6 +147,7 @@ auth:
   audience: ${AUTH_AUDIENCE:fuoverflow-api}
   access-token-ttl: ${AUTH_ACCESS_TOKEN_TTL:10m}
   refresh-token-ttl: ${AUTH_REFRESH_TOKEN_TTL:30d}
+  max-devices: ${AUTH_MAX_DEVICES:2}
   refresh-token-hash-pepper: ${AUTH_REFRESH_TOKEN_PEPPER:local-dev-refresh-pepper-change-me}
   cookie:
     secure: ${AUTH_COOKIE_SECURE:true}
