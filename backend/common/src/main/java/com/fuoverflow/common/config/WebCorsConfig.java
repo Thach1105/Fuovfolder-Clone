@@ -18,7 +18,7 @@ public class WebCorsConfig {
     );
 
     private static final List<String> ALLOWED_HEADERS = List.of(
-            "Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"
+            "Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Idempotency-Key"
     );
 
     private final CorsProperties corsProperties;
