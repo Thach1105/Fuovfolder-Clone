@@ -25,7 +25,7 @@ class JwtServiceTest {
     void setUp() throws Exception {
         AuthProperties props = new AuthProperties(
                 "fuoverflow", "fuoverflow-api", Duration.ofMinutes(10), Duration.ofDays(30),
-                "test-pepper",
+                2, "test-pepper",
                 new AuthProperties.Cookie(false, "Lax", "fuoverflow_at", "fuoverflow_rt"),
                 new AuthProperties.Jwt("test-key", "classpath:keys/test-private.pem", "classpath:keys/test-public.pem"),
                 new AuthProperties.EmailVerification(false, null, null, null),
