@@ -12,9 +12,11 @@ import java.util.List;
 @Component
 public class SourceMediaUrlResolver {
     private final ObjectStorage objectStorage;
+    private final SourceMediaTokenService tokenService;
 
-    public SourceMediaUrlResolver(ObjectStorage objectStorage) {
+    public SourceMediaUrlResolver(ObjectStorage objectStorage, SourceMediaTokenService tokenService) {
         this.objectStorage = objectStorage;
+        this.tokenService = tokenService;
     }
 
     public String normalizeForStorage(String imageReference) {
@@ -43,12 +45,12 @@ public class SourceMediaUrlResolver {
         return new PublicQuestionResponse(
                 response.id(),
                 response.questionText(),
-                objectStorage.resolvePublicUrl(response.questionImageUrl()),
-                resolveImageUrls(response.questionImageUrls()),
+                tokenService.generateSignedUrl(response.questionImageUrl()),
+                resolveSignedImageUrls(response.questionImageUrls()),
                 response.explanation(),
                 response.multipleCorrect(),
                 response.sortOrder(),
-                resolvePublicOptions(response.options()));
+                resolveSignedPublicOptions(response.options()));
     }
 
     private List<AdminQuestionOptionResponse> resolveAdminOptions(List<AdminQuestionOptionResponse> options) {
@@ -72,12 +74,31 @@ public class SourceMediaUrlResolver {
                 .toList();
     }
 
+    private List<PublicQuestionOptionResponse> resolveSignedPublicOptions(List<PublicQuestionOptionResponse> options) {
+        return options.stream()
+                .map(option -> new PublicQuestionOptionResponse(
+                        option.id(),
+                        option.optionText(),
+                        tokenService.generateSignedUrl(option.optionImageUrl()),
+                        option.isCorrect()))
+                .toList();
+    }
+
     private List<String> resolveImageUrls(List<String> imageUrls) {
         if (imageUrls == null || imageUrls.isEmpty()) {
             return List.of();
         }
         return imageUrls.stream()
                 .map(objectStorage::resolvePublicUrl)
+                .toList();
+    }
+
+    private List<String> resolveSignedImageUrls(List<String> imageUrls) {
+        if (imageUrls == null || imageUrls.isEmpty()) {
+            return List.of();
+        }
+        return imageUrls.stream()
+                .map(tokenService::generateSignedUrl)
                 .toList();
     }
 }
