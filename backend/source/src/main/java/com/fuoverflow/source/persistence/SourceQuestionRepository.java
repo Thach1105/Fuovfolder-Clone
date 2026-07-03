@@ -20,6 +20,7 @@ public interface SourceQuestionRepository extends JpaRepository<SourceQuestionEn
     @Query("SELECT q.catalogItemId FROM SourceQuestionEntity q WHERE q.questionImageUrl = :key AND q.deletedAt IS NULL")
     Optional<UUID> findCatalogItemIdByQuestionImageUrl(@Param("key") String key);
 
-    @Query("SELECT q.catalogItemId FROM SourceQuestionEntity q WHERE q.deletedAt IS NULL AND q.questionImageUrls LIKE CONCAT('%', :key, '%')")
+    @Query(value = "SELECT q.catalog_item_id FROM source_questions q WHERE q.deleted_at IS NULL AND CAST(q.question_image_urls AS text) LIKE '%' || :key || '%'",
+            nativeQuery = true)
     Optional<UUID> findCatalogItemIdByQuestionImageUrlsContaining(@Param("key") String key);
 }

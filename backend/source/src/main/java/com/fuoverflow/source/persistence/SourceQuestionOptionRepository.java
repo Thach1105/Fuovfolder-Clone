@@ -13,10 +13,11 @@ public interface SourceQuestionOptionRepository extends JpaRepository<SourceQues
 
     void deleteByQuestionId(UUID questionId);
 
-    @Query("""
-            SELECT q.catalogItemId FROM SourceQuestionEntity q
-            JOIN SourceQuestionOptionEntity o ON o.questionId = q.id
-            WHERE o.optionImageUrl = :key AND q.deletedAt IS NULL
-            """)
+    @Query(value = """
+            SELECT q.catalog_item_id FROM source_questions q
+            JOIN source_question_options o ON o.question_id = q.id
+            WHERE o.option_image_url = :key AND q.deleted_at IS NULL
+            LIMIT 1
+            """, nativeQuery = true)
     Optional<UUID> findCatalogItemIdByOptionImageUrl(@Param("key") String key);
 }
