@@ -415,7 +415,7 @@ export default function AdminSourceCatalogPage() {
                     <TableHead>Giá</TableHead>
                     <TableHead>Hạn</TableHead>
                     <TableHead>Trạng thái</TableHead>
-                    <TableHead className="text-right">Hành động</TableHead>
+                    <TableHead className="w-[120px] text-right">Hành động</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -434,40 +434,42 @@ export default function AdminSourceCatalogPage() {
                         {item.active ? "Đang bán" : "Ẩn"}
                         {item.featured && " · ★"}
                       </TableCell>
-                      <TableCell className="space-x-2 text-right">
-                        <Link
-                          href={`/source/catalog/${item.id}/questions`}
-                          className="text-sm text-emerald-500 hover:underline"
-                        >
-                          Câu hỏi
-                        </Link>
-                        {canWrite && (
-                          <button
-                            type="button"
-                            className="text-sm text-sky-500 hover:underline"
-                            onClick={() => openRelated(item)}
+                      <TableCell className="text-right align-top">
+                        <div className="flex flex-wrap justify-end gap-x-3 gap-y-1">
+                          <Link
+                            href={`/source/catalog/${item.id}/questions`}
+                            className="text-sm text-emerald-500 hover:underline"
                           >
-                            Liên quan
-                          </button>
-                        )}
-                        {canWrite && (
-                          <button
-                            type="button"
-                            className="text-sm text-primary hover:underline"
-                            onClick={() => startEdit(item)}
-                          >
-                            Sửa
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
-                            className="text-sm text-destructive hover:underline"
-                            onClick={() => setDeleteId(item.id)}
-                          >
-                            Xóa
-                          </button>
-                        )}
+                            Câu hỏi
+                          </Link>
+                          {canWrite && (
+                            <button
+                              type="button"
+                              className="text-sm text-sky-500 hover:underline"
+                              onClick={() => openRelated(item)}
+                            >
+                              Liên quan
+                            </button>
+                          )}
+                          {canWrite && (
+                            <button
+                              type="button"
+                              className="text-sm text-primary hover:underline"
+                              onClick={() => startEdit(item)}
+                            >
+                              Sửa
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              className="text-sm text-destructive hover:underline"
+                              onClick={() => setDeleteId(item.id)}
+                            >
+                              Xóa
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
