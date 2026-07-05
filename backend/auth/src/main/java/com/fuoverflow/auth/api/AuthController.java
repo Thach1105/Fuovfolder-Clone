@@ -6,9 +6,12 @@ import com.fuoverflow.auth.application.CompletePendingProfileService;
 import com.fuoverflow.auth.application.CookieService;
 import com.fuoverflow.auth.application.EmailVerificationService;
 import com.fuoverflow.auth.application.PasswordResetService;
+import com.fuoverflow.auth.application.SessionManagementService;
 import com.fuoverflow.auth.application.SetPasswordService;
 import com.fuoverflow.auth.config.AuthProperties;
 import com.fuoverflow.auth.domain.ClientContext;
+import com.fuoverflow.auth.persistence.UserSessionEntity;
+import com.fuoverflow.auth.persistence.UserSessionRepository;
 import com.fuoverflow.auth.support.EmailVerificationLinks;
 import com.fuoverflow.auth.support.PasswordResetLinks;
 import com.fuoverflow.common.config.CorsProperties;
@@ -39,6 +42,8 @@ public class AuthController {
     private final CookieService cookieService;
     private final AuthProperties authProperties;
     private final CorsProperties corsProperties;
+    private final SessionManagementService sessionManagementService;
+    private final UserSessionRepository sessionRepository;
 
     public AuthController(
             AuthService authService,
@@ -48,7 +53,9 @@ public class AuthController {
             SetPasswordService setPasswordService,
             CookieService cookieService,
             AuthProperties authProperties,
-            CorsProperties corsProperties) {
+            CorsProperties corsProperties,
+            SessionManagementService sessionManagementService,
+            UserSessionRepository sessionRepository) {
         this.authService = authService;
         this.completePendingProfileService = completePendingProfileService;
         this.emailVerificationService = emailVerificationService;
@@ -57,6 +64,8 @@ public class AuthController {
         this.cookieService = cookieService;
         this.authProperties = authProperties;
         this.corsProperties = corsProperties;
+        this.sessionManagementService = sessionManagementService;
+        this.sessionRepository = sessionRepository;
     }
 
     @PostMapping("/register")
@@ -163,6 +172,44 @@ public class AuthController {
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(refreshToken(request));
         cookieService.clearTokenCookies(response);
+    }
+
+    @GetMapping("/sessions")
+    public ApiResponse<SessionListResponse> listSessions(Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
+        UUID familyId = currentFamilyId(authentication);
+        return ApiResponse.ok(sessionManagementService.listSessions(userId, familyId));
+    }
+
+    @DeleteMapping("/sessions/{familyId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revokeSession(@PathVariable UUID familyId, Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
+        UUID currentFamily = currentFamilyId(authentication);
+        sessionManagementService.revokeSession(userId, familyId, currentFamily);
+    }
+
+    @DeleteMapping("/sessions")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revokeOtherSessions(Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
+        UUID currentFamily = currentFamilyId(authentication);
+        sessionManagementService.revokeOtherSessions(userId, currentFamily);
+    }
+
+    private UUID currentFamilyId(Authentication authentication) {
+        if (authentication instanceof JwtAuthenticationToken jwt) {
+            String sid = jwt.getToken().getClaimAsString("sid");
+            if (sid != null) {
+                try {
+                    UUID sessionId = UUID.fromString(sid);
+                    return sessionRepository.findByIdAndRevokedAtIsNull(sessionId)
+                            .map(UserSessionEntity::getRefreshTokenFamilyId)
+                            .orElse(null);
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+        return null;
     }
 
     private ClientContext context(HttpServletRequest request) {
