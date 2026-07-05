@@ -13,11 +13,11 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity,U
  @Query("select s.refreshTokenFamilyId from UserSessionEntity s where s.userId=:userId and s.revokedAt is null and s.refreshExpiresAt>:now group by s.refreshTokenFamilyId order by min(s.issuedAt) asc")
  List<UUID> findActiveFamilyIdsOrderedByAge(UUID userId, Instant now);
  @Modifying @Query("update UserSessionEntity s set s.revokedAt=:now, s.revokedReason=:reason where s.userId=:userId and s.revokedAt is null")
- int revokeAllByUserId(UUID userId,String reason,Instant now);
+ int revokeAllByUserId(@Param("userId") UUID userId, @Param("reason") String reason, @Param("now") Instant now);
  @Modifying @Query("update UserSessionEntity s set s.revokedAt=:now, s.revokedReason=:reason where s.refreshTokenFamilyId=:familyId and s.revokedAt is null")
- int revokeFamily(UUID familyId,String reason,Instant now);
+ int revokeFamily(@Param("familyId") UUID familyId, @Param("reason") String reason, @Param("now") Instant now);
  @Modifying @Query("update UserSessionEntity s set s.revokedAt = :now, s.revokedReason = :reason where s.userId = :userId and s.id != :excludeSessionId and s.revokedAt is null")
- int revokeAllExcept(UUID userId, UUID excludeSessionId, String reason, Instant now);
+ int revokeAllExcept(@Param("userId") UUID userId, @Param("excludeSessionId") UUID excludeSessionId, @Param("reason") String reason, @Param("now") Instant now);
  @Query("""
      SELECT s FROM UserSessionEntity s
      WHERE s.userId = :userId AND s.revokedAt IS NULL AND s.refreshExpiresAt > :now
