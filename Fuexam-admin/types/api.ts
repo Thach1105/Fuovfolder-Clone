@@ -278,3 +278,19 @@ export interface PaymentAnalyticsResponse {
   revenueByTier: { tierLabel: string; count: number; totalRevenue: number }[];
   topUsers: { userId: string; username: string | null; totalDeposited: number; transactionCount: number }[];
 }
+
+export interface SessionResponse {
+  id: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  deviceLabel: string;
+  issuedAt: string;
+  lastUsedAt: string | null;
+  current: boolean;
+}
+
+export interface SessionListResponse {
+  sessions: SessionResponse[];
+  maxDevices: number;
+  deviceLimitSource: "GLOBAL" | "CUSTOM" | "UNLIMITED";
+}

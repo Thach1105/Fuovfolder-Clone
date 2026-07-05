@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api/client";
+import * as adminApi from "@/lib/api/admin";
 import * as rbacApi from "@/lib/api/rbac";
 import { adjustUserPoints } from "@/lib/api/points";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -34,6 +35,7 @@ import type {
   EffectivePermissions,
   PermissionCatalogResponse,
   RoleSummaryResponse,
+  SessionListResponse,
 } from "@/types/api";
 
 interface OverrideDraft {
@@ -51,6 +53,8 @@ export default function AdminUserPermissionsPage() {
   const canAdjustPoints = can(user, "points.admin:update");
   const canReadOverrides = can(user, "rbac.user_override:read");
   const canEditOverrides = can(user, "rbac.user_override:update");
+  const canUpdateUser = can(user, "admin.user:update");
+  const canReadUser = can(user, "admin.user:read");
 
   const [rolesCatalog, setRolesCatalog] = useState<RoleSummaryResponse[]>([]);
   const [assignedRoles, setAssignedRoles] = useState<string[]>([]);
@@ -69,6 +73,14 @@ export default function AdminUserPermissionsPage() {
   const [delta, setDelta] = useState("");
   const [reason, setReason] = useState("");
   const [adjusting, setAdjusting] = useState(false);
+
+  const [sessions, setSessions] = useState<SessionListResponse | null>(null);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [deviceLimitMode, setDeviceLimitMode] = useState<"global" | "unlimited" | "custom">("global");
+  const [customLimit, setCustomLimit] = useState("");
+  const [savingLimit, setSavingLimit] = useState(false);
+  const [revokingSession, setRevokingSession] = useState<string | null>(null);
+  const [revokingAll, setRevokingAll] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,6 +113,31 @@ export default function AdminUserPermissionsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const loadSessions = useCallback(async () => {
+    if (!canReadUser) return;
+    setSessionsLoading(true);
+    try {
+      const data = await adminApi.getUserSessions(userId);
+      setSessions(data);
+      if (data.deviceLimitSource === "UNLIMITED") {
+        setDeviceLimitMode("unlimited");
+      } else if (data.deviceLimitSource === "CUSTOM") {
+        setDeviceLimitMode("custom");
+        setCustomLimit(String(data.maxDevices));
+      } else {
+        setDeviceLimitMode("global");
+      }
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Không tải được phiên đăng nhập.");
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, [userId, canReadUser]);
+
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
 
   const allPermissionSlugs = permCatalog
     ? Object.values(permCatalog.modules).flat().map((p) => p.slug)
@@ -200,6 +237,48 @@ export default function AdminUserPermissionsPage() {
       toast.error(err instanceof ApiError ? err.message : "Không điều chỉnh được điểm.");
     } finally {
       setAdjusting(false);
+    }
+  };
+
+  const saveDeviceLimit = async () => {
+    setSavingLimit(true);
+    try {
+      let maxDevices: number | null = null;
+      if (deviceLimitMode === "unlimited") maxDevices = 0;
+      else if (deviceLimitMode === "custom") maxDevices = Number(customLimit);
+      await adminApi.setUserDeviceLimit(userId, maxDevices);
+      toast.success("Đã cập nhật giới hạn thiết bị.");
+      loadSessions();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Không lưu được giới hạn.");
+    } finally {
+      setSavingLimit(false);
+    }
+  };
+
+  const handleRevokeSession = async (familyId: string) => {
+    setRevokingSession(familyId);
+    try {
+      await adminApi.revokeUserSession(userId, familyId);
+      toast.success("Đã đăng xuất phiên.");
+      loadSessions();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Không đăng xuất được.");
+    } finally {
+      setRevokingSession(null);
+    }
+  };
+
+  const handleRevokeAll = async () => {
+    setRevokingAll(true);
+    try {
+      await adminApi.revokeAllUserSessions(userId);
+      toast.success("Đã đăng xuất tất cả phiên.");
+      loadSessions();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Không đăng xuất được.");
+    } finally {
+      setRevokingAll(false);
     }
   };
 
@@ -381,6 +460,81 @@ export default function AdminUserPermissionsPage() {
                   {savingOverrides ? "Đang lưu..." : "Lưu override"}
                 </Button>
               </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {!loading && canReadUser && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-base">Giới hạn thiết bị</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-1">
+                <Label>Chế độ</Label>
+                <Select value={deviceLimitMode} onValueChange={(v) => setDeviceLimitMode(v as "global" | "unlimited" | "custom")} disabled={!canUpdateUser}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="global">Mặc định hệ thống ({sessions?.deviceLimitSource === "GLOBAL" ? sessions.maxDevices : "2"})</SelectItem>
+                    <SelectItem value="unlimited">Không giới hạn</SelectItem>
+                    <SelectItem value="custom">Tùy chỉnh</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {deviceLimitMode === "custom" && (
+                <div className="space-y-1">
+                  <Label>Số thiết bị tối đa</Label>
+                  <Input type="number" min={1} max={100} className="w-[100px]" value={customLimit} onChange={(e) => setCustomLimit(e.target.value)} disabled={!canUpdateUser} />
+                </div>
+              )}
+              {canUpdateUser && (
+                <Button onClick={saveDeviceLimit} disabled={savingLimit}>
+                  {savingLimit ? "Đang lưu..." : "Lưu"}
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!loading && canReadUser && (
+        <Card className="mt-6">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Phiên đăng nhập ({sessions?.sessions.length ?? 0})</CardTitle>
+            {canUpdateUser && sessions && sessions.sessions.length > 0 && (
+              <Button variant="destructive" size="sm" onClick={handleRevokeAll} disabled={revokingAll}>
+                {revokingAll ? "Đang xử lý..." : "Đăng xuất tất cả"}
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {sessionsLoading && <p className="text-sm text-muted-foreground">Đang tải...</p>}
+            {!sessionsLoading && sessions && sessions.sessions.length === 0 && (
+              <p className="text-sm text-muted-foreground">Không có phiên đăng nhập nào.</p>
+            )}
+            {!sessionsLoading && sessions && sessions.sessions.length > 0 && (
+              <div className="space-y-2">
+                {sessions.sessions.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                    <div>
+                      <p className="text-sm font-medium">{s.deviceLabel}</p>
+                      <p className="text-xs text-muted-foreground">
+                        IP: {s.ipAddress ?? "—"} · {new Date(s.issuedAt).toLocaleString("vi-VN")}
+                        {s.lastUsedAt && ` · Hoạt động: ${new Date(s.lastUsedAt).toLocaleString("vi-VN")}`}
+                      </p>
+                    </div>
+                    {canUpdateUser && (
+                      <Button variant="outline" size="sm" onClick={() => handleRevokeSession(s.id)} disabled={revokingSession === s.id}>
+                        {revokingSession === s.id ? "..." : "Đăng xuất"}
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
