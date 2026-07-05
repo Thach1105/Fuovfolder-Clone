@@ -23,6 +23,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
@@ -182,19 +183,19 @@ public class AuthController {
     }
 
     @DeleteMapping("/sessions/{familyId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void revokeSession(@PathVariable UUID familyId, Authentication authentication) {
+    public ResponseEntity<Void> revokeSession(@PathVariable UUID familyId, Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         UUID currentFamily = currentFamilyId(authentication);
         sessionManagementService.revokeSession(userId, familyId, currentFamily);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/sessions")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void revokeOtherSessions(Authentication authentication) {
+    public ResponseEntity<Void> revokeOtherSessions(Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         UUID currentFamily = currentFamilyId(authentication);
         sessionManagementService.revokeOtherSessions(userId, currentFamily);
+        return ResponseEntity.noContent().build();
     }
 
     private UUID currentFamilyId(Authentication authentication) {

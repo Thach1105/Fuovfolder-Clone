@@ -9,7 +9,7 @@ import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.user.persistence.UserEntity;
 import com.fuoverflow.user.persistence.UserRepository;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -35,16 +35,16 @@ public class AdminSessionController {
 
     @DeleteMapping("/sessions/{familyId}")
     @RequirePermission("admin.user:update")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void revokeSession(@PathVariable UUID userId, @PathVariable UUID familyId) {
+    public ResponseEntity<Void> revokeSession(@PathVariable UUID userId, @PathVariable UUID familyId) {
         sessionManagement.adminRevokeSession(familyId);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/sessions")
     @RequirePermission("admin.user:update")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void revokeAllSessions(@PathVariable UUID userId) {
+    public ResponseEntity<Void> revokeAllSessions(@PathVariable UUID userId) {
         sessionManagement.adminRevokeAllSessions(userId);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/device-limit")
