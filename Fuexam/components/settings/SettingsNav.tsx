@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const tabs = [
   { href: "/settings/profile", label: "Hồ sơ" },
   { href: "/settings/security", label: "Bảo mật" },
+  { href: "/settings/devices", label: "Thiết bị" },
   { href: "/settings/notifications", label: "Thông báo" },
 ];
 
