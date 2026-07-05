@@ -226,3 +226,19 @@ export interface MembershipStatusResponse {
   expiresAt: string | null;
   active: boolean;
 }
+
+export interface SessionResponse {
+  id: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  deviceLabel: string;
+  issuedAt: string;
+  lastUsedAt: string | null;
+  current: boolean;
+}
+
+export interface SessionListResponse {
+  sessions: SessionResponse[];
+  maxDevices: number;
+  deviceLimitSource: "GLOBAL" | "CUSTOM" | "UNLIMITED";
+}

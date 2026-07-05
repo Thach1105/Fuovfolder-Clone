@@ -8,6 +8,7 @@ import type {
   LoginRequest,
   RegisterRequest,
   RegisterResponse,
+  SessionListResponse,
   UserProfileResponse,
 } from "@/types/api";
 
@@ -89,4 +90,18 @@ export function setPassword(token: string, password: string) {
     method: "POST",
     body: JSON.stringify({ token, password }),
   });
+}
+
+export function getActiveSessions() {
+  return apiFetch<SessionListResponse>(`${API_V1}/auth/sessions`);
+}
+
+export function revokeSession(familyId: string) {
+  return apiFetch<void>(`${API_V1}/auth/sessions/${familyId}`, {
+    method: "DELETE",
+  });
+}
+
+export function revokeOtherSessions() {
+  return apiFetch<void>(`${API_V1}/auth/sessions`, { method: "DELETE" });
 }
