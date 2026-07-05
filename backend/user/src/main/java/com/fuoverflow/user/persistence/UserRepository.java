@@ -43,4 +43,7 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
               AND u.emailVerifiedAt IS NOT NULL
             """)
     List<UserEmailProjection> findEmailEligibleByIds(@Param("userIds") Collection<UUID> userIds);
+
+    @Query("SELECT u.maxDevices FROM UserEntity u WHERE u.id = :userId AND u.deletedAt IS NULL")
+    Optional<Short> findMaxDevicesById(@Param("userId") UUID userId);
 }

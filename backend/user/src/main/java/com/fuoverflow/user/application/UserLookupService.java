@@ -42,4 +42,9 @@ public class UserLookupService {
     public Optional<AuthUserView> findAuthUserById(UUID userId) {
         return repository.findById(userId).filter(u -> u.getDeletedAt() == null).map(mapper::toAuthUser);
     }
+
+    @Transactional(readOnly = true)
+    public Short getMaxDevices(UUID userId) {
+        return repository.findMaxDevicesById(userId).orElse(null);
+    }
 }

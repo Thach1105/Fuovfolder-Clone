@@ -84,6 +84,9 @@ public class UserEntity {
     @Column(name = "lock_version", nullable = false)
     private int lockVersion;
 
+    @Column(name = "max_devices")
+    private Short maxDevices;
+
     public static UserEntity pending(UUID id, String email, String normalizedEmail, String username, String usernameNormalized,
                                      String passwordHash, String displayName, String campus, Instant now) {
         UserEntity entity = new UserEntity();
@@ -183,6 +186,8 @@ public class UserEntity {
     public Instant getPasswordChangedAt() { return passwordChangedAt; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getDeletedAt() { return deletedAt; }
+    public Short getMaxDevices() { return maxDevices; }
+    public void setMaxDevices(Short maxDevices) { this.maxDevices = maxDevices; }
 
     public void markEmailVerified(Instant at) {
         this.emailVerifiedAt = at;
