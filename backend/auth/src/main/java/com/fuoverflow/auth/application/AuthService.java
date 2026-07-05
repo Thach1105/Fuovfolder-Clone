@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -29,10 +28,12 @@ public class AuthService {
     private final EmailVerificationService emailVerification;
     private final VerificationEmailSender verificationEmailSender;
     private final AuthProperties authProperties;
+    private final DeviceLimitEnforcer deviceLimitEnforcer;
 
     public AuthService(UserRegistrationService registrations, UserLookupService users, PasswordService passwords,
                        JwtService jwt, UserSessionRepository sessions, EmailVerificationService emailVerification,
-                       VerificationEmailSender verificationEmailSender, AuthProperties authProperties) {
+                       VerificationEmailSender verificationEmailSender, AuthProperties authProperties,
+                       DeviceLimitEnforcer deviceLimitEnforcer) {
         this.registrations = registrations;
         this.users = users;
         this.passwords = passwords;
@@ -41,6 +42,7 @@ public class AuthService {
         this.emailVerification = emailVerification;
         this.verificationEmailSender = verificationEmailSender;
         this.authProperties = authProperties;
+        this.deviceLimitEnforcer = deviceLimitEnforcer;
     }
 
     @Transactional
@@ -137,27 +139,13 @@ public class AuthService {
 
     private AuthTokenBundle createSession(AuthUserView user, ClientContext context) {
         Instant now = Instant.now();
-        enforceDeviceLimit(user.id(), now);
+        deviceLimitEnforcer.enforce(user.id(), now);
         UUID sessionId = UUID.randomUUID();
         TokenPair pair = jwt.generate(user, sessionId, now);
         sessions.save(UserSessionEntity.create(sessionId, user.id(), pair.refreshTokenHash(), sessionId,
                 pair.refreshTokenJti(), pair.accessTokenJti(), pair.issuedAt(), pair.accessExpiresAt(),
                 pair.refreshExpiresAt(), context.ipAddress(), context.userAgent()));
         return bundle(pair, user);
-    }
-
-    // Giới hạn số thiết bị đăng nhập đồng thời. Mỗi thiết bị = 1 refresh-token family.
-    // Khi vượt ngưỡng, thu hồi các family cũ nhất để dành chỗ cho phiên mới.
-    private void enforceDeviceLimit(UUID userId, Instant now) {
-        int maxDevices = authProperties.maxDevices();
-        if (maxDevices <= 0) {
-            return;
-        }
-        List<UUID> activeFamilies = sessions.findActiveFamilyIdsOrderedByAge(userId, now);
-        int toRevoke = activeFamilies.size() - (maxDevices - 1);
-        for (int i = 0; i < toRevoke; i++) {
-            sessions.revokeFamily(activeFamilies.get(i), "DEVICE_LIMIT_EXCEEDED", now);
-        }
     }
 
     private AuthTokenBundle bundle(TokenPair pair, AuthUserView user) {

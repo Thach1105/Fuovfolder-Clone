@@ -23,13 +23,16 @@ public class OAuthSessionIssuer {
     private final JwtService jwt;
     private final UserSessionRepository sessions;
     private final CookieService cookies;
+    private final DeviceLimitEnforcer deviceLimitEnforcer;
 
     public OAuthSessionIssuer(UserLookupService users, JwtService jwt,
-                              UserSessionRepository sessions, CookieService cookies) {
+                              UserSessionRepository sessions, CookieService cookies,
+                              DeviceLimitEnforcer deviceLimitEnforcer) {
         this.users = users;
         this.jwt = jwt;
         this.sessions = sessions;
         this.cookies = cookies;
+        this.deviceLimitEnforcer = deviceLimitEnforcer;
     }
 
     @Transactional
@@ -42,6 +45,7 @@ public class OAuthSessionIssuer {
         }
 
         Instant now = Instant.now();
+        deviceLimitEnforcer.enforce(userId, now);
         UUID sessionId = UUID.randomUUID();
         TokenPair pair = jwt.generate(user, sessionId, now);
 

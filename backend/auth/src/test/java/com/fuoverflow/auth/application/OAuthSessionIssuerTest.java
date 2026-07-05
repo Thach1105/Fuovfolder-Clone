@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,12 +29,13 @@ class OAuthSessionIssuerTest {
     @Mock private JwtService jwt;
     @Mock private UserSessionRepository sessions;
     @Mock private CookieService cookies;
+    @Mock private DeviceLimitEnforcer deviceLimitEnforcer;
 
     private OAuthSessionIssuer issuer;
 
     @BeforeEach
     void setUp() {
-        issuer = new OAuthSessionIssuer(users, jwt, sessions, cookies);
+        issuer = new OAuthSessionIssuer(users, jwt, sessions, cookies, deviceLimitEnforcer);
     }
 
     @Test
@@ -136,5 +138,26 @@ class OAuthSessionIssuerTest {
                     assertThat(ex.code()).isEqualTo("USER_DISABLED");
                     assertThat(ex.getMessage()).contains("User cannot authenticate");
                 });
+    }
+
+    @Test
+    void issue_activeUser_enforcesDeviceLimit() {
+        UUID userId = UUID.randomUUID();
+        Instant now = Instant.now();
+        AuthUserView user = new AuthUserView(
+                userId, "user@example.com", "username", "hash", "Display Name",
+                UserStatus.ACTIVE, List.of("USER"), 1L, List.of(), false, true, now, now, null
+        );
+        when(users.findAuthUserById(userId)).thenReturn(Optional.of(user));
+
+        TokenPair pair = new TokenPair("access", "refresh", "refreshHash",
+                UUID.randomUUID(), UUID.randomUUID(), now,
+                now.plusSeconds(600), now.plusSeconds(2592000));
+        when(jwt.generate(any(), any(), any())).thenReturn(pair);
+
+        ClientContext context = new ClientContext("127.0.0.1", "Test Agent");
+        issuer.issue(userId, context);
+
+        verify(deviceLimitEnforcer).enforce(eq(userId), any(Instant.class));
     }
 }
