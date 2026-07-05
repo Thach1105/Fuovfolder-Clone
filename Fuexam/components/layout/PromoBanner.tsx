@@ -3,7 +3,7 @@ export function PromoBanner() {
     <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-ink-200 bg-gradient-to-r from-fuo-50 to-ink-50 px-4 py-3 text-sm text-ink-700">
       <span className="font-medium text-ink-900">Tham gia cộng đồng Facebook:</span>
       <a
-        href="https://www.facebook.com/groups/nvh2fuexam"
+        href="https://www.facebook.com/groups/976684067613564"
         target="_blank"
         rel="noopener noreferrer"
         className="font-medium text-fuo-700 underline-offset-2 hover:underline"
