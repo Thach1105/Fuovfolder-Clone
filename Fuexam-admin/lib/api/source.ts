@@ -299,8 +299,7 @@ const STORAGE_PUBLIC_BASE = process.env.NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL ?? "
 export function sourceMediaUrl(urlOrKey: string | null | undefined): string | null {
   if (!urlOrKey) return null;
   if (urlOrKey.startsWith("http://") || urlOrKey.startsWith("https://")) return urlOrKey;
-  // Files served by the backend (/uploads/*) go through the same-origin proxy by default.
-  if (urlOrKey.startsWith("/uploads/")) return `${API_BASE}${urlOrKey}`;
+  if (urlOrKey.startsWith("/api/") || urlOrKey.startsWith("/uploads/")) return `${API_BASE}${urlOrKey}`;
   if (STORAGE_PUBLIC_BASE) {
     return `${STORAGE_PUBLIC_BASE.replace(/\/$/, "")}/${urlOrKey.replace(/^\//, "")}`;
   }
