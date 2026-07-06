@@ -38,6 +38,7 @@ export default function SuocDetailPage() {
   const code = params.code;
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const userId = user?.id;
 
   const [detail, setDetail] = useState<SourceCatalogDetail | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
@@ -54,12 +55,12 @@ export default function SuocDetailPage() {
   const [applyingVoucher, setApplyingVoucher] = useState(false);
 
   const refreshBalance = useCallback(() => {
-    if (!user) {
+    if (!userId) {
       setBalance(null);
       return;
     }
     getPointsBalance().then((r) => setBalance(r.balance)).catch(() => setBalance(null));
-  }, [user]);
+  }, [userId]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,7 +78,7 @@ export default function SuocDetailPage() {
   useEffect(() => { refreshBalance(); }, [refreshBalance]);
 
   useEffect(() => {
-    if (!detail?.hasActiveAccess || !user) {
+    if (!detail?.hasActiveAccess || !userId) {
       setQuestions([]);
       return;
     }
@@ -86,7 +87,7 @@ export default function SuocDetailPage() {
       .then(setQuestions)
       .catch(() => setQuestions([]))
       .finally(() => setQuestionsLoading(false));
-  }, [detail?.hasActiveAccess, user, code]);
+  }, [detail?.hasActiveAccess, userId, code]);
 
   function resetVoucherState() {
     setVoucherCode("");
