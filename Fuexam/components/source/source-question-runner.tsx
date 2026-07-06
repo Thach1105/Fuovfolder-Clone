@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import type { PublicQuestion } from "@/lib/api/source";
 import { sourceMediaUrl } from "@/lib/api/source";
 import { Lightbox } from "@/components/exam/Lightbox";
+import { ImageWithWatermark } from "@/components/shared/image-with-watermark";
 
 type Props = { questions: PublicQuestion[]; navPortalId?: string };
 type AnswerState = { selected: Set<string>; checked: boolean; correct: boolean };
@@ -302,8 +303,7 @@ export function SourceQuestionRunner({ questions, navPortalId }: Props) {
                     className="group relative overflow-hidden rounded-xl border border-foreground/10"
                     aria-label="Xem ảnh lớn"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt="" loading="lazy" className="max-h-64 w-full object-cover transition-transform group-hover:scale-[1.02]" />
+                    <ImageWithWatermark src={url} alt="" loading="lazy" className="max-h-64 w-full object-cover transition-transform group-hover:scale-[1.02]" />
                     <span className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
                   </button>
                 ))}
@@ -343,8 +343,7 @@ export function SourceQuestionRunner({ questions, navPortalId }: Props) {
                     <span className="flex-1 space-y-2">
                       {option.optionText && <span>{option.optionText}</span>}
                       {optionImage && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={optionImage} alt="" loading="lazy" className="max-h-32 rounded-lg border border-foreground/10" />
+                        <ImageWithWatermark src={optionImage} alt="" loading="lazy" className="max-h-32 rounded-lg border border-foreground/10" />
                       )}
                     </span>
                     {checked && isCorrect && <span className="text-emerald-700">✓</span>}

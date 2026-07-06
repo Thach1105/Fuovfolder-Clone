@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { ImageWithWatermark } from "@/components/shared/image-with-watermark";
 
 type Props = {
   images: string[];
@@ -63,8 +64,7 @@ export function Lightbox({ images, currentIndex, onClose, onNavigate }: Props) {
       )}
 
       <div className="relative max-h-[90vh] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <ImageWithWatermark
           src={images[currentIndex]}
           alt={`Anh ${currentIndex + 1}`}
           className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
