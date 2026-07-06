@@ -22,16 +22,29 @@
                             Hi <span th:text="${displayName}">Fuexam user</span>,
                         </p>
                         <p style="margin:0 0 20px;font-size:16px;line-height:24px;">
-                            Please verify your email address to activate your Fuexam account.
+                            Your verification code is:
+                        </p>
+                        <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 24px;">
+                            <tr>
+                                <td style="background:#f0f4ff;border:2px solid #2563eb;border-radius:12px;padding:16px 32px;">
+                                    <span th:text="${verificationCode}" style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#1e40af;font-family:'Courier New',monospace;">123456</span>
+                                </td>
+                            </tr>
+                        </table>
+                        <p style="margin:0 0 20px;font-size:16px;line-height:24px;">
+                            Enter this code on the verification page to activate your account.
+                        </p>
+                        <p style="margin:0 0 8px;font-size:14px;line-height:22px;color:#6b7280;">
+                            Or click the button below:
                         </p>
                         <p style="margin:0 0 24px;">
                             <a th:href="${verificationLink}" href="http://localhost:3000/verify-email"
-                               style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px;font-size:16px;">
-                                Verify email
+                               style="display:inline-block;background:#6b7280;color:#ffffff;text-decoration:none;font-weight:bold;padding:10px 16px;border-radius:8px;font-size:14px;">
+                                Verify via link
                             </a>
                         </p>
                         <p style="margin:0;font-size:14px;line-height:22px;color:#6b7280;">
-                            This token expires in <span th:text="${expiresIn}">24 hours</span>.
+                            This code expires in <span th:text="${expiresIn}">10 minutes</span>.
                             If you did not create this account, ignore this email.
                         </p>
                     </td>

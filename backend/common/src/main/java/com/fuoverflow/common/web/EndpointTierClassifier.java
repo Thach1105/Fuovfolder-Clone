@@ -15,7 +15,9 @@ public final class EndpointTierClassifier {
             "/api/v1/auth/password/forgot",
             "/api/v1/auth/password/reset",
             "/api/v1/auth/password/set",
-            "/api/v1/auth/email/resend"
+            "/api/v1/auth/email/resend",
+            "/api/v1/auth/email/verify",
+            "/api/v1/auth/email/verify-code"
     );
 
     private static final List<String> PUBLIC_PATH_PREFIXES = List.of(

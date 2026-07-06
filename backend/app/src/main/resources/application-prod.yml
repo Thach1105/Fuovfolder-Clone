@@ -28,6 +28,9 @@ auth:
     from: ${MAIL_FROM:${spring.mail.username:}}
     verification-url-base: ${AUTH_EMAIL_VERIFICATION_URL_BASE:http://localhost:3000/verify-email}
     subject: ${AUTH_EMAIL_VERIFICATION_SUBJECT:Verify your Fuexam email}
+    code-ttl: ${AUTH_EMAIL_VERIFICATION_CODE_TTL:10m}
+    code-length: ${AUTH_EMAIL_VERIFICATION_CODE_LENGTH:6}
+    max-attempts: ${AUTH_EMAIL_VERIFICATION_MAX_ATTEMPTS:5}
   password-reset:
     enabled: ${AUTH_PASSWORD_RESET_ENABLED:true}
     from: ${MAIL_FROM:${spring.mail.username:}}

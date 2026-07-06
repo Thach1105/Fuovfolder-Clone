@@ -98,6 +98,11 @@ public class AuthController {
         return ApiResponse.ok(authService.userResponse(emailVerificationService.verify(request.token())));
     }
 
+    @PostMapping("/email/verify-code")
+    public ApiResponse<AuthenticatedUserResponse> verifyEmailCode(@Valid @RequestBody VerifyEmailCodeRequest request) {
+        return ApiResponse.ok(authService.userResponse(emailVerificationService.verifyCode(request.email(), request.code())));
+    }
+
     @PostMapping("/email/resend")
     public ApiResponse<Void> resendVerificationEmail(@Valid @RequestBody ResendVerificationRequest request) {
         emailVerificationService.resend(request.email());

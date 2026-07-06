@@ -50,8 +50,8 @@ public class AuthService {
         String passwordHash = passwords.encode(request.password());
         AuthUserView user = registrations.register(new RegisterUserCommand(
                 request.email(), request.username(), passwordHash, request.displayName(), request.campus()));
-        String verificationToken = emailVerification.create(user.id());
-        verificationEmailSender.send(user.email(), user.displayName(), verificationToken);
+        EmailVerificationService.CreateVerificationResult verification = emailVerification.create(user.id());
+        verificationEmailSender.send(user.email(), user.displayName(), verification.token(), verification.code());
         return new RegisterResponse(user.id(), user.email(), user.username(), user.displayName(),
                 user.status(), user.emailVerified());
     }

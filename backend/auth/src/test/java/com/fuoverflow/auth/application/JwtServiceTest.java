@@ -28,7 +28,7 @@ class JwtServiceTest {
                 2, "test-pepper",
                 new AuthProperties.Cookie(false, "Lax", "fuoverflow_at", "fuoverflow_rt"),
                 new AuthProperties.Jwt("test-key", "classpath:keys/test-private.pem", "classpath:keys/test-public.pem"),
-                new AuthProperties.EmailVerification(false, null, null, null),
+                new AuthProperties.EmailVerification(false, null, null, null, null, 0, 0),
                 new AuthProperties.PasswordReset(false, null, null, null, Duration.ofHours(1)));
         jwtService = new JwtService(props, new TokenGenerator(), new TokenHashing(props), new DefaultResourceLoader());
     }

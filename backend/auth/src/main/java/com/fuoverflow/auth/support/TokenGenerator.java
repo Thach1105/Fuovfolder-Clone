@@ -14,4 +14,10 @@ public class TokenGenerator {
         secureRandom.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
+
+    public String verificationCode(int length) {
+        int bound = (int) Math.pow(10, length);
+        int code = secureRandom.nextInt(bound);
+        return String.format("%0" + length + "d", code);
+    }
 }

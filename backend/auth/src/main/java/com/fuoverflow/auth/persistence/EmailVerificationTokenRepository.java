@@ -12,6 +12,27 @@ public interface EmailVerificationTokenRepository extends JpaRepository<EmailVer
 
     Optional<EmailVerificationTokenEntity> findByTokenHash(String tokenHash);
 
+    @Query("""
+            SELECT t FROM EmailVerificationTokenEntity t
+            WHERE t.userId = :userId
+              AND t.verificationCodeHash = :codeHash
+              AND t.consumedAt IS NULL
+              AND t.expiresAt > :now
+            ORDER BY t.createdAt DESC
+            LIMIT 1
+            """)
+    Optional<EmailVerificationTokenEntity> findActiveByUserIdAndCodeHash(UUID userId, String codeHash, Instant now);
+
+    @Query("""
+            SELECT t FROM EmailVerificationTokenEntity t
+            WHERE t.userId = :userId
+              AND t.consumedAt IS NULL
+              AND t.expiresAt > :now
+            ORDER BY t.createdAt DESC
+            LIMIT 1
+            """)
+    Optional<EmailVerificationTokenEntity> findLatestActiveByUserId(UUID userId, Instant now);
+
     @Modifying
     @Query("""
             update EmailVerificationTokenEntity t

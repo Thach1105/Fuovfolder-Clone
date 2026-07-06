@@ -1,5 +1,6 @@
 package com.fuoverflow.auth.application;
 
+import com.fuoverflow.auth.config.AuthProperties;
 import com.fuoverflow.auth.persistence.EmailVerificationTokenEntity;
 import com.fuoverflow.auth.persistence.EmailVerificationTokenRepository;
 import com.fuoverflow.auth.support.TokenGenerator;
@@ -42,7 +43,10 @@ class EmailVerificationServiceResendTest {
         userLookup = mock(UserLookupService.class);
         emailSender = mock(VerificationEmailSender.class);
         rateLimiter = mock(ResendRateLimiter.class);
-        service = new EmailVerificationService(repository, generator, hashing, users, userLookup, emailSender, rateLimiter);
+        AuthProperties properties = mock(AuthProperties.class);
+        when(properties.emailVerification()).thenReturn(
+                new AuthProperties.EmailVerification(true, "test@test.com", null, null, null, 6, 5));
+        service = new EmailVerificationService(repository, generator, hashing, users, userLookup, emailSender, rateLimiter, properties);
     }
 
     @Test
@@ -71,7 +75,9 @@ class EmailVerificationServiceResendTest {
         AuthUserView user = unverifiedUser(userId);
         when(userLookup.findAuthUserByIdentifier("user@example.com")).thenReturn(Optional.of(user));
         when(generator.opaqueToken()).thenReturn("new-token");
+        when(generator.verificationCode(6)).thenReturn("123456");
         when(hashing.hash("new-token")).thenReturn("new-token-hash");
+        when(hashing.hash("123456")).thenReturn("code-hash");
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.resend("user@example.com");
@@ -79,7 +85,7 @@ class EmailVerificationServiceResendTest {
         verify(rateLimiter).checkAndRecord("email_verify", userId);
         verify(repository).consumeActiveByUserId(eq(userId), any(Instant.class));
         verify(repository).save(any(EmailVerificationTokenEntity.class));
-        verify(emailSender).send("user@example.com", "Test User", "new-token");
+        verify(emailSender).send(eq("user@example.com"), eq("Test User"), eq("new-token"), any(String.class));
     }
 
     @Test

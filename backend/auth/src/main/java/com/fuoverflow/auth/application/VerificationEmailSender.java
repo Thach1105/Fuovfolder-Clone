@@ -15,6 +15,7 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Locale;
 
 @Service
@@ -38,7 +39,7 @@ public class VerificationEmailSender {
     }
 
     @Async
-    public void send(String email, String displayName, String token) {
+    public void send(String email, String displayName, String token, String code) {
         AuthProperties.EmailVerification config = properties.emailVerification();
         if (config == null || !config.enabled()) {
             return;
@@ -53,7 +54,7 @@ public class VerificationEmailSender {
             message.setFrom(config.from());
             message.setTo(email);
             message.setSubject(StringUtils.hasText(config.subject()) ? config.subject() : "Verify your Fuexam email");
-            message.setText(renderHtml(displayName, token, config.verificationUrlBase()), true);
+            message.setText(renderHtml(displayName, token, code, config.verificationUrlBase()), true);
             mailSender.send(mimeMessage);
         } catch (MessagingException exception) {
             throw new IllegalStateException("Failed to create verification email", exception);
@@ -62,12 +63,21 @@ public class VerificationEmailSender {
         }
     }
 
-    private String renderHtml(String displayName, String token, String verificationUrlBase) {
+    private String renderHtml(String displayName, String token, String code, String verificationUrlBase) {
         Context context = new Context(Locale.ENGLISH);
         context.setVariable("displayName", StringUtils.hasText(displayName) ? displayName : "Fuexam user");
         context.setVariable("verificationLink", EmailVerificationLinks.buildLink(
                 verificationUrlBase, corsProperties.allowedOrigins(), token));
-        context.setVariable("expiresIn", "24 hours");
+        context.setVariable("verificationCode", code);
+        context.setVariable("expiresIn", formatTtl());
         return templateEngine.process(TEMPLATE, context);
+    }
+
+    private String formatTtl() {
+        AuthProperties.EmailVerification config = properties.emailVerification();
+        Duration ttl = (config != null && config.codeTtl() != null) ? config.codeTtl() : Duration.ofMinutes(10);
+        long minutes = ttl.toMinutes();
+        if (minutes <= 0) return "a few seconds";
+        return minutes + " minutes";
     }
 }
