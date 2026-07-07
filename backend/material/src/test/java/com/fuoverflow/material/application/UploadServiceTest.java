@@ -47,7 +47,9 @@ class UploadServiceTest {
         UploadProperties properties = new UploadProperties(
                 5L * 1024 * 1024,
                 20L * 1024 * 1024,
+                50L * 1024 * 1024,
                 30,
+                null,
                 null,
                 null);
         uploadService = new UploadService(

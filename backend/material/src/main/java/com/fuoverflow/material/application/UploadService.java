@@ -197,6 +197,7 @@ public class UploadService {
         return switch (purpose) {
             case AVATAR -> "avatar";
             case FORUM_ATTACHMENT -> "attachment";
+            case EXAM_PE_RESOURCE -> "archive";
             default -> "image";
         };
     }

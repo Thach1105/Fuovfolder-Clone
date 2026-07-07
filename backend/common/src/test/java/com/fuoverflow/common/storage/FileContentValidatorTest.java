@@ -11,7 +11,9 @@ class FileContentValidatorTest {
     private final UploadProperties properties = new UploadProperties(
             5L * 1024 * 1024,
             20L * 1024 * 1024,
+            50L * 1024 * 1024,
             30,
+            null,
             null,
             null);
 
@@ -49,5 +51,37 @@ class FileContentValidatorTest {
                 "image/png",
                 "not-a-png".getBytes());
         assertThrows(BadRequestException.class, () -> FileContentValidator.validate(file, FileKind.IMAGE, properties));
+    }
+
+    @Test
+    void acceptsValidZipArchive() {
+        byte[] zipHeader = new byte[] {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00};
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "resources.zip",
+                "application/zip",
+                zipHeader);
+        FileContentValidator.validate(file, FileKind.ARCHIVE, properties);
+    }
+
+    @Test
+    void rejectsArchiveWithWrongMagic() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "resources.zip",
+                "application/zip",
+                "not-a-zip".getBytes());
+        assertThrows(BadRequestException.class, () -> FileContentValidator.validate(file, FileKind.ARCHIVE, properties));
+    }
+
+    @Test
+    void rejectsArchiveWithWrongExtension() {
+        byte[] zipHeader = new byte[] {0x50, 0x4B, 0x03, 0x04};
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "resources.rar",
+                "application/zip",
+                zipHeader);
+        assertThrows(BadRequestException.class, () -> FileContentValidator.validate(file, FileKind.ARCHIVE, properties));
     }
 }

@@ -12,7 +12,10 @@ public enum UploadPurpose {
     SOURCE_COVER("source_cover", "source/covers", FileKind.IMAGE, Set.of("source.catalog.admin:update"), true),
     COURsera_COVER("coursera_cover", "coursera/covers", FileKind.IMAGE, Set.of("coursera.catalog.admin:update"), true),
     MEMBERSHIP_PLAN("membership_plan", "membership/plans", FileKind.IMAGE, Set.of("membership.admin:update"), true),
-    AWARD_ICON("award_icon", "awards/icons", FileKind.IMAGE, Set.of("admin.panel:access"), true);
+    AWARD_ICON("award_icon", "awards/icons", FileKind.IMAGE, Set.of("admin.panel:access"), true),
+    EXAM_FE_IMAGE("exam_fe_image", "exam/fe", FileKind.IMAGE, Set.of("exam.media.admin:create"), false),
+    EXAM_PE_IMAGE("exam_pe_image", "exam/pe", FileKind.IMAGE, Set.of("exam.media.admin:create"), false),
+    EXAM_PE_RESOURCE("exam_pe_resource", "exam/pe/resources", FileKind.ARCHIVE, Set.of("exam.media.admin:create"), false);
 
     private final String slug;
     private final String folder;

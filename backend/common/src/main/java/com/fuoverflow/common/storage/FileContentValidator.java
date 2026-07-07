@@ -24,15 +24,39 @@ public final class FileContentValidator {
             throw new BadRequestException("FILE_EMPTY", "Uploaded file is empty");
         }
         String filename = sanitizeFilename(file.getOriginalFilename());
-        long maxBytes = kind == FileKind.IMAGE ? properties.imageMaxBytes() : properties.documentMaxBytes();
+        long maxBytes = switch (kind) {
+            case IMAGE -> properties.imageMaxBytes();
+            case ARCHIVE -> properties.archiveMaxBytes();
+            case DOCUMENT -> properties.documentMaxBytes();
+        };
         if (file.getSize() > maxBytes) {
             throw new BadRequestException("FILE_TOO_LARGE", "File exceeds maximum allowed size");
         }
         String declaredType = normalizeContentType(file.getContentType());
-        if (kind == FileKind.IMAGE) {
-            validateImage(file, declaredType, properties);
-        } else {
-            validateDocument(file, filename, declaredType, properties);
+        switch (kind) {
+            case IMAGE -> validateImage(file, declaredType, properties);
+            case ARCHIVE -> validateArchive(file, filename, declaredType, properties);
+            case DOCUMENT -> validateDocument(file, filename, declaredType, properties);
+        }
+    }
+
+    private static void validateArchive(
+            MultipartFile file,
+            String filename,
+            String declaredType,
+            UploadProperties properties) {
+        if (declaredType == null || !properties.allowedArchiveTypes().contains(declaredType)) {
+            throw new BadRequestException("FILE_TYPE_INVALID", "Only ZIP archives are allowed");
+        }
+        if (!filename.toLowerCase(Locale.ROOT).endsWith(".zip")) {
+            throw new BadRequestException("FILE_TYPE_INVALID", "Archive files must use .zip extension");
+        }
+        byte[] header = readHeader(file, 4);
+        // ZIP local file header (PK\x03\x04) or empty archive (PK\x05\x06).
+        boolean zipMagic = startsWith(header, new byte[] {0x50, 0x4B, 0x03, 0x04})
+                || startsWith(header, new byte[] {0x50, 0x4B, 0x05, 0x06});
+        if (!zipMagic) {
+            throw new BadRequestException("FILE_TYPE_INVALID", "File content is not a valid ZIP archive");
         }
     }
 
@@ -209,6 +233,9 @@ public final class FileContentValidator {
         }
         if (lower.endsWith(".pptx")) {
             return ".pptx";
+        }
+        if (lower.endsWith(".zip")) {
+            return ".zip";
         }
         return ".bin";
     }

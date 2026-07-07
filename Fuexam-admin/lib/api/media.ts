@@ -8,7 +8,10 @@ export type UploadPurpose =
   | "source_cover"
   | "coursera_cover"
   | "membership_plan"
-  | "award_icon";
+  | "award_icon"
+  | "exam_fe_image"
+  | "exam_pe_image"
+  | "exam_pe_resource";
 
 export interface UploadResponse {
   fileId: string;

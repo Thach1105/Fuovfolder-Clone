@@ -12,6 +12,8 @@ import {
   ShieldCheck,
   ShoppingBag,
   FileText,
+  ClipboardCheck,
+  MessageSquare,
   Flag,
   Inbox,
   Users,
@@ -72,6 +74,18 @@ const NAV: NavSection[] = [
         label: "Source — Đơn mua",
         icon: ShoppingBag,
         permission: "source.purchase.admin:read",
+      },
+      {
+        href: "/exam/subjects",
+        label: "Exam FE/PE",
+        icon: ClipboardCheck,
+        permission: "exam.subject.admin:read",
+      },
+      {
+        href: "/exam/comments",
+        label: "Exam — Bình luận",
+        icon: MessageSquare,
+        permission: "exam.comment.admin:delete",
       },
       {
         href: "/coursera/catalog",

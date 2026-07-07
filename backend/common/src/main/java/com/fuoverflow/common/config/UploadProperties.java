@@ -8,9 +8,11 @@ import java.util.List;
 public record UploadProperties(
         long imageMaxBytes,
         long documentMaxBytes,
+        long archiveMaxBytes,
         int maxUploadsPerHour,
         List<String> allowedImageTypes,
-        List<String> allowedDocumentTypes
+        List<String> allowedDocumentTypes,
+        List<String> allowedArchiveTypes
 ) {
     public UploadProperties {
         if (imageMaxBytes <= 0) {
@@ -18,6 +20,9 @@ public record UploadProperties(
         }
         if (documentMaxBytes <= 0) {
             documentMaxBytes = 20L * 1024 * 1024;
+        }
+        if (archiveMaxBytes <= 0) {
+            archiveMaxBytes = 50L * 1024 * 1024;
         }
         if (maxUploadsPerHour <= 0) {
             maxUploadsPerHour = 30;
@@ -30,6 +35,12 @@ public record UploadProperties(
                     "application/pdf",
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+        }
+        if (allowedArchiveTypes == null || allowedArchiveTypes.isEmpty()) {
+            allowedArchiveTypes = List.of(
+                    "application/zip",
+                    "application/x-zip-compressed",
+                    "application/octet-stream");
         }
     }
 }

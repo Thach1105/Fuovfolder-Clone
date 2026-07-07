@@ -58,6 +58,7 @@ fuexam:
   upload:
     image-max-bytes: 5242880
     document-max-bytes: 20971520
+    archive-max-bytes: 52428800
     max-uploads-per-hour: 30
     orphan-cleanup-interval-ms: 3600000
     allowed-image-types:
@@ -69,6 +70,10 @@ fuexam:
       - application/pdf
       - application/vnd.openxmlformats-officedocument.wordprocessingml.document
       - application/vnd.openxmlformats-officedocument.presentationml.presentation
+    allowed-archive-types:
+      - application/zip
+      - application/x-zip-compressed
+      - application/octet-stream
   coursera:
     refund-on-cancel: true
     credentials:
@@ -80,6 +85,10 @@ fuexam:
     expiry-scan-interval-ms: ${SOURCE_EXPIRY_SCAN_INTERVAL_MS:60000}
     media-signing-secret: ${SOURCE_MEDIA_SIGNING_SECRET:dev-source-media-secret-change-me}
     signed-url-ttl-seconds: ${SOURCE_MEDIA_URL_TTL:900}
+  exam:
+    media-signing-secret: ${EXAM_MEDIA_SIGNING_SECRET:dev-exam-media-secret-change-me}
+    signed-url-ttl-seconds: ${EXAM_MEDIA_URL_TTL:900}
+    default-fe-preview-count: ${EXAM_FE_PREVIEW_COUNT:3}
   membership:
     expiry-cron: ${MEMBERSHIP_EXPIRY_CRON:0 0 0 * * *}
   scheduling:

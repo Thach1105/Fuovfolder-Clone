@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/membership", label: "Membership" },
   { href: "/coursera", label: "Coursera" },
   { href: "/suoc", label: "Source" },
+  { href: "/exam", label: "Thi FE/PE" },
   { href: "/course", label: "Khoá học" },
 ];
 
