@@ -19,6 +19,7 @@ export interface SourceCatalogItem {
 export interface SourceCatalogDetail extends SourceCatalogItem {
   description: string | null;
   categorySlug: string | null;
+  shuffleQuestions: boolean;
   related: SourceCatalogItem[];
   hasActiveAccess: boolean;
   activeAccessEndsAt: string | null;

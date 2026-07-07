@@ -56,6 +56,7 @@ const EMPTY_FORM = {
   categorySlug: "on-thi",
   active: true,
   featured: false,
+  shuffleQuestions: true,
   sortOrder: "0",
 };
 
@@ -114,6 +115,7 @@ export default function AdminSourceCatalogPage() {
       categorySlug: item.categorySlug ?? "",
       active: item.active,
       featured: item.featured,
+      shuffleQuestions: item.shuffleQuestions,
       sortOrder: String(item.sortOrder),
     });
   }
@@ -135,6 +137,7 @@ export default function AdminSourceCatalogPage() {
       categorySlug: form.categorySlug.trim() || undefined,
       active: form.active,
       featured: form.featured,
+      shuffleQuestions: form.shuffleQuestions,
       sortOrder: parseInt(form.sortOrder, 10) || 0,
     };
     try {
@@ -385,6 +388,16 @@ export default function AdminSourceCatalogPage() {
                     id="featured"
                     checked={form.featured}
                     onCheckedChange={(v) => setForm({ ...form, featured: v })}
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                  <Label htmlFor="shuffle" className="cursor-pointer">
+                    Đảo thứ tự câu hỏi
+                  </Label>
+                  <Switch
+                    id="shuffle"
+                    checked={form.shuffleQuestions}
+                    onCheckedChange={(v) => setForm({ ...form, shuffleQuestions: v })}
                   />
                 </div>
                 <div className="flex gap-2">

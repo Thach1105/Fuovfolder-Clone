@@ -57,6 +57,9 @@ public class SourceCatalogItemEntity {
     @Column(name = "is_featured", nullable = false)
     private boolean featured;
 
+    @Column(name = "shuffle_questions", nullable = false)
+    private boolean shuffleQuestions;
+
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
@@ -88,6 +91,7 @@ public class SourceCatalogItemEntity {
     public String getCategorySlug() { return categorySlug; }
     public boolean isActive() { return active; }
     public boolean isFeatured() { return featured; }
+    public boolean isShuffleQuestions() { return shuffleQuestions; }
     public int getSortOrder() { return sortOrder; }
     public int getLockVersion() { return lockVersion; }
     public Instant getCreatedAt() { return createdAt; }
@@ -107,6 +111,7 @@ public class SourceCatalogItemEntity {
     public void setCategorySlug(String categorySlug) { this.categorySlug = categorySlug; }
     public void setActive(boolean active) { this.active = active; }
     public void setFeatured(boolean featured) { this.featured = featured; }
+    public void setShuffleQuestions(boolean shuffleQuestions) { this.shuffleQuestions = shuffleQuestions; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
     public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
@@ -115,7 +120,7 @@ public class SourceCatalogItemEntity {
             UUID id, String code, String title, String description, int pricePoints,
             int accessDays, int questionCount,             int duplicationRateBp, int passRateBp,
             String cardColor, String coverImageUrl, String categorySlug,
-            boolean active, boolean featured, int sortOrder, Instant now) {
+            boolean active, boolean featured, boolean shuffleQuestions, int sortOrder, Instant now) {
         SourceCatalogItemEntity e = new SourceCatalogItemEntity();
         e.id = id;
         e.code = code;
@@ -132,6 +137,7 @@ public class SourceCatalogItemEntity {
         e.categorySlug = categorySlug;
         e.active = active;
         e.featured = featured;
+        e.shuffleQuestions = shuffleQuestions;
         e.sortOrder = sortOrder;
         e.lockVersion = 0;
         e.createdAt = now;

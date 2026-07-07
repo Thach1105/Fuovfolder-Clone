@@ -47,6 +47,7 @@ public final class SourceCatalogMapper {
                 e.getCoverImageUrl(),
                 e.getCategorySlug(),
                 e.isFeatured(),
+                e.isShuffleQuestions(),
                 related,
                 activeAccessEndsAt != null,
                 activeAccessEndsAt);
@@ -69,6 +70,7 @@ public final class SourceCatalogMapper {
                 e.getCategorySlug(),
                 e.isActive(),
                 e.isFeatured(),
+                e.isShuffleQuestions(),
                 e.getSortOrder(),
                 e.getCreatedAt(),
                 e.getUpdatedAt());

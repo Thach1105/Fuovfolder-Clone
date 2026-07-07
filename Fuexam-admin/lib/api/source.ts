@@ -78,6 +78,7 @@ export interface AdminSourceCatalogItem {
   categorySlug: string | null;
   active: boolean;
   featured: boolean;
+  shuffleQuestions: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -189,6 +190,7 @@ export interface AdminSourceCatalogBody {
   categorySlug?: string;
   active?: boolean;
   featured?: boolean;
+  shuffleQuestions?: boolean;
   sortOrder?: number;
 }
 

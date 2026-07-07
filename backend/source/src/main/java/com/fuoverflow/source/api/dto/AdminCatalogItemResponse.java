@@ -19,6 +19,7 @@ public record AdminCatalogItemResponse(
         String categorySlug,
         boolean active,
         boolean featured,
+        boolean shuffleQuestions,
         int sortOrder,
         Instant createdAt,
         Instant updatedAt

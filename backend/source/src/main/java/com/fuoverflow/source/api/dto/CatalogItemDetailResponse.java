@@ -19,6 +19,7 @@ public record CatalogItemDetailResponse(
         String coverImageUrl,
         String categorySlug,
         boolean featured,
+        boolean shuffleQuestions,
         List<CatalogItemResponse> related,
         boolean hasActiveAccess,
         Instant activeAccessEndsAt

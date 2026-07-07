@@ -68,6 +68,7 @@ public class SourceCatalogAdminService {
                 request.categorySlug(),
                 request.active() == null || request.active(),
                 request.featured() != null && request.featured(),
+                request.shuffleQuestions() == null || request.shuffleQuestions(),
                 request.sortOrder() != null ? request.sortOrder() : 0,
                 now);
         SourceCatalogItemEntity saved = catalogRepository.save(entity);
@@ -123,6 +124,9 @@ public class SourceCatalogAdminService {
         }
         if (request.featured() != null) {
             entity.setFeatured(request.featured());
+        }
+        if (request.shuffleQuestions() != null) {
+            entity.setShuffleQuestions(request.shuffleQuestions());
         }
         if (request.sortOrder() != null) {
             entity.setSortOrder(request.sortOrder());

@@ -29,6 +29,7 @@ class SourceCatalogMapperTest {
                 "medicine",
                 true,
                 true,
+                true,
                 1,
                 Instant.parse("2026-06-28T10:15:30Z"));
 

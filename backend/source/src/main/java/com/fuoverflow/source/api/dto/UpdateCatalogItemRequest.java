@@ -17,6 +17,7 @@ public record UpdateCatalogItemRequest(
         @Size(max = 64) String categorySlug,
         Boolean active,
         Boolean featured,
+        Boolean shuffleQuestions,
         Integer sortOrder
 ) {
 }

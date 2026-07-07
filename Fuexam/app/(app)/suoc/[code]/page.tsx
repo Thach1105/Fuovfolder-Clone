@@ -82,9 +82,14 @@ export default function SuocDetailPage() {
       setQuestions([]);
       return;
     }
+    const shouldShuffle = detail?.shuffleQuestions ?? true;
     setQuestionsLoading(true);
     getSourceQuestions(code)
       .then((qs) => {
+        if (!shouldShuffle) {
+          setQuestions(qs);
+          return;
+        }
         const shuffled = [...qs];
         for (let i = shuffled.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -94,7 +99,7 @@ export default function SuocDetailPage() {
       })
       .catch(() => setQuestions([]))
       .finally(() => setQuestionsLoading(false));
-  }, [detail?.hasActiveAccess, userId, code]);
+  }, [detail?.hasActiveAccess, detail?.shuffleQuestions, userId, code]);
 
   function resetVoucherState() {
     setVoucherCode("");
