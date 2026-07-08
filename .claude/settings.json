@@ -240,7 +240,9 @@
       "Bash(npx next *)",
       "Bash(cd \"c:/Users/truon/Desktop/FUExam-git/Fuovfolder-Clone\")",
       "Bash(find Fuexam-admin/app/exam -type f)",
-      "Bash(ls \"Fuexam-admin/app/exam/subjects/[id]/papers/page.tsx\")"
+      "Bash(ls \"Fuexam-admin/app/exam/subjects/[id]/papers/page.tsx\")",
+      "Bash(cd \"c:/Users/truon/Desktop/FUExam-git/Fuovfolder-Clone/Fuexam\")",
+      "Bash(ls app *)"
     ],
     "additionalDirectories": [
       "/home/thachnn/Desktop/github/Fuovfolder-Clone/Fuexam/components"

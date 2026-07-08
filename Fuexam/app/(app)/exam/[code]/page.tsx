@@ -478,7 +478,7 @@ export default function ExamDetailPage() {
         </div>
 
         {/* Related sidebar */}
-        {detail.related.length > 0 && (
+        {(detail.related?.length ?? 0) > 0 && (
           <aside className="space-y-3">
             <h2 className="app-eyebrow">Môn liên quan</h2>
             <div className="space-y-2">
