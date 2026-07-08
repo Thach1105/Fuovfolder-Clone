@@ -3,35 +3,48 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Lock } from "lucide-react";
+import { ArrowLeft, Download, FileText, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ApiError } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/api/media";
-import { ExamFeRunner } from "@/components/exam/exam-fe-runner";
 import { ExamCommentThread } from "@/components/exam/exam-comment-thread";
 import { Lightbox } from "@/components/exam/Lightbox";
 import { ImageWithWatermark } from "@/components/shared/image-with-watermark";
 import {
-  type PublicFeQuestionList,
-  type PublicPeItem,
+  type ExamPaperType,
+  type PublicPaperDetail,
+  type PublicPaperSummary,
+  type PublicSubjectCard,
   type PublicSubjectDetail,
-  getExamFeQuestions,
-  getExamPeItems,
+  getExamPaper,
   getExamSubject,
-  peResourceDownloadUrl,
+  paperResourceDownloadUrl,
 } from "@/lib/api/exam";
 
-type Tab = "fe" | "pe";
+type TypeFilter = "ALL" | ExamPaperType;
 
 function formatBytes(bytes: number): string {
   if (!bytes) return "0 B";
   const units = ["B", "KB", "MB", "GB"];
   const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
   return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function paperTypeBadgeClass(type: ExamPaperType): string {
+  return type === "FE"
+    ? "bg-sky-500/15 text-sky-700 hover:bg-sky-500/15"
+    : "bg-violet-500/15 text-violet-700 hover:bg-violet-500/15";
 }
 
 function MembershipUpsell({ title, description }: { title: string; description: string }) {
@@ -49,21 +62,56 @@ function MembershipUpsell({ title, description }: { title: string; description: 
   );
 }
 
-function PeExamImages({ urls }: { urls: string[] }) {
+function PaperCard({
+  paper,
+  locked,
+  onOpen,
+}: {
+  paper: PublicPaperSummary;
+  locked: boolean;
+  onOpen: (paper: PublicPaperSummary) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(paper)}
+      className="group flex w-full flex-col gap-2 rounded-2xl border border-foreground/10 bg-background/70 p-4 text-left backdrop-blur transition hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-md"
+    >
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge className={paperTypeBadgeClass(paper.type)}>{paper.type}</Badge>
+        <Badge variant="secondary">{paper.term}</Badge>
+        {paper.retakeLabel && <Badge variant="outline">{paper.retakeLabel}</Badge>}
+        {locked && <Lock className="ml-auto h-4 w-4 text-foreground/40" />}
+      </div>
+      <p className="font-medium leading-snug">{paper.title}</p>
+      <div className="mt-auto flex flex-wrap gap-x-3 gap-y-1 pt-1 font-mono text-[11px] text-muted-foreground">
+        <span>{paper.imageCount} ảnh</span>
+        <span>{paper.resourceCount} tài nguyên</span>
+      </div>
+    </button>
+  );
+}
+
+function PaperImages({ urls, paperId }: { urls: string[]; paperId: string }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   if (urls.length === 0) return null;
   return (
     <>
-      <div className={urls.length > 1 ? "grid grid-cols-2 gap-2" : ""}>
+      <div className={urls.length > 1 ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : ""}>
         {urls.map((url, idx) => (
           <button
             key={`${url}-${idx}`}
             type="button"
             onClick={() => setLightboxIndex(idx)}
             className="group relative overflow-hidden rounded-xl border border-foreground/10"
-            aria-label="Xem ảnh lớn"
+            aria-label="Xem ảnh lớn và bình luận"
           >
-            <ImageWithWatermark src={url} alt="" loading="lazy" className="max-h-72 w-full object-cover transition-transform group-hover:scale-[1.02]" />
+            <ImageWithWatermark
+              src={url}
+              alt=""
+              loading="lazy"
+              className="max-h-72 w-full object-cover transition-transform group-hover:scale-[1.02]"
+            />
             <span className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
           </button>
         ))}
@@ -74,62 +122,139 @@ function PeExamImages({ urls }: { urls: string[] }) {
           currentIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onNavigate={setLightboxIndex}
+          renderSidePanel={(index) => (
+            <ExamCommentThread key={index} paperId={paperId} imageIndex={index} />
+          )}
         />
       )}
     </>
   );
 }
 
-function PeItemCard({ item }: { item: PublicPeItem }) {
-  const images = (item.examImageUrls ?? []).map(resolveMediaUrl).filter(Boolean) as string[];
+function ResourceList({ resources }: { resources: PublicPaperDetail["resources"] }) {
   const groups = useMemo(() => {
-    const map = new Map<string, typeof item.resources>();
-    for (const res of item.resources) {
+    const map = new Map<string, PublicPaperDetail["resources"]>();
+    for (const res of resources) {
       const label = res.folderLabel ?? "Tài nguyên";
       const list = map.get(label) ?? [];
       list.push(res);
       map.set(label, list);
     }
     return Array.from(map.entries());
-  }, [item.resources]);
+  }, [resources]);
+
+  if (groups.length === 0) return null;
 
   return (
-    <div className="space-y-4 rounded-2xl border border-foreground/10 bg-background/70 p-5 backdrop-blur-xl sm:p-6">
-      <div>
-        <h3 className="font-display text-lg">{item.title}</h3>
-        {item.description && (
-          <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{item.description}</p>
-        )}
-      </div>
+    <div className="space-y-3">
+      {groups.map(([label, list]) => (
+        <div key={label} className="space-y-2">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <FileText className="h-3.5 w-3.5" />
+            {label}
+          </p>
+          <ul className="space-y-2">
+            {list.map((res) => (
+              <li key={res.id}>
+                <a
+                  href={paperResourceDownloadUrl(res.downloadUrl)}
+                  download={res.originalFilename}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-foreground/10 px-4 py-2.5 text-sm transition hover:border-foreground/25 hover:bg-foreground/5"
+                >
+                  <span className="min-w-0 flex-1 truncate font-medium">{res.originalFilename}</span>
+                  <span className="font-mono text-[11px] text-muted-foreground">{formatBytes(res.sizeBytes)}</span>
+                  <Download className="h-4 w-4 shrink-0 text-foreground/60" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-      <PeExamImages urls={images} />
+function PaperDetailView({ paperId, onBack }: { paperId: string; onBack: () => void }) {
+  const [paper, setPaper] = useState<PublicPaperDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-      {groups.length > 0 && (
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    getExamPaper(paperId)
+      .then((data) => {
+        if (active) setPaper(data);
+      })
+      .catch((err) => {
+        if (active) setError(err instanceof ApiError ? err.message : "Không tải được đề thi");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [paperId]);
+
+  const imageUrls = useMemo(
+    () => (paper?.imageUrls ?? []).map(resolveMediaUrl).filter(Boolean) as string[],
+    [paper?.imageUrls],
+  );
+
+  return (
+    <div className="space-y-5">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" /> Về danh sách đề
+      </button>
+
+      {loading ? (
         <div className="space-y-3">
-          {groups.map(([label, resources]) => (
-            <div key={label} className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-              <ul className="space-y-2">
-                {resources.map((res) => (
-                  <li key={res.id}>
-                    <a
-                      href={peResourceDownloadUrl(res.downloadUrl)}
-                      download={res.originalFilename}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-foreground/10 px-4 py-2.5 text-sm transition hover:border-foreground/25 hover:bg-foreground/5"
-                    >
-                      <span className="min-w-0 flex-1 truncate font-medium">{res.originalFilename}</span>
-                      <span className="font-mono text-[11px] text-muted-foreground">{formatBytes(res.sizeBytes)}</span>
-                      <Download className="h-4 w-4 shrink-0 text-foreground/60" />
-                    </a>
-                  </li>
-                ))}
-              </ul>
+          <div className="app-skeleton h-8 w-56 rounded" />
+          <div className="app-skeleton h-64 w-full rounded-2xl" />
+        </div>
+      ) : error || !paper ? (
+        <ErrorBanner message={error ?? "Không tải được đề thi"} />
+      ) : (
+        <div className="space-y-6">
+          <header className="space-y-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge className={paperTypeBadgeClass(paper.type)}>{paper.type}</Badge>
+              <Badge variant="secondary">{paper.term}</Badge>
+              {paper.retakeLabel && <Badge variant="outline">{paper.retakeLabel}</Badge>}
             </div>
-          ))}
+            <h2 className="font-display text-2xl leading-tight">{paper.title}</h2>
+            {paper.description && (
+              <p className="whitespace-pre-line text-sm text-muted-foreground">{paper.description}</p>
+            )}
+          </header>
+
+          {imageUrls.length > 0 && (
+            <section className="space-y-2">
+              <h3 className="app-eyebrow">Ảnh đề thi</h3>
+              <p className="text-xs text-muted-foreground">Bấm vào ảnh để xem lớn và bình luận theo từng ảnh.</p>
+              <PaperImages urls={imageUrls} paperId={paper.id} />
+            </section>
+          )}
+
+          {paper.resources.length > 0 && (
+            <section className="space-y-2">
+              <h3 className="app-eyebrow">Tài nguyên tải về</h3>
+              <ResourceList resources={paper.resources} />
+            </section>
+          )}
+
+          <section className="space-y-2">
+            <h3 className="app-eyebrow">Thảo luận về đề</h3>
+            <ExamCommentThread paperId={paper.id} />
+          </section>
         </div>
       )}
-
-      <ExamCommentThread subjectType="pe_item" subjectId={item.id} />
     </div>
   );
 }
@@ -142,13 +267,10 @@ export default function ExamDetailPage() {
   const [detail, setDetail] = useState<PublicSubjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("fe");
 
-  const [feList, setFeList] = useState<PublicFeQuestionList | null>(null);
-  const [feLoading, setFeLoading] = useState(false);
-  const [peItems, setPeItems] = useState<PublicPeItem[]>([]);
-  const [peLoading, setPeLoading] = useState(false);
-  const [peError, setPeError] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
+  const [termFilter, setTermFilter] = useState<string>("ALL");
+  const [openPaper, setOpenPaper] = useState<PublicPaperSummary | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -166,27 +288,33 @@ export default function ExamDetailPage() {
     load();
   }, [load]);
 
+  // Reset filters/opened paper when navigating to a different subject.
   useEffect(() => {
-    if (!detail) return;
-    setFeLoading(true);
-    getExamFeQuestions(code)
-      .then(setFeList)
-      .catch(() => setFeList(null))
-      .finally(() => setFeLoading(false));
-  }, [detail, code]);
+    setTypeFilter("ALL");
+    setTermFilter("ALL");
+    setOpenPaper(null);
+  }, [code]);
 
-  useEffect(() => {
-    if (!detail?.hasActiveMembership) {
-      setPeItems([]);
-      return;
-    }
-    setPeLoading(true);
-    setPeError(null);
-    getExamPeItems(code)
-      .then(setPeItems)
-      .catch((err) => setPeError(err instanceof ApiError ? err.message : "Không tải được đề PE"))
-      .finally(() => setPeLoading(false));
-  }, [detail?.hasActiveMembership, code]);
+  const papers = detail?.papers ?? [];
+
+  const terms = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of papers) set.add(p.term);
+    return Array.from(set).sort();
+  }, [papers]);
+
+  const filteredPapers = useMemo(
+    () =>
+      papers.filter(
+        (p) =>
+          (typeFilter === "ALL" || p.type === typeFilter) &&
+          (termFilter === "ALL" || p.term === termFilter),
+      ),
+    [papers, typeFilter, termFilter],
+  );
+
+  const fePaperCount = useMemo(() => papers.filter((p) => p.type === "FE").length, [papers]);
+  const pePaperCount = useMemo(() => papers.filter((p) => p.type === "PE").length, [papers]);
 
   if (loading || authLoading) {
     return (
@@ -214,7 +342,6 @@ export default function ExamDetailPage() {
 
   const coverUrl = resolveMediaUrl(detail.coverImageUrl);
   const isMember = detail.hasActiveMembership;
-  const feLocked = feList?.locked ?? true;
 
   return (
     <div className="space-y-6">
@@ -229,15 +356,15 @@ export default function ExamDetailPage() {
           {isMember ? (
             <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15">Đã mở khóa</Badge>
           ) : (
-            <Badge variant="secondary">Xem thử</Badge>
+            <Badge variant="secondary">Xem danh sách</Badge>
           )}
         </div>
         <h1 className="font-display text-5xl leading-none">{detail.code}</h1>
         <p className="text-lg text-muted-foreground">{detail.title}</p>
         <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-sm text-muted-foreground">
           <span>{detail.viewCount} lượt xem</span>
-          <span>{detail.feQuestionCount} câu FE</span>
-          <span>{detail.pePaperCount} đề PE</span>
+          <span>{fePaperCount} đề FE</span>
+          <span>{pePaperCount} đề PE</span>
         </div>
       </header>
 
@@ -266,79 +393,117 @@ export default function ExamDetailPage() {
         </div>
       )}
 
-      <div className="flex gap-1 rounded-full border border-foreground/10 bg-background/60 p-1 backdrop-blur">
-        {([
-          { value: "fe" as const, label: `Trắc nghiệm FE (${detail.feQuestionCount})` },
-          { value: "pe" as const, label: `Thực hành PE (${detail.pePaperCount})` },
-        ]).map((t) => (
-          <button
-            key={t.value}
-            type="button"
-            onClick={() => setTab(t.value)}
-            className={cn(
-              "flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-              tab === t.value ? "bg-foreground text-background" : "text-foreground/70 hover:bg-foreground/5",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "fe" && (
-        <section className="space-y-4">
-          {feLoading ? (
-            <div className="rounded-2xl border border-foreground/10 p-6">
-              <div className="app-skeleton h-5 w-32 rounded" />
-              <div className="mt-4 space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => <div key={i} className="app-skeleton h-11 w-full rounded-lg" />)}
-              </div>
-            </div>
-          ) : !feList || feList.questions.length === 0 ? (
-            <div className="rounded-2xl border border-foreground/10 bg-background/60 p-6 text-sm text-muted-foreground">
-              Môn này chưa có câu hỏi trắc nghiệm FE.
-            </div>
+      <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
+        <div className="space-y-5">
+          {openPaper ? (
+            <PaperDetailView paperId={openPaper.id} onBack={() => setOpenPaper(null)} />
           ) : (
             <>
-              <ExamFeRunner questions={feList.questions} showComments={!feLocked} />
-              {feLocked && (
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex gap-1 rounded-full border border-foreground/10 bg-background/60 p-1 backdrop-blur">
+                  {([
+                    { value: "ALL" as const, label: `Tất cả (${papers.length})` },
+                    { value: "FE" as const, label: `FE (${fePaperCount})` },
+                    { value: "PE" as const, label: `PE (${pePaperCount})` },
+                  ]).map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setTypeFilter(t.value)}
+                      className={cn(
+                        "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                        typeFilter === t.value
+                          ? "bg-foreground text-background"
+                          : "text-foreground/70 hover:bg-foreground/5",
+                      )}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                {terms.length > 0 && (
+                  <Select value={termFilter} onValueChange={setTermFilter}>
+                    <SelectTrigger className="h-9 w-[160px]">
+                      <SelectValue placeholder="Kỳ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">Tất cả kỳ</SelectItem>
+                      {terms.map((term) => (
+                        <SelectItem key={term} value={term}>
+                          {term}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {!isMember && papers.length > 0 && (
                 <MembershipUpsell
-                  title={`Bạn đang xem ${feList.previewCount}/${feList.totalCount} câu`}
-                  description={`Mua membership để xem toàn bộ ${feList.totalCount} câu hỏi FE, bình luận và tải đề PE.`}
+                  title="Nội dung đề chỉ dành cho thành viên"
+                  description="Bạn có thể xem danh sách đề. Mua membership để mở khóa ảnh đề, tài nguyên tải về và thảo luận."
                 />
+              )}
+
+              {papers.length === 0 ? (
+                <div className="rounded-2xl border border-foreground/10 bg-background/60 p-6 text-sm text-muted-foreground">
+                  Môn này chưa có đề thi.
+                </div>
+              ) : filteredPapers.length === 0 ? (
+                <div className="rounded-2xl border border-foreground/10 bg-background/60 p-6 text-sm text-muted-foreground">
+                  Không có đề phù hợp bộ lọc.
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {filteredPapers.map((paper) => (
+                    <PaperCard
+                      key={paper.id}
+                      paper={paper}
+                      locked={!isMember}
+                      onOpen={
+                        isMember
+                          ? setOpenPaper
+                          : () => {
+                              if (typeof window !== "undefined") window.location.href = "/membership";
+                            }
+                      }
+                    />
+                  ))}
+                </div>
               )}
             </>
           )}
-        </section>
-      )}
+        </div>
 
-      {tab === "pe" && (
-        <section className="space-y-4">
-          {!isMember ? (
-            <MembershipUpsell
-              title="Đề thực hành PE chỉ dành cho thành viên"
-              description={`Mua membership để mở khóa ${detail.pePaperCount} đề PE kèm tài nguyên tải về và thảo luận.`}
-            />
-          ) : peLoading ? (
-            <div className="rounded-2xl border border-foreground/10 p-6">
-              <div className="app-skeleton h-5 w-40 rounded" />
-              <div className="mt-4 space-y-2">
-                {Array.from({ length: 2 }).map((_, i) => <div key={i} className="app-skeleton h-24 w-full rounded-lg" />)}
-              </div>
+        {/* Related sidebar */}
+        {detail.related.length > 0 && (
+          <aside className="space-y-3">
+            <h2 className="app-eyebrow">Môn liên quan</h2>
+            <div className="space-y-2">
+              {detail.related.map((rel: PublicSubjectCard) => (
+                <Link
+                  key={rel.id}
+                  href={`/exam/${rel.code}`}
+                  className="flex items-center gap-3 rounded-xl border border-foreground/10 bg-background/60 p-3 backdrop-blur transition hover:border-foreground/25 hover:bg-foreground/5"
+                >
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-display text-xs text-white"
+                    style={{ background: rel.cardColor ?? "#1a1712" }}
+                  >
+                    {rel.code.slice(0, 4)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{rel.code}</p>
+                    <p className="truncate text-xs text-muted-foreground">{rel.title}</p>
+                  </div>
+                </Link>
+              ))}
             </div>
-          ) : peError ? (
-            <ErrorBanner message={peError} />
-          ) : peItems.length === 0 ? (
-            <div className="rounded-2xl border border-foreground/10 bg-background/60 p-6 text-sm text-muted-foreground">
-              Môn này chưa có đề thực hành PE.
-            </div>
-          ) : (
-            <div className="space-y-5">
-              {peItems.map((item) => <PeItemCard key={item.id} item={item} />)}
-            </div>
-          )}
-        </section>
-      )}
+          </aside>
+        )}
+      </div>
     </div>
   );
 }

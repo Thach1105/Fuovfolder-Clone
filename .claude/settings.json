@@ -237,7 +237,10 @@
       "Bash(mvn -q -pl auth clean test -Dtest=\"com.fuoverflow.auth.oauth2.*Test\")",
       "Bash(mvn -q -pl auth test -Dtest=\"com.fuoverflow.auth.oauth2.*Test\")",
       "Bash(mkdir -p /home/thachnn/Desktop/github/Fuovfolder-Clone/Fuexam/components/shared)",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Bash(cd \"c:/Users/truon/Desktop/FUExam-git/Fuovfolder-Clone\")",
+      "Bash(find Fuexam-admin/app/exam -type f)",
+      "Bash(ls \"Fuexam-admin/app/exam/subjects/[id]/papers/page.tsx\")"
     ],
     "additionalDirectories": [
       "/home/thachnn/Desktop/github/Fuovfolder-Clone/Fuexam/components"

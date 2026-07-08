@@ -73,6 +73,7 @@ export default function AdminSourceCatalogPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [relatedTarget, setRelatedTarget] = useState<AdminSourceCatalogItem | null>(null);
@@ -80,14 +81,14 @@ export default function AdminSourceCatalogPage() {
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [relatedSaving, setRelatedSaving] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       setItems(await listAdminSourceCatalog());
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không tải được danh mục.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -142,14 +143,16 @@ export default function AdminSourceCatalogPage() {
     };
     try {
       if (editingId) {
-        await updateSourceCatalogItem(editingId, body);
+        const updated = await updateSourceCatalogItem(editingId, body);
+        // Patch the row in place so the table doesn't flash a full reload.
+        setItems((prev) => prev.map((it) => (it.id === updated.id ? updated : it)));
         toast.success("Đã cập nhật tài liệu.");
       } else {
-        await createSourceCatalogItem(body);
+        const created = await createSourceCatalogItem(body);
+        setItems((prev) => [...prev, created]);
         toast.success("Đã tạo tài liệu.");
       }
       resetForm();
-      await load();
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Lưu thất bại.";
       setError(message);
@@ -163,9 +166,9 @@ export default function AdminSourceCatalogPage() {
     if (!deleteId) return;
     try {
       await deleteSourceCatalogItem(deleteId);
+      setItems((prev) => prev.filter((it) => it.id !== deleteId));
       toast.success("Đã xóa tài liệu.");
       if (editingId === deleteId) resetForm();
-      await load();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Xóa thất bại.");
     } finally {
@@ -220,6 +223,19 @@ export default function AdminSourceCatalogPage() {
         (item.categorySlug ?? "").toLowerCase().includes(q),
     );
   }, [items, search]);
+
+  const PAGE_SIZE = 15;
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const pagedItems = useMemo(
+    () => filteredItems.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE),
+    [filteredItems, currentPage],
+  );
+
+  // Reset về trang đầu khi từ khoá tìm kiếm thay đổi.
+  useEffect(() => {
+    setPage(0);
+  }, [search]);
 
   return (
     <AdminShell
@@ -432,7 +448,7 @@ export default function AdminSourceCatalogPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredItems.map((item) => (
+                  {pagedItems.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>
                         <span className="font-mono text-primary">{item.code}</span>
@@ -497,6 +513,36 @@ export default function AdminSourceCatalogPage() {
               </Table>
             )}
           </div>
+
+          {!loading && filteredItems.length > PAGE_SIZE && (
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                {currentPage * PAGE_SIZE + 1}–
+                {Math.min((currentPage + 1) * PAGE_SIZE, filteredItems.length)} / {filteredItems.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage <= 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  Trước
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Trang {currentPage + 1} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage >= totalPages - 1}
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                >
+                  Sau
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

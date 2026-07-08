@@ -31,7 +31,7 @@ export function FileUploader({
   onUpload,
   onUploaded,
   label = "Tệp",
-  accept = ".zip",
+  accept = "*",
   buttonLabel = "Tải tệp lên",
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);

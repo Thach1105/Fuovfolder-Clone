@@ -32,7 +32,7 @@ function SubjectCard({ item }: { item: PublicSubjectCard }) {
         <span className="font-medium">{item.code}</span>
         <p className="line-clamp-2 text-xs text-muted-foreground">{item.title}</p>
         <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-2 font-mono text-[11px] text-muted-foreground">
-          <span className="rounded-full bg-foreground/5 px-2 py-0.5">{item.feQuestionCount} câu FE</span>
+          <span className="rounded-full bg-foreground/5 px-2 py-0.5">{item.fePaperCount} đề FE</span>
           <span className="rounded-full bg-foreground/5 px-2 py-0.5">{item.pePaperCount} đề PE</span>
         </div>
       </div>

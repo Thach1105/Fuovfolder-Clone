@@ -1,6 +1,8 @@
 import { API_V1 } from "@/lib/constants/api";
 import { API_BASE, apiFetch } from "@/lib/api/client";
 
+export type ExamPaperType = "FE" | "PE";
+
 export interface PublicSubjectCard {
   id: string;
   code: string;
@@ -9,42 +11,35 @@ export interface PublicSubjectCard {
   cardColor: string | null;
   coverImageUrl: string | null;
   viewCount: number;
-  feQuestionCount: number;
+  fePaperCount: number;
   pePaperCount: number;
 }
 
-export interface PublicSubjectDetail extends PublicSubjectCard {
+export interface PublicPaperSummary {
+  id: string;
+  type: ExamPaperType;
+  term: string;
+  retakeLabel: string | null;
+  title: string;
+  imageCount: number;
+  resourceCount: number;
+}
+
+export interface PublicSubjectDetail {
+  id: string;
+  code: string;
+  title: string;
   description: string | null;
-  fePreviewCount: number;
+  categorySlug: string | null;
+  cardColor: string | null;
+  coverImageUrl: string | null;
+  viewCount: number;
   hasActiveMembership: boolean;
+  papers: PublicPaperSummary[];
+  related: PublicSubjectCard[];
 }
 
-export interface PublicFeOption {
-  id: string;
-  optionText: string | null;
-  optionImageUrl: string | null;
-  isCorrect: boolean;
-}
-
-export interface PublicFeQuestion {
-  id: string;
-  questionText: string | null;
-  questionImageUrls: string[] | null;
-  explanation: string | null;
-  multipleCorrect: boolean;
-  sortOrder: number;
-  preview: boolean;
-  options: PublicFeOption[];
-}
-
-export interface PublicFeQuestionList {
-  locked: boolean;
-  totalCount: number;
-  previewCount: number;
-  questions: PublicFeQuestion[];
-}
-
-export interface PublicPeResource {
+export interface PublicPaperResource {
   id: string;
   folderLabel: string | null;
   originalFilename: string;
@@ -54,21 +49,26 @@ export interface PublicPeResource {
   downloadUrl: string;
 }
 
-export interface PublicPeItem {
+export interface PublicPaperDetail {
   id: string;
+  subjectId: string;
+  subjectCode: string;
+  type: ExamPaperType;
+  term: string;
+  retakeLabel: string | null;
   title: string;
   description: string | null;
-  examImageUrls: string[] | null;
-  sortOrder: number;
-  resources: PublicPeResource[];
+  imageUrls: string[];
+  resources: PublicPaperResource[];
 }
 
-export type ExamSubjectType = "fe_question" | "pe_item";
+export type ExamCommentSubjectType = "paper" | "paper_image";
 
 export interface ExamComment {
   id: string;
-  subjectType: ExamSubjectType;
+  subjectType: ExamCommentSubjectType;
   subjectId: string;
+  imageIndex: number | null;
   authorUserId: string;
   authorUsername: string | null;
   authorDisplayName: string | null;
@@ -88,58 +88,66 @@ export function getExamSubject(idOrCode: string) {
   return apiFetch<PublicSubjectDetail>(`${API_V1}/exam/catalog/${encodeURIComponent(idOrCode)}`);
 }
 
-export function getExamFeQuestions(idOrCode: string) {
-  return apiFetch<PublicFeQuestionList>(
-    `${API_V1}/exam/catalog/${encodeURIComponent(idOrCode)}/fe`,
+export function getExamPaper(paperId: string) {
+  return apiFetch<PublicPaperDetail>(
+    `${API_V1}/exam/catalog/papers/${encodeURIComponent(paperId)}`,
   );
 }
 
-export function getExamPeItems(idOrCode: string) {
-  return apiFetch<PublicPeItem[]>(`${API_V1}/exam/catalog/${encodeURIComponent(idOrCode)}/pe`);
-}
-
-export function listExamComments(subjectType: ExamSubjectType, subjectId: string) {
+export function listPaperComments(paperId: string) {
   return apiFetch<ExamComment[]>(
-    `${API_V1}/exam/comments/${subjectType}/${encodeURIComponent(subjectId)}`,
+    `${API_V1}/exam/comments/papers/${encodeURIComponent(paperId)}`,
   );
 }
 
-export function createExamComment(
-  subjectType: ExamSubjectType,
-  subjectId: string,
+export function createPaperComment(paperId: string, body: string, parentCommentId?: string) {
+  const payload: Record<string, unknown> = { body };
+  if (parentCommentId) payload.parentCommentId = parentCommentId;
+  return apiFetch<ExamComment>(
+    `${API_V1}/exam/comments/papers/${encodeURIComponent(paperId)}`,
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
+export function listPaperImageComments(paperId: string, imageIndex: number) {
+  return apiFetch<ExamComment[]>(
+    `${API_V1}/exam/comments/papers/${encodeURIComponent(paperId)}/images/${imageIndex}`,
+  );
+}
+
+export function createPaperImageComment(
+  paperId: string,
+  imageIndex: number,
   body: string,
   parentCommentId?: string,
 ) {
   const payload: Record<string, unknown> = { body };
   if (parentCommentId) payload.parentCommentId = parentCommentId;
   return apiFetch<ExamComment>(
-    `${API_V1}/exam/comments/${subjectType}/${encodeURIComponent(subjectId)}`,
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
+    `${API_V1}/exam/comments/papers/${encodeURIComponent(paperId)}/images/${imageIndex}`,
+    { method: "POST", body: JSON.stringify(payload) },
   );
 }
 
 export function updateExamComment(commentId: string, body: string) {
-  return apiFetch<ExamComment>(`${API_V1}/exam/comments/${encodeURIComponent(commentId)}`, {
+  return apiFetch<ExamComment>(`${API_V1}/exam/comments/comments/${encodeURIComponent(commentId)}`, {
     method: "PUT",
     body: JSON.stringify({ body }),
   });
 }
 
 export function deleteExamComment(commentId: string) {
-  return apiFetch<void>(`${API_V1}/exam/comments/${encodeURIComponent(commentId)}`, {
+  return apiFetch<void>(`${API_V1}/exam/comments/comments/${encodeURIComponent(commentId)}`, {
     method: "DELETE",
   });
 }
 
 /**
  * The backend returns a member-gated relative download path
- * (e.g. `/api/v1/exam/pe/resources/{id}/download`). Prefix the API base so the
- * anchor points at the backend origin.
+ * (e.g. `/api/v1/exam/papers/resources/{id}/download`). Prefix the API base so
+ * the anchor points at the backend origin.
  */
-export function peResourceDownloadUrl(downloadUrl: string): string {
+export function paperResourceDownloadUrl(downloadUrl: string): string {
   if (downloadUrl.startsWith("http://") || downloadUrl.startsWith("https://")) return downloadUrl;
   return `${API_BASE}${downloadUrl}`;
 }

@@ -11,14 +11,15 @@ import { formatDateTime } from "@/lib/format-datetime";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
   type ExamComment,
-  type ExamSubjectType,
-  createExamComment,
+  createPaperComment,
+  createPaperImageComment,
   deleteExamComment,
-  listExamComments,
+  listPaperComments,
+  listPaperImageComments,
   updateExamComment,
 } from "@/lib/api/exam";
 
-type Props = { subjectType: ExamSubjectType; subjectId: string };
+type Props = { paperId: string; imageIndex?: number };
 
 function commentAuthorName(comment: ExamComment) {
   return comment.authorDisplayName ?? comment.authorUsername ?? "Người dùng";
@@ -86,7 +87,7 @@ function CommentCard({
   );
 }
 
-export function ExamCommentThread({ subjectType, subjectId }: Props) {
+export function ExamCommentThread({ paperId, imageIndex }: Props) {
   const { user } = useAuth();
   const [comments, setComments] = useState<ExamComment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,13 +102,17 @@ export function ExamCommentThread({ subjectType, subjectId }: Props) {
     setLoading(true);
     setError(null);
     try {
-      setComments(await listExamComments(subjectType, subjectId));
+      const data =
+        imageIndex === undefined
+          ? await listPaperComments(paperId)
+          : await listPaperImageComments(paperId, imageIndex);
+      setComments(data);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không tải được bình luận");
     } finally {
       setLoading(false);
     }
-  }, [subjectType, subjectId]);
+  }, [paperId, imageIndex]);
 
   useEffect(() => {
     load();
@@ -127,8 +132,10 @@ export function ExamCommentThread({ subjectType, subjectId }: Props) {
     try {
       if (editing) {
         await updateExamComment(editing.id, trimmed);
+      } else if (imageIndex === undefined) {
+        await createPaperComment(paperId, trimmed, replyTo?.id);
       } else {
-        await createExamComment(subjectType, subjectId, trimmed, replyTo?.id);
+        await createPaperImageComment(paperId, imageIndex, trimmed, replyTo?.id);
       }
       resetForm();
       await load();

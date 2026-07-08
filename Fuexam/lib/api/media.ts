@@ -39,6 +39,12 @@ export function resolveMediaUrl(storedReference: string | null | undefined): str
   if (storedReference.startsWith("http://") || storedReference.startsWith("https://")) {
     return storedReference;
   }
+  // Signed / proxied API paths (e.g. /api/v1/exam/media/..?sig=..) must go straight to the
+  // backend, not the public/uploads base — otherwise the signature path gets mangled.
+  if (storedReference.startsWith("/api/")) {
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+    return `${apiBase}${storedReference}`;
+  }
   const publicBase = process.env.NEXT_PUBLIC_MEDIA_BASE_URL ?? process.env.NEXT_PUBLIC_S3_PUBLIC_BASE_URL;
   if (!publicBase) {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";

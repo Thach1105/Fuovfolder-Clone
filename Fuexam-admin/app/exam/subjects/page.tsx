@@ -38,7 +38,6 @@ const EMPTY_FORM = {
   coverImageUrl: "",
   cardColor: "",
   categorySlug: "on-thi",
-  fePreviewCount: "3",
   active: true,
   sortOrder: "0",
 };
@@ -87,7 +86,6 @@ export default function AdminExamSubjectsPage() {
       coverImageUrl: item.coverImageUrl ?? "",
       cardColor: item.cardColor ?? "",
       categorySlug: item.categorySlug ?? "",
-      fePreviewCount: String(item.fePreviewCount),
       active: item.active,
       sortOrder: String(item.sortOrder),
     });
@@ -104,20 +102,20 @@ export default function AdminExamSubjectsPage() {
       coverImageUrl: form.coverImageUrl || undefined,
       cardColor: form.cardColor.trim() || undefined,
       categorySlug: form.categorySlug.trim() || undefined,
-      fePreviewCount: parseInt(form.fePreviewCount, 10) || 0,
       active: form.active,
-      sortOrder: parseInt(form.sortOrder, 10) || 0,
+      sortOrder: Number.parseInt(form.sortOrder, 10) || 0,
     };
     try {
       if (editingId) {
-        await updateExamSubject(editingId, body);
+        const updated = await updateExamSubject(editingId, body);
+        setItems((prev) => prev.map((it) => (it.id === updated.id ? updated : it)));
         toast.success("Đã cập nhật môn thi.");
       } else {
-        await createExamSubject(body);
+        const created = await createExamSubject(body);
+        setItems((prev) => [...prev, created]);
         toast.success("Đã tạo môn thi.");
       }
       resetForm();
-      await load();
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Lưu thất bại.";
       setError(message);
@@ -131,9 +129,9 @@ export default function AdminExamSubjectsPage() {
     if (!deleteId) return;
     try {
       await deleteExamSubject(deleteId);
+      setItems((prev) => prev.filter((it) => it.id !== deleteId));
       toast.success("Đã xóa môn thi.");
       if (editingId === deleteId) resetForm();
-      await load();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Xóa thất bại.");
     } finally {
@@ -155,7 +153,7 @@ export default function AdminExamSubjectsPage() {
   return (
     <AdminShell
       title="Exam FE/PE — Môn thi"
-      description="Quản lý môn thi, số câu preview FE và tài liệu PE"
+      description="Quản lý môn thi và các đề thi (FE/PE) kèm tài liệu"
     >
       <div className="mb-4 max-w-md">
         <Input
@@ -215,21 +213,11 @@ export default function AdminExamSubjectsPage() {
                 </div>
                 <ImageUploader
                   label="Ảnh bìa"
-                  purpose="exam_fe_image"
+                  purpose="exam_paper_image"
                   value={form.coverImageUrl || null}
                   onChange={(url) => setForm({ ...form, coverImageUrl: url ?? "" })}
                 />
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fePreview">Số câu preview FE (chưa mua membership)</Label>
-                    <Input
-                      id="fePreview"
-                      type="number"
-                      min={0}
-                      value={form.fePreviewCount}
-                      onChange={(e) => setForm({ ...form, fePreviewCount: e.target.value })}
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="color">Màu thẻ (hex)</Label>
                     <Input
@@ -308,7 +296,7 @@ export default function AdminExamSubjectsPage() {
                         </p>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {item.feQuestionCount}
+                        {item.fePaperCount}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{item.pePaperCount}</TableCell>
                       <TableCell className="text-xs">
@@ -317,16 +305,10 @@ export default function AdminExamSubjectsPage() {
                       <TableCell className="text-right align-top">
                         <div className="flex flex-wrap justify-end gap-x-3 gap-y-1">
                           <Link
-                            href={`/exam/subjects/${item.id}/fe`}
-                            className="text-sm text-emerald-500 hover:underline"
-                          >
-                            FE
-                          </Link>
-                          <Link
-                            href={`/exam/subjects/${item.id}/pe`}
+                            href={`/exam/subjects/${item.id}/papers`}
                             className="text-sm text-sky-500 hover:underline"
                           >
-                            PE
+                            Đề thi
                           </Link>
                           {canWrite && (
                             <button

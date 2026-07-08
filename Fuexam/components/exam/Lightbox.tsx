@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { ImageWithWatermark } from "@/components/shared/image-with-watermark";
 
@@ -9,9 +9,11 @@ type Props = {
   currentIndex: number;
   onClose: () => void;
   onNavigate: (index: number) => void;
+  /** Optional panel rendered beside the image (e.g. a per-image comment thread). */
+  renderSidePanel?: (index: number) => ReactNode;
 };
 
-export function Lightbox({ images, currentIndex, onClose, onNavigate }: Props) {
+export function Lightbox({ images, currentIndex, onClose, onNavigate, renderSidePanel }: Props) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -63,15 +65,25 @@ export function Lightbox({ images, currentIndex, onClose, onNavigate }: Props) {
         </button>
       )}
 
-      <div className="relative max-h-[90vh] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
-        <ImageWithWatermark
-          src={images[currentIndex]}
-          alt={`Anh ${currentIndex + 1}`}
-          className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
-        />
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-sm text-white">
-          {currentIndex + 1} / {images.length}
+      <div
+        className="flex max-h-[92vh] w-full max-w-[95vw] flex-col items-stretch gap-4 lg:flex-row"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="relative flex min-h-0 flex-1 items-center justify-center">
+          <ImageWithWatermark
+            src={images[currentIndex]}
+            alt={`Anh ${currentIndex + 1}`}
+            className="max-h-[85vh] max-w-full rounded-lg object-contain lg:max-h-[92vh]"
+          />
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-sm text-white">
+            {currentIndex + 1} / {images.length}
+          </div>
         </div>
+        {renderSidePanel && (
+          <div className="max-h-[92vh] w-full shrink-0 overflow-y-auto rounded-2xl bg-background p-4 lg:w-[380px]">
+            {renderSidePanel(currentIndex)}
+          </div>
+        )}
       </div>
     </div>
   );
