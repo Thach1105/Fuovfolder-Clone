@@ -4,6 +4,7 @@ import com.fuoverflow.common.exception.ForbiddenException;
 import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.common.exception.TooManyRequestsException;
 import com.fuoverflow.common.storage.ObjectStorage;
+import com.fuoverflow.common.web.ClientIpResolver;
 import com.fuoverflow.exam.application.ExamAccessGuard;
 import com.fuoverflow.exam.application.ExamMediaTokenService;
 import com.fuoverflow.exam.persistence.ExamFeQuestionRepository;
@@ -33,6 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequestMapping("/api/v1/exam")
 public class ExamMediaController {
     private static final int MAX_REQUESTS_PER_MINUTE = 60;
+    private static final int RATE_LIMIT_MAP_CLEANUP_THRESHOLD = 10_000;
+    private static final long RATE_LIMIT_ENTRY_TTL_MS = 120_000;
 
     private final ExamMediaTokenService tokenService;
     private final ObjectStorage objectStorage;
@@ -140,7 +143,7 @@ public class ExamMediaController {
     }
 
     private void checkRateLimit(HttpServletRequest request) {
-        String ip = request.getRemoteAddr();
+        String ip = ClientIpResolver.resolve(request);
         long now = System.currentTimeMillis();
         long windowStart = now - 60_000;
         long[] timestamps = rateLimitMap.compute(ip, (k, existing) -> {
@@ -149,9 +152,17 @@ public class ExamMediaController {
             existing[1]++;
             return existing;
         });
+        if (rateLimitMap.size() > RATE_LIMIT_MAP_CLEANUP_THRESHOLD) {
+            evictStaleRateLimitEntries(now);
+        }
         if (timestamps[1] > MAX_REQUESTS_PER_MINUTE) {
             throw new TooManyRequestsException("RATE_LIMIT_EXCEEDED", "Too many requests. Try again later.");
         }
+    }
+
+    private void evictStaleRateLimitEntries(long now) {
+        long staleBefore = now - RATE_LIMIT_ENTRY_TTL_MS;
+        rateLimitMap.entrySet().removeIf(entry -> entry.getValue()[0] < staleBefore);
     }
 
     private static String detectContentType(String objectKey) {

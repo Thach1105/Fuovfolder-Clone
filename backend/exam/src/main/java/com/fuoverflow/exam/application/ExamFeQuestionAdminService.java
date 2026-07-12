@@ -154,23 +154,20 @@ public class ExamFeQuestionAdminService {
     private Validated validate(String questionText, List<String> imageUrls, List<String> blurUrls) {
         String normalizedText = blankToNull(questionText);
         List<String> normalizedImages = new ArrayList<>();
+        List<String> normalizedBlurs = new ArrayList<>();
         if (imageUrls != null) {
-            for (String url : imageUrls) {
-                String key = urlResolver.normalizeForStorage(url);
-                if (key != null) {
-                    normalizedImages.add(key);
+            for (int i = 0; i < imageUrls.size(); i++) {
+                String key = urlResolver.normalizeForStorage(imageUrls.get(i));
+                if (key == null) {
+                    continue;
                 }
+                String blurUrl = (blurUrls != null && i < blurUrls.size()) ? blurUrls.get(i) : null;
+                normalizedImages.add(key);
+                normalizedBlurs.add(urlResolver.normalizeForStorage(blurUrl));
             }
         }
         if (normalizedText == null && normalizedImages.isEmpty()) {
             throw new BadRequestException("QUESTION_EMPTY", "Question must have text or at least one image");
-        }
-        List<String> normalizedBlurs = new ArrayList<>();
-        if (blurUrls != null) {
-            for (String url : blurUrls) {
-                String key = urlResolver.normalizeForStorage(url);
-                normalizedBlurs.add(key);
-            }
         }
         return new Validated(normalizedText, normalizedImages, normalizedBlurs);
     }
