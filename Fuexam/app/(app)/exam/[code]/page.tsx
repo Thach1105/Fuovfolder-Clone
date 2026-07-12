@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Download, FileText, Lock } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Download, FileText, Lock, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ErrorBanner } from "@/components/ui/error-banner";
@@ -23,12 +23,16 @@ import { Lightbox } from "@/components/exam/Lightbox";
 import { ImageWithWatermark } from "@/components/shared/image-with-watermark";
 import {
   type ExamPaperType,
+  type PublicFeQuestion,
+  type PublicFeQuestionList,
+  type PublicImageItem,
   type PublicPaperDetail,
   type PublicPaperSummary,
   type PublicSubjectCard,
   type PublicSubjectDetail,
   getExamPaper,
   getExamSubject,
+  listFeQuestions,
   paperResourceDownloadUrl,
 } from "@/lib/api/exam";
 
@@ -128,6 +132,142 @@ function PaperImages({ urls, paperId }: { urls: string[]; paperId: string }) {
         />
       )}
     </>
+  );
+}
+
+function FePostImages({ images, questionId }: { images: PublicImageItem[]; questionId: string }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  const resolved = useMemo(
+    () =>
+      images.map((img) => ({
+        ...img,
+        resolvedUrl: resolveMediaUrl(img.url),
+      })),
+    [images],
+  );
+
+  const fullUrls = useMemo(
+    () =>
+      resolved
+        .filter((img) => img.type === "full" && img.resolvedUrl)
+        .map((img) => img.resolvedUrl as string),
+    [resolved],
+  );
+
+  if (resolved.length === 0) return null;
+
+  return (
+    <>
+      <div className={resolved.length > 1 ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : ""}>
+        {resolved.map((img) => {
+          if (img.type === "full") {
+            const fullIndex = fullUrls.indexOf(img.resolvedUrl as string);
+            return (
+              <button
+                key={img.index}
+                type="button"
+                onClick={() => fullIndex >= 0 && setLightboxIndex(fullIndex)}
+                className="group relative overflow-hidden rounded-xl border border-foreground/10"
+                aria-label="Xem ảnh lớn và bình luận"
+              >
+                <ImageWithWatermark
+                  src={img.resolvedUrl ?? ""}
+                  alt=""
+                  loading="lazy"
+                  className="max-h-72 w-full object-cover transition-transform group-hover:scale-[1.02]"
+                />
+                <span className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
+              </button>
+            );
+          }
+          return (
+            <Link
+              key={img.index}
+              href="/membership"
+              className="group relative flex min-h-40 items-center justify-center overflow-hidden rounded-xl border border-foreground/10"
+              aria-label="Mua membership để xem ảnh"
+            >
+              {img.resolvedUrl && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={img.resolvedUrl}
+                  alt=""
+                  loading="lazy"
+                  className="max-h-72 w-full object-cover"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-black/70" />
+              <div className="relative flex flex-col items-center gap-1.5 px-3 text-center text-white">
+                <Lock className="h-5 w-5" />
+                <span className="text-xs font-medium">Mua membership để xem</span>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+      {lightboxIndex !== null && (
+        <Lightbox
+          images={fullUrls}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+          renderSidePanel={(index) => (
+            <ExamCommentThread key={index} paperId={questionId} imageIndex={index} />
+          )}
+        />
+      )}
+    </>
+  );
+}
+
+function FePostCard({ question }: { question: PublicFeQuestion }) {
+  const [showComments, setShowComments] = useState(false);
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-foreground/10 bg-background/70 p-4 backdrop-blur">
+      {question.questionText && (
+        <p className="whitespace-pre-line text-sm font-medium leading-snug">{question.questionText}</p>
+      )}
+      <FePostImages images={question.images} questionId={question.id} />
+      <button
+        type="button"
+        onClick={() => setShowComments((v) => !v)}
+        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+      >
+        <MessageSquare className="h-3.5 w-3.5" />
+        {question.commentCount} bình luận
+        {showComments ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+      </button>
+      {showComments && <ExamCommentThread paperId={question.id} />}
+    </div>
+  );
+}
+
+function FeQuestionsSection({ feData }: { feData: PublicFeQuestionList }) {
+  if (feData.questions.length === 0) return null;
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="app-eyebrow">Câu hỏi FE</h3>
+        {feData.locked && (
+          <span className="font-mono text-xs text-muted-foreground">
+            {feData.previewImageCount} / {feData.totalCount} ảnh xem trước
+          </span>
+        )}
+      </div>
+      {feData.locked && (
+        <MembershipUpsell
+          title="Bộ câu hỏi FE chỉ xem đầy đủ khi là thành viên"
+          description="Bạn có thể xem trước một số ảnh. Mua membership để mở khóa toàn bộ ảnh và thảo luận."
+        />
+      )}
+      <div className="space-y-3">
+        {feData.questions.map((q) => (
+          <FePostCard key={q.id} question={q} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -267,6 +407,7 @@ export default function ExamDetailPage() {
   const [detail, setDetail] = useState<PublicSubjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [feData, setFeData] = useState<PublicFeQuestionList | null>(null);
 
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
   const [termFilter, setTermFilter] = useState<string>("ALL");
@@ -287,6 +428,20 @@ export default function ExamDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    listFeQuestions(code)
+      .then((data) => {
+        if (active) setFeData(data);
+      })
+      .catch(() => {
+        if (active) setFeData(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [code]);
 
   // Reset filters/opened paper when navigating to a different subject.
   useEffect(() => {
@@ -399,6 +554,8 @@ export default function ExamDetailPage() {
             <PaperDetailView paperId={openPaper.id} onBack={() => setOpenPaper(null)} />
           ) : (
             <>
+              {feData && <FeQuestionsSection feData={feData} />}
+
               {/* Filters */}
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex gap-1 rounded-full border border-foreground/10 bg-background/60 p-1 backdrop-blur">

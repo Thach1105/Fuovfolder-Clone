@@ -40,6 +40,7 @@ const EMPTY_FORM = {
   categorySlug: "on-thi",
   active: true,
   sortOrder: "0",
+  fePreviewImageCount: "2",
 };
 
 export default function AdminExamSubjectsPage() {
@@ -88,6 +89,7 @@ export default function AdminExamSubjectsPage() {
       categorySlug: item.categorySlug ?? "",
       active: item.active,
       sortOrder: String(item.sortOrder),
+      fePreviewImageCount: String(item.fePreviewImageCount),
     });
   }
 
@@ -104,6 +106,7 @@ export default function AdminExamSubjectsPage() {
       categorySlug: form.categorySlug.trim() || undefined,
       active: form.active,
       sortOrder: Number.parseInt(form.sortOrder, 10) || 0,
+      fePreviewImageCount: Number.parseInt(form.fePreviewImageCount, 10) || 2,
     };
     try {
       if (editingId) {
@@ -245,6 +248,17 @@ export default function AdminExamSubjectsPage() {
                       onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fePreviewImageCount">Số ảnh xem trước (free user)</Label>
+                    <Input
+                      id="fePreviewImageCount"
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={form.fePreviewImageCount}
+                      onChange={(e) => setForm({ ...form, fePreviewImageCount: e.target.value })}
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
                   <Label htmlFor="active" className="cursor-pointer">
@@ -296,7 +310,7 @@ export default function AdminExamSubjectsPage() {
                         </p>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {item.fePaperCount}
+                        {item.feQuestionCount}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{item.pePaperCount}</TableCell>
                       <TableCell className="text-xs">

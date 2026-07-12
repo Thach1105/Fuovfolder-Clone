@@ -8,7 +8,7 @@ export interface AdminSubject {
   coverImageUrl: string | null;
   cardColor: string | null;
   categorySlug: string | null;
-  fePreviewCount: number;
+  fePreviewImageCount: number;
   viewCount: number;
   active: boolean;
   sortOrder: number;
@@ -25,17 +25,9 @@ export interface AdminSubjectBody {
   coverImageUrl?: string;
   cardColor?: string;
   categorySlug?: string;
-  fePreviewCount?: number;
+  fePreviewImageCount?: number;
   active?: boolean;
   sortOrder?: number;
-}
-
-export interface AdminFeOption {
-  id: string;
-  optionText: string | null;
-  optionImageUrl: string | null;
-  isCorrect: boolean;
-  sortOrder: number;
 }
 
 export interface AdminFeQuestion {
@@ -43,27 +35,17 @@ export interface AdminFeQuestion {
   subjectId: string;
   questionText: string | null;
   questionImageUrls: string[] | null;
-  explanation: string | null;
-  multipleCorrect: boolean;
+  questionBlurUrls: string[] | null;
   sortOrder: number;
-  options: AdminFeOption[];
   createdAt: string;
   updatedAt: string;
-}
-
-export interface FeOptionBody {
-  optionText?: string;
-  optionImageUrl?: string;
-  isCorrect?: boolean;
-  sortOrder?: number;
 }
 
 export interface FeQuestionBody {
   questionText?: string;
   questionImageUrls?: string[];
-  explanation?: string;
+  questionBlurUrls?: string[];
   sortOrder?: number;
-  options: FeOptionBody[];
 }
 
 export interface AdminPeResource {
@@ -225,6 +207,7 @@ export type ExamImagePurpose = "exam_fe_image" | "exam_pe_image";
 
 export interface ExamMediaUploadResult {
   objectKey: string;
+  blurObjectKey: string | null;
   publicUrl: string;
 }
 

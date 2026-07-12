@@ -62,6 +62,29 @@ export interface PublicPaperDetail {
   resources: PublicPaperResource[];
 }
 
+export interface PublicImageItem {
+  index: number;
+  url: string | null;
+  type: "full" | "blur";
+}
+
+export interface PublicFeQuestion {
+  id: string;
+  questionText: string | null;
+  totalImageCount: number;
+  images: PublicImageItem[];
+  sortOrder: number;
+  commentCount: number;
+  createdAt: string;
+}
+
+export interface PublicFeQuestionList {
+  locked: boolean;
+  totalCount: number;
+  previewImageCount: number;
+  questions: PublicFeQuestion[];
+}
+
 export type ExamCommentSubjectType = "paper" | "paper_image";
 
 export interface ExamComment {
@@ -86,6 +109,12 @@ export function listExamSubjects() {
 
 export function getExamSubject(idOrCode: string) {
   return apiFetch<PublicSubjectDetail>(`${API_V1}/exam/catalog/${encodeURIComponent(idOrCode)}`);
+}
+
+export function listFeQuestions(idOrCode: string) {
+  return apiFetch<PublicFeQuestionList>(
+    `${API_V1}/exam/catalog/${encodeURIComponent(idOrCode)}/fe`,
+  );
 }
 
 export function getExamPaper(paperId: string) {
