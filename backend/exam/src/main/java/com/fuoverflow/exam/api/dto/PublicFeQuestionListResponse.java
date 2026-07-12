@@ -10,7 +10,7 @@ import java.util.List;
 public record PublicFeQuestionListResponse(
         boolean locked,
         int totalCount,
-        int previewCount,
+        int previewImageCount,
         List<PublicFeQuestionResponse> questions
 ) {
 }

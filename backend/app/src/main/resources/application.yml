@@ -88,7 +88,7 @@ fuexam:
   exam:
     media-signing-secret: ${EXAM_MEDIA_SIGNING_SECRET:dev-exam-media-secret-change-me}
     signed-url-ttl-seconds: ${EXAM_MEDIA_URL_TTL:900}
-    default-fe-preview-count: ${EXAM_FE_PREVIEW_COUNT:3}
+    default-fe-preview-image-count: ${EXAM_FE_PREVIEW_COUNT:3}
   membership:
     expiry-cron: ${MEMBERSHIP_EXPIRY_CRON:0 0 0 * * *}
   scheduling:

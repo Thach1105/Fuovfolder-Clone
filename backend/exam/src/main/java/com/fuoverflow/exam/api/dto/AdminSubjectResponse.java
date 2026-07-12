@@ -11,7 +11,7 @@ public record AdminSubjectResponse(
         String coverImageUrl,
         String cardColor,
         String categorySlug,
-        int fePreviewCount,
+        int fePreviewImageCount,
         long viewCount,
         boolean active,
         int sortOrder,

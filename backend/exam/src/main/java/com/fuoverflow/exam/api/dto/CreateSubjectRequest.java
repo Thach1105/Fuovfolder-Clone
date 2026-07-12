@@ -11,7 +11,7 @@ public record CreateSubjectRequest(
         @Size(max = 500) String coverImageUrl,
         @Size(max = 32) String cardColor,
         @Size(max = 64) String categorySlug,
-        @Min(0) Integer fePreviewCount,
+        @Min(0) Integer fePreviewImageCount,
         Boolean active,
         Integer sortOrder
 ) {

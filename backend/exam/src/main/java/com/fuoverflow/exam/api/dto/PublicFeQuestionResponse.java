@@ -1,23 +1,22 @@
 package com.fuoverflow.exam.api.dto;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 public record PublicFeQuestionResponse(
         UUID id,
         String questionText,
-        List<String> questionImageUrls,
-        String explanation,
-        boolean multipleCorrect,
+        int totalImageCount,
+        List<PublicImageItem> images,
         int sortOrder,
-        boolean preview,
-        List<PublicFeOptionResponse> options
+        int commentCount,
+        Instant createdAt
 ) {
-    public record PublicFeOptionResponse(
-            UUID id,
-            String optionText,
-            String optionImageUrl,
-            boolean isCorrect
+    public record PublicImageItem(
+            int index,
+            String url,
+            String type
     ) {
     }
 }

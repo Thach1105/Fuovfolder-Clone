@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record ExamProperties(
         String mediaSigningSecret,
         Integer signedUrlTtlSeconds,
-        Integer defaultFePreviewCount
+        Integer defaultFePreviewImageCount
 ) {
     public String mediaSigningSecretOrDefault() {
         return mediaSigningSecret != null && !mediaSigningSecret.isBlank()
@@ -18,8 +18,8 @@ public record ExamProperties(
                 ? signedUrlTtlSeconds : 900;
     }
 
-    public int defaultFePreviewCountOrDefault() {
-        return defaultFePreviewCount != null && defaultFePreviewCount >= 0
-                ? defaultFePreviewCount : 3;
+    public int defaultFePreviewImageCountOrDefault() {
+        return defaultFePreviewImageCount != null && defaultFePreviewImageCount >= 0
+                ? defaultFePreviewImageCount : 3;
     }
 }

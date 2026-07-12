@@ -9,19 +9,9 @@ public record AdminFeQuestionResponse(
         UUID subjectId,
         String questionText,
         List<String> questionImageUrls,
-        String explanation,
-        boolean multipleCorrect,
+        List<String> questionBlurUrls,
         int sortOrder,
-        List<AdminFeOptionResponse> options,
         Instant createdAt,
         Instant updatedAt
 ) {
-    public record AdminFeOptionResponse(
-            UUID id,
-            String optionText,
-            String optionImageUrl,
-            boolean isCorrect,
-            int sortOrder
-    ) {
-    }
 }

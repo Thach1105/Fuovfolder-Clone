@@ -13,7 +13,7 @@ public record PublicSubjectDetailResponse(
         long viewCount,
         int feQuestionCount,
         int pePaperCount,
-        int fePreviewCount,
+        int fePreviewImageCount,
         boolean hasActiveMembership
 ) {
 }
