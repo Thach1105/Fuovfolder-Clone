@@ -69,7 +69,8 @@ public class ExamSubjectAdminService {
                 cover,
                 blankToNull(request.cardColor()),
                 blankToNull(request.categorySlug()),
-                request.fePreviewCount() != null ? request.fePreviewCount() : properties.defaultFePreviewCountOrDefault(),
+                request.fePreviewImageCount() != null
+                        ? request.fePreviewImageCount() : properties.defaultFePreviewImageCountOrDefault(),
                 request.active() == null || request.active(),
                 request.sortOrder() != null ? request.sortOrder() : 0,
                 now);
@@ -109,8 +110,8 @@ public class ExamSubjectAdminService {
         if (request.categorySlug() != null) {
             entity.setCategorySlug(blankToNull(request.categorySlug()));
         }
-        if (request.fePreviewCount() != null) {
-            entity.setFePreviewCount(request.fePreviewCount());
+        if (request.fePreviewImageCount() != null) {
+            entity.setFePreviewImageCount(request.fePreviewImageCount());
         }
         if (request.active() != null) {
             entity.setActive(request.active());
@@ -147,7 +148,7 @@ public class ExamSubjectAdminService {
                 urlResolver.plain(e.getCoverImageUrl()),
                 e.getCardColor(),
                 e.getCategorySlug(),
-                e.getFePreviewCount(),
+                e.getFePreviewImageCount(),
                 e.getViewCount(),
                 e.isActive(),
                 e.getSortOrder(),
