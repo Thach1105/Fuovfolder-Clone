@@ -219,13 +219,6 @@ function FePostImages({ images, questionId }: { images: PublicImageItem[]; quest
           currentIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onNavigate={setLightboxIndex}
-          renderSidePanel={() => (
-            <ExamCommentThread
-              key={questionId}
-              subjectType="fe_question"
-              subjectId={questionId}
-            />
-          )}
         />
       )}
     </>
