@@ -11,15 +11,26 @@ import { formatDateTime } from "@/lib/format-datetime";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
   type ExamComment,
+  createExamComment,
   createPaperComment,
   createPaperImageComment,
   deleteExamComment,
+  listExamComments,
   listPaperComments,
   listPaperImageComments,
   updateExamComment,
 } from "@/lib/api/exam";
 
-type Props = { paperId: string; imageIndex?: number };
+/**
+ * Two supported modes:
+ * - subjectType/subjectId: correctly-routed comments against the backend's
+ *   ExamCommentController (subjectType is "fe_question" or "pe_item"). Preferred.
+ * - paperId/imageIndex: legacy paper-level/paper-image comment routes, kept for
+ *   call sites not yet migrated to a supported backend subject type.
+ */
+type Props =
+  | { subjectType: string; subjectId: string; paperId?: undefined; imageIndex?: undefined }
+  | { paperId: string; imageIndex?: number; subjectType?: undefined; subjectId?: undefined };
 
 function commentAuthorName(comment: ExamComment) {
   return comment.authorDisplayName ?? comment.authorUsername ?? "Người dùng";
@@ -87,7 +98,8 @@ function CommentCard({
   );
 }
 
-export function ExamCommentThread({ paperId, imageIndex }: Props) {
+export function ExamCommentThread(props: Props) {
+  const { subjectType, subjectId, paperId, imageIndex } = props;
   const { user } = useAuth();
   const [comments, setComments] = useState<ExamComment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,16 +115,18 @@ export function ExamCommentThread({ paperId, imageIndex }: Props) {
     setError(null);
     try {
       const data =
-        imageIndex === undefined
-          ? await listPaperComments(paperId)
-          : await listPaperImageComments(paperId, imageIndex);
+        subjectType !== undefined
+          ? await listExamComments(subjectType, subjectId)
+          : imageIndex === undefined
+            ? await listPaperComments(paperId)
+            : await listPaperImageComments(paperId, imageIndex);
       setComments(data);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không tải được bình luận");
     } finally {
       setLoading(false);
     }
-  }, [paperId, imageIndex]);
+  }, [subjectType, subjectId, paperId, imageIndex]);
 
   useEffect(() => {
     load();
@@ -132,6 +146,8 @@ export function ExamCommentThread({ paperId, imageIndex }: Props) {
     try {
       if (editing) {
         await updateExamComment(editing.id, trimmed);
+      } else if (subjectType !== undefined) {
+        await createExamComment(subjectType, subjectId, trimmed, replyTo?.id);
       } else if (imageIndex === undefined) {
         await createPaperComment(paperId, trimmed, replyTo?.id);
       } else {

@@ -147,13 +147,20 @@ function FePostImages({ images, questionId }: { images: PublicImageItem[]; quest
     [images],
   );
 
-  const fullUrls = useMemo(
-    () =>
-      resolved
-        .filter((img) => img.type === "full" && img.resolvedUrl)
-        .map((img) => img.resolvedUrl as string),
-    [resolved],
-  );
+  // Map each full-image's PublicImageItem.index to its position within fullUrls
+  // (the Lightbox's own index space), rather than looking up by resolved URL —
+  // URLs can repeat or fail to resolve, which made indexOf-based lookup fragile.
+  const { fullUrls, lightboxIndexByItemIndex } = useMemo(() => {
+    const urls: string[] = [];
+    const map = new Map<number, number>();
+    for (const img of resolved) {
+      if (img.type === "full" && img.resolvedUrl) {
+        map.set(img.index, urls.length);
+        urls.push(img.resolvedUrl);
+      }
+    }
+    return { fullUrls: urls, lightboxIndexByItemIndex: map };
+  }, [resolved]);
 
   if (resolved.length === 0) return null;
 
@@ -162,7 +169,7 @@ function FePostImages({ images, questionId }: { images: PublicImageItem[]; quest
       <div className={resolved.length > 1 ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : ""}>
         {resolved.map((img) => {
           if (img.type === "full") {
-            const fullIndex = fullUrls.indexOf(img.resolvedUrl as string);
+            const fullIndex = lightboxIndexByItemIndex.get(img.index) ?? -1;
             return (
               <button
                 key={img.index}
@@ -212,8 +219,12 @@ function FePostImages({ images, questionId }: { images: PublicImageItem[]; quest
           currentIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onNavigate={setLightboxIndex}
-          renderSidePanel={(index) => (
-            <ExamCommentThread key={index} paperId={questionId} imageIndex={index} />
+          renderSidePanel={() => (
+            <ExamCommentThread
+              key={questionId}
+              subjectType="fe_question"
+              subjectId={questionId}
+            />
           )}
         />
       )}
@@ -239,7 +250,9 @@ function FePostCard({ question }: { question: PublicFeQuestion }) {
         {question.commentCount} bình luận
         {showComments ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
       </button>
-      {showComments && <ExamCommentThread paperId={question.id} />}
+      {showComments && (
+        <ExamCommentThread subjectType="fe_question" subjectId={question.id} />
+      )}
     </div>
   );
 }

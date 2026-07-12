@@ -123,12 +123,34 @@ export function getExamPaper(paperId: string) {
   );
 }
 
+/**
+ * Correctly-routed comment endpoints matching ExamCommentController:
+ * GET/POST /api/v1/exam/comments/{subjectType}/{subjectId}, where subjectType
+ * is "fe_question" or "pe_item" and subjectId is the question/item id.
+ */
+export function listExamComments(subjectType: string, subjectId: string) {
+  return apiFetch<ExamComment[]>(
+    `${API_V1}/exam/comments/${encodeURIComponent(subjectType)}/${encodeURIComponent(subjectId)}`,
+  );
+}
+
+export function createExamComment(subjectType: string, subjectId: string, body: string, parentCommentId?: string) {
+  const payload: Record<string, unknown> = { body };
+  if (parentCommentId) payload.parentCommentId = parentCommentId;
+  return apiFetch<ExamComment>(
+    `${API_V1}/exam/comments/${encodeURIComponent(subjectType)}/${encodeURIComponent(subjectId)}`,
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
+/** @deprecated Backend has no "papers" subject type; kept for backward compat with call sites not yet migrated. */
 export function listPaperComments(paperId: string) {
   return apiFetch<ExamComment[]>(
     `${API_V1}/exam/comments/papers/${encodeURIComponent(paperId)}`,
   );
 }
 
+/** @deprecated Backend has no "papers" subject type; kept for backward compat with call sites not yet migrated. */
 export function createPaperComment(paperId: string, body: string, parentCommentId?: string) {
   const payload: Record<string, unknown> = { body };
   if (parentCommentId) payload.parentCommentId = parentCommentId;
