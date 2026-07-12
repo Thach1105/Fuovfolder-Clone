@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ErrorBanner } from "@/components/ui/error-banner";
@@ -18,6 +19,7 @@ import {
   listExamComments,
   listPaperComments,
   listPaperImageComments,
+  toggleExamCommentLike,
   updateExamComment,
 } from "@/lib/api/exam";
 
@@ -41,12 +43,14 @@ function CommentCard({
   onReply,
   onEdit,
   onDelete,
+  onLike,
   busy,
 }: {
   comment: ExamComment;
   onReply: (comment: ExamComment) => void;
   onEdit: (comment: ExamComment) => void;
   onDelete: (comment: ExamComment) => void;
+  onLike: (comment: ExamComment) => void;
   busy: boolean;
 }) {
   const name = commentAuthorName(comment);
@@ -67,6 +71,15 @@ function CommentCard({
           dangerouslySetInnerHTML={{ __html: comment.bodyHtml }}
         />
         <div className="flex flex-wrap items-center gap-3 pt-0.5 text-xs text-muted-foreground">
+          <button
+            type="button"
+            className={`flex items-center gap-1 hover:text-foreground ${comment.likedByMe ? "font-medium text-sky-600" : ""}`}
+            onClick={() => onLike(comment)}
+            disabled={busy}
+          >
+            <ThumbsUp className={`h-3.5 w-3.5 ${comment.likedByMe ? "fill-sky-600 text-sky-600" : ""}`} />
+            {comment.likeCount > 0 && comment.likeCount}
+          </button>
           {!comment.parentCommentId && (
             <button type="button" className="hover:text-foreground" onClick={() => onReply(comment)}>
               Trả lời
@@ -189,6 +202,25 @@ export function ExamCommentThread(props: Props) {
     }
   }
 
+  async function handleLike(comment: ExamComment) {
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === comment.id
+          ? { ...c, likedByMe: !c.likedByMe, likeCount: c.likedByMe ? c.likeCount - 1 : c.likeCount + 1 }
+          : c,
+      ),
+    );
+    try {
+      await toggleExamCommentLike(comment.id);
+    } catch {
+      await load(); // revert on error
+    }
+  }
+
   const topLevel = comments.filter((c) => !c.parentCommentId);
   const repliesByParent = comments.reduce<Record<string, ExamComment[]>>((acc, c) => {
     if (c.parentCommentId) (acc[c.parentCommentId] ??= []).push(c);
@@ -265,6 +297,7 @@ export function ExamCommentThread(props: Props) {
                 onReply={startReply}
                 onEdit={startEdit}
                 onDelete={handleDelete}
+                onLike={handleLike}
                 busy={busyId === comment.id}
               />
               {(repliesByParent[comment.id] ?? []).length > 0 && (
@@ -276,6 +309,7 @@ export function ExamCommentThread(props: Props) {
                       onReply={startReply}
                       onEdit={startEdit}
                       onDelete={handleDelete}
+                      onLike={handleLike}
                       busy={busyId === reply.id}
                     />
                   ))}

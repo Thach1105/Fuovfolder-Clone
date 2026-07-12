@@ -75,6 +75,7 @@ export interface PublicFeQuestion {
   images: PublicImageItem[];
   sortOrder: number;
   commentCount: number;
+  viewCount: number;
   createdAt: string;
 }
 
@@ -98,6 +99,8 @@ export interface ExamComment {
   authorAvatarUrl: string | null;
   parentCommentId: string | null;
   bodyHtml: string;
+  likeCount: number;
+  likedByMe: boolean;
   editable: boolean;
   createdAt: string;
   updatedAt: string;
@@ -120,6 +123,25 @@ export function listFeQuestions(idOrCode: string) {
 export function getExamPaper(paperId: string) {
   return apiFetch<PublicPaperDetail>(
     `${API_V1}/exam/catalog/papers/${encodeURIComponent(paperId)}`,
+  );
+}
+
+export function incrementFeQuestionView(idOrCode: string, questionId: string) {
+  return apiFetch<void>(
+    `${API_V1}/exam/catalog/${encodeURIComponent(idOrCode)}/fe/${encodeURIComponent(questionId)}/view`,
+    { method: "POST" },
+  ).catch(() => {});
+}
+
+export interface ExamCommentLikeResult {
+  liked: boolean;
+  likeCount: number;
+}
+
+export function toggleExamCommentLike(commentId: string) {
+  return apiFetch<ExamCommentLikeResult>(
+    `${API_V1}/exam/comments/${encodeURIComponent(commentId)}/like`,
+    { method: "POST" },
   );
 }
 

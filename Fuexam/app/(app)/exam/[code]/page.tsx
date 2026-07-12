@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ChevronDown, ChevronUp, Download, FileText, Lock, MessageSquare } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Calendar, ChevronDown, ChevronUp, Download, Eye, FileText, Lock, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ErrorBanner } from "@/components/ui/error-banner";
@@ -32,6 +32,7 @@ import {
   type PublicSubjectDetail,
   getExamPaper,
   getExamSubject,
+  incrementFeQuestionView,
   listFeQuestions,
   paperResourceDownloadUrl,
 } from "@/lib/api/exam";
@@ -225,14 +226,49 @@ function FePostImages({ images, questionId }: { images: PublicImageItem[]; quest
   );
 }
 
-function FePostCard({ question }: { question: PublicFeQuestion }) {
+function formatRelativeDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "Vừa xong";
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours} giờ trước`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return diffDays === 1 ? "Hôm qua" : `${diffDays} ngày trước`;
+  return date.toLocaleDateString("vi-VN");
+}
+
+function FePostCard({ question, subjectCode }: { question: PublicFeQuestion; subjectCode: string }) {
   const [showComments, setShowComments] = useState(false);
+  const viewedRef = useRef(false);
+
+  useEffect(() => {
+    if (viewedRef.current) return;
+    viewedRef.current = true;
+    incrementFeQuestionView(subjectCode, question.id);
+  }, [subjectCode, question.id]);
 
   return (
     <div className="space-y-3 rounded-2xl border border-foreground/10 bg-background/70 p-4 backdrop-blur">
       {question.questionText && (
         <p className="whitespace-pre-line text-sm font-medium leading-snug">{question.questionText}</p>
       )}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Calendar className="h-3 w-3" />
+          {formatRelativeDate(question.createdAt)}
+        </span>
+        <span className="flex items-center gap-1">
+          <Eye className="h-3 w-3" />
+          {question.viewCount} lượt xem
+        </span>
+        <span className="flex items-center gap-1">
+          <MessageSquare className="h-3 w-3" />
+          {question.commentCount} bình luận
+        </span>
+      </div>
       <FePostImages images={question.images} questionId={question.id} />
       <button
         type="button"
@@ -250,7 +286,7 @@ function FePostCard({ question }: { question: PublicFeQuestion }) {
   );
 }
 
-function FeQuestionsSection({ feData }: { feData: PublicFeQuestionList }) {
+function FeQuestionsSection({ feData, subjectCode }: { feData: PublicFeQuestionList; subjectCode: string }) {
   if (feData.questions.length === 0) return null;
   return (
     <section className="space-y-3">
@@ -270,7 +306,7 @@ function FeQuestionsSection({ feData }: { feData: PublicFeQuestionList }) {
       )}
       <div className="space-y-3">
         {feData.questions.map((q) => (
-          <FePostCard key={q.id} question={q} />
+          <FePostCard key={q.id} question={q} subjectCode={subjectCode} />
         ))}
       </div>
     </section>
@@ -560,7 +596,7 @@ export default function ExamDetailPage() {
             <PaperDetailView paperId={openPaper.id} onBack={() => setOpenPaper(null)} />
           ) : (
             <>
-              {feData && <FeQuestionsSection feData={feData} />}
+              {feData && <FeQuestionsSection feData={feData} subjectCode={detail?.code ?? code} />}
 
               {/* Filters */}
               <div className="flex flex-wrap items-center gap-3">
