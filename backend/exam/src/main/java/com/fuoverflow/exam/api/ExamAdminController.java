@@ -201,8 +201,12 @@ public class ExamAdminController {
             @RequestPart("file") MultipartFile file) {
         UUID adminUserId = UUID.fromString(authentication.getName());
         UploadPurpose uploadPurpose = resolvePurpose(purpose);
+        if (uploadPurpose == UploadPurpose.EXAM_FE_IMAGE) {
+            ExamMediaService.BlurUploadResult result = mediaService.uploadWithBlur(file, uploadPurpose, adminUserId);
+            return ApiResponse.ok(new MediaUploadResponse(result.objectKey(), result.blurObjectKey(), result.publicUrl()));
+        }
         StoredObject stored = mediaService.upload(file, uploadPurpose, adminUserId);
-        return ApiResponse.ok(new MediaUploadResponse(stored.objectKey(), stored.publicUrl()));
+        return ApiResponse.ok(new MediaUploadResponse(stored.objectKey(), null, stored.publicUrl()));
     }
 
     // --- comment moderation ---------------------------------------------------

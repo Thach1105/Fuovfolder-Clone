@@ -2,14 +2,15 @@ package com.fuoverflow.exam.api;
 
 import com.fuoverflow.common.exception.ForbiddenException;
 import com.fuoverflow.common.exception.NotFoundException;
+import com.fuoverflow.common.exception.TooManyRequestsException;
 import com.fuoverflow.common.storage.ObjectStorage;
 import com.fuoverflow.exam.application.ExamAccessGuard;
 import com.fuoverflow.exam.application.ExamMediaTokenService;
-import com.fuoverflow.exam.persistence.ExamFeOptionRepository;
 import com.fuoverflow.exam.persistence.ExamFeQuestionRepository;
 import com.fuoverflow.exam.persistence.ExamPeItemRepository;
 import com.fuoverflow.exam.persistence.ExamPeResourceEntity;
 import com.fuoverflow.exam.persistence.ExamPeResourceRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -26,31 +27,32 @@ import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/v1/exam")
 public class ExamMediaController {
+    private static final int MAX_REQUESTS_PER_MINUTE = 60;
+
     private final ExamMediaTokenService tokenService;
     private final ObjectStorage objectStorage;
     private final ExamAccessGuard accessGuard;
     private final ExamFeQuestionRepository feQuestionRepository;
-    private final ExamFeOptionRepository feOptionRepository;
     private final ExamPeItemRepository peItemRepository;
     private final ExamPeResourceRepository peResourceRepository;
+    private final ConcurrentHashMap<String, long[]> rateLimitMap = new ConcurrentHashMap<>();
 
     public ExamMediaController(
             ExamMediaTokenService tokenService,
             ObjectStorage objectStorage,
             ExamAccessGuard accessGuard,
             ExamFeQuestionRepository feQuestionRepository,
-            ExamFeOptionRepository feOptionRepository,
             ExamPeItemRepository peItemRepository,
             ExamPeResourceRepository peResourceRepository) {
         this.tokenService = tokenService;
         this.objectStorage = objectStorage;
         this.accessGuard = accessGuard;
         this.feQuestionRepository = feQuestionRepository;
-        this.feOptionRepository = feOptionRepository;
         this.peItemRepository = peItemRepository;
         this.peResourceRepository = peResourceRepository;
     }
@@ -65,7 +67,9 @@ public class ExamMediaController {
             @PathVariable String encodedKey,
             @RequestParam(required = false) String sig,
             @RequestParam(required = false) Long exp,
+            HttpServletRequest request,
             HttpServletResponse response) throws Exception {
+        checkRateLimit(request);
         String objectKey = tokenService.decodeKey(encodedKey);
         if (sig != null && exp != null) {
             if (tokenService.isExpired(exp)) {
@@ -121,7 +125,6 @@ public class ExamMediaController {
 
     private void requireImageIsExamOwned(String objectKey) {
         boolean owned = feQuestionRepository.findSubjectIdByQuestionImageUrlsContaining(objectKey).isPresent()
-                || feOptionRepository.findSubjectIdByOptionImageUrl(objectKey).isPresent()
                 || peItemRepository.findSubjectIdByExamImageUrlsContaining(objectKey).isPresent();
         if (!owned) {
             throw new NotFoundException("MEDIA_NOT_FOUND", "Media not found");
@@ -134,6 +137,21 @@ public class ExamMediaController {
             throw new ForbiddenException("UNAUTHORIZED", "Authentication required");
         }
         return UUID.fromString(auth.getName());
+    }
+
+    private void checkRateLimit(HttpServletRequest request) {
+        String ip = request.getRemoteAddr();
+        long now = System.currentTimeMillis();
+        long windowStart = now - 60_000;
+        long[] timestamps = rateLimitMap.compute(ip, (k, existing) -> {
+            if (existing == null) return new long[]{now, 1};
+            if (existing[0] < windowStart) return new long[]{now, 1};
+            existing[1]++;
+            return existing;
+        });
+        if (timestamps[1] > MAX_REQUESTS_PER_MINUTE) {
+            throw new TooManyRequestsException("RATE_LIMIT_EXCEEDED", "Too many requests. Try again later.");
+        }
     }
 
     private static String detectContentType(String objectKey) {
