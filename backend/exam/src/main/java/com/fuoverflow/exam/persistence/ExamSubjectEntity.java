@@ -33,8 +33,8 @@ public class ExamSubjectEntity {
     @Column(name = "category_slug", length = 64)
     private String categorySlug;
 
-    @Column(name = "fe_preview_count", nullable = false)
-    private int fePreviewCount;
+    @Column(name = "fe_preview_image_count", nullable = false)
+    private int fePreviewImageCount;
 
     @Column(name = "view_count", nullable = false)
     private long viewCount;
@@ -65,7 +65,7 @@ public class ExamSubjectEntity {
     public String getCoverImageUrl() { return coverImageUrl; }
     public String getCardColor() { return cardColor; }
     public String getCategorySlug() { return categorySlug; }
-    public int getFePreviewCount() { return fePreviewCount; }
+    public int getFePreviewImageCount() { return fePreviewImageCount; }
     public long getViewCount() { return viewCount; }
     public boolean isActive() { return active; }
     public int getSortOrder() { return sortOrder; }
@@ -80,7 +80,7 @@ public class ExamSubjectEntity {
     public void setCoverImageUrl(String coverImageUrl) { this.coverImageUrl = coverImageUrl; }
     public void setCardColor(String cardColor) { this.cardColor = cardColor; }
     public void setCategorySlug(String categorySlug) { this.categorySlug = categorySlug; }
-    public void setFePreviewCount(int fePreviewCount) { this.fePreviewCount = fePreviewCount; }
+    public void setFePreviewImageCount(int fePreviewImageCount) { this.fePreviewImageCount = fePreviewImageCount; }
     public void setActive(boolean active) { this.active = active; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
@@ -89,7 +89,7 @@ public class ExamSubjectEntity {
     public static ExamSubjectEntity create(
             UUID id, String code, String title, String description,
             String coverImageUrl, String cardColor, String categorySlug,
-            int fePreviewCount, boolean active, int sortOrder, Instant now) {
+            int fePreviewImageCount, boolean active, int sortOrder, Instant now) {
         ExamSubjectEntity e = new ExamSubjectEntity();
         e.id = id;
         e.code = code;
@@ -98,7 +98,7 @@ public class ExamSubjectEntity {
         e.coverImageUrl = coverImageUrl;
         e.cardColor = cardColor;
         e.categorySlug = categorySlug;
-        e.fePreviewCount = fePreviewCount;
+        e.fePreviewImageCount = fePreviewImageCount;
         e.viewCount = 0L;
         e.active = active;
         e.sortOrder = sortOrder;

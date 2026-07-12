@@ -27,11 +27,9 @@ public class ExamFeQuestionEntity {
     @Column(name = "question_image_urls", columnDefinition = "jsonb")
     private String questionImageUrls;
 
-    @Column(columnDefinition = "text")
-    private String explanation;
-
-    @Column(name = "multiple_correct", nullable = false)
-    private boolean multipleCorrect;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "question_blur_urls", columnDefinition = "jsonb")
+    private String questionBlurUrls;
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
@@ -53,8 +51,7 @@ public class ExamFeQuestionEntity {
     public UUID getSubjectId() { return subjectId; }
     public String getQuestionText() { return questionText; }
     public String getQuestionImageUrls() { return questionImageUrls; }
-    public String getExplanation() { return explanation; }
-    public boolean isMultipleCorrect() { return multipleCorrect; }
+    public String getQuestionBlurUrls() { return questionBlurUrls; }
     public int getSortOrder() { return sortOrder; }
     public int getLockVersion() { return lockVersion; }
     public Instant getCreatedAt() { return createdAt; }
@@ -63,22 +60,21 @@ public class ExamFeQuestionEntity {
 
     public void setQuestionText(String questionText) { this.questionText = questionText; }
     public void setQuestionImageUrls(String questionImageUrls) { this.questionImageUrls = questionImageUrls; }
-    public void setExplanation(String explanation) { this.explanation = explanation; }
-    public void setMultipleCorrect(boolean multipleCorrect) { this.multipleCorrect = multipleCorrect; }
+    public void setQuestionBlurUrls(String questionBlurUrls) { this.questionBlurUrls = questionBlurUrls; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
     public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
 
     public static ExamFeQuestionEntity create(
-            UUID id, UUID subjectId, String questionText, String questionImageUrls,
-            String explanation, boolean multipleCorrect, int sortOrder, Instant now) {
+            UUID id, UUID subjectId, String questionText,
+            String questionImageUrls, String questionBlurUrls,
+            int sortOrder, Instant now) {
         ExamFeQuestionEntity e = new ExamFeQuestionEntity();
         e.id = id;
         e.subjectId = subjectId;
         e.questionText = questionText;
         e.questionImageUrls = questionImageUrls;
-        e.explanation = explanation;
-        e.multipleCorrect = multipleCorrect;
+        e.questionBlurUrls = questionBlurUrls;
         e.sortOrder = sortOrder;
         e.lockVersion = 0;
         e.createdAt = now;
