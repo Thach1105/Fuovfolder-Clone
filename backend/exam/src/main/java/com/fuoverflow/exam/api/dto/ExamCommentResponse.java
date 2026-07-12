@@ -13,6 +13,8 @@ public record ExamCommentResponse(
         String authorAvatarUrl,
         UUID parentCommentId,
         String bodyHtml,
+        int likeCount,
+        boolean likedByMe,
         boolean editable,
         Instant createdAt,
         Instant updatedAt

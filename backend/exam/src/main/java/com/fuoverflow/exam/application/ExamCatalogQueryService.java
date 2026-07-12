@@ -154,7 +154,13 @@ public class ExamCatalogQueryService {
                 images,
                 q.getSortOrder(),
                 commentCount,
+                q.getViewCount(),
                 q.getCreatedAt());
+    }
+
+    @Transactional
+    public void incrementViewCount(UUID questionId) {
+        feQuestionRepository.incrementViewCount(questionId);
     }
 
     private PublicPeItemResponse toPublicPeItem(ExamPeItemEntity item) {

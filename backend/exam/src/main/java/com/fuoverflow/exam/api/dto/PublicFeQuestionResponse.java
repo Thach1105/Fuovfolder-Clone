@@ -11,6 +11,7 @@ public record PublicFeQuestionResponse(
         List<PublicImageItem> images,
         int sortOrder,
         int commentCount,
+        long viewCount,
         Instant createdAt
 ) {
     public record PublicImageItem(

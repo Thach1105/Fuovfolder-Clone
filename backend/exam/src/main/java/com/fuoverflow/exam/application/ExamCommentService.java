@@ -6,9 +6,12 @@ import com.fuoverflow.common.forum.PostBodyFormatter;
 import com.fuoverflow.exam.api.dto.AdminCommentPageResponse;
 import com.fuoverflow.exam.api.dto.AdminCommentResponse;
 import com.fuoverflow.exam.api.dto.CreateCommentRequest;
+import com.fuoverflow.exam.api.dto.ExamCommentLikeResponse;
 import com.fuoverflow.exam.api.dto.ExamCommentResponse;
 import com.fuoverflow.exam.api.dto.UpdateCommentRequest;
 import com.fuoverflow.exam.persistence.ExamCommentEntity;
+import com.fuoverflow.exam.persistence.ExamCommentLikeEntity;
+import com.fuoverflow.exam.persistence.ExamCommentLikeRepository;
 import com.fuoverflow.exam.persistence.ExamCommentRepository;
 import com.fuoverflow.exam.persistence.ExamFeQuestionRepository;
 import com.fuoverflow.exam.persistence.ExamPeItemRepository;
@@ -27,6 +30,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -43,6 +47,7 @@ public class ExamCommentService {
     private final ExamAccessGuard accessGuard;
     private final UserRepository userRepository;
     private final UploadService uploadService;
+    private final ExamCommentLikeRepository likeRepository;
 
     public ExamCommentService(
             ExamCommentRepository commentRepository,
@@ -51,7 +56,8 @@ public class ExamCommentService {
             ExamSubjectRepository subjectRepository,
             ExamAccessGuard accessGuard,
             UserRepository userRepository,
-            UploadService uploadService) {
+            UploadService uploadService,
+            ExamCommentLikeRepository likeRepository) {
         this.commentRepository = commentRepository;
         this.feQuestionRepository = feQuestionRepository;
         this.peItemRepository = peItemRepository;
@@ -59,6 +65,7 @@ public class ExamCommentService {
         this.accessGuard = accessGuard;
         this.userRepository = userRepository;
         this.uploadService = uploadService;
+        this.likeRepository = likeRepository;
     }
 
     @Transactional(readOnly = true)
@@ -69,7 +76,27 @@ public class ExamCommentService {
                 commentRepository.findBySubjectTypeAndSubjectIdAndDeletedAtIsNullOrderByCreatedAtAsc(
                         subjectType, subjectId);
         Map<UUID, UserEntity> authors = loadAuthors(comments);
-        return comments.stream().map(c -> toResponse(c, authors, userId)).toList();
+        Set<UUID> likedCommentIds = loadLikedCommentIds(comments, userId);
+        return comments.stream().map(c -> toResponse(c, authors, userId, likedCommentIds)).toList();
+    }
+
+    @Transactional
+    public ExamCommentLikeResponse toggleLike(UUID commentId, UUID userId) {
+        ExamCommentEntity comment = requireComment(commentId);
+        Optional<ExamCommentLikeEntity> existing = likeRepository.findByCommentIdAndUserId(commentId, userId);
+        boolean liked;
+        if (existing.isPresent()) {
+            likeRepository.delete(existing.get());
+            comment.setLikeCount(Math.max(0, comment.getLikeCount() - 1));
+            liked = false;
+        } else {
+            likeRepository.save(ExamCommentLikeEntity.create(UUID.randomUUID(), commentId, userId, Instant.now()));
+            comment.setLikeCount(comment.getLikeCount() + 1);
+            liked = true;
+        }
+        comment.setUpdatedAt(Instant.now());
+        commentRepository.save(comment);
+        return new ExamCommentLikeResponse(liked, comment.getLikeCount());
     }
 
     @Transactional
@@ -92,7 +119,7 @@ public class ExamCommentService {
                 UUID.randomUUID(), subjectType, subjectId, examSubjectId,
                 userId, request.parentCommentId(), bodyMd, bodyHtml, now);
         commentRepository.save(entity);
-        return toResponse(entity, loadAuthors(List.of(entity)), userId);
+        return toResponse(entity, loadAuthors(List.of(entity)), userId, likedSetFor(entity.getId(), userId));
     }
 
     @Transactional
@@ -106,7 +133,7 @@ public class ExamCommentService {
         entity.setBodyHtml(PostBodyFormatter.toHtml(request.body()));
         entity.setUpdatedAt(Instant.now());
         commentRepository.save(entity);
-        return toResponse(entity, loadAuthors(List.of(entity)), userId);
+        return toResponse(entity, loadAuthors(List.of(entity)), userId, likedSetFor(entity.getId(), userId));
     }
 
     @Transactional
@@ -239,7 +266,23 @@ public class ExamCommentService {
         return map;
     }
 
-    private ExamCommentResponse toResponse(ExamCommentEntity c, Map<UUID, UserEntity> authors, UUID viewerId) {
+    private Set<UUID> loadLikedCommentIds(List<ExamCommentEntity> comments, UUID userId) {
+        if (userId == null || comments.isEmpty()) {
+            return Set.of();
+        }
+        List<UUID> commentIds = comments.stream().map(ExamCommentEntity::getId).toList();
+        return likeRepository.findByCommentIdInAndUserId(commentIds, userId).stream()
+                .map(ExamCommentLikeEntity::getCommentId)
+                .collect(Collectors.toSet());
+    }
+
+    private Set<UUID> likedSetFor(UUID commentId, UUID userId) {
+        return likeRepository.existsByCommentIdAndUserId(commentId, userId)
+                ? Set.of(commentId) : Set.of();
+    }
+
+    private ExamCommentResponse toResponse(
+            ExamCommentEntity c, Map<UUID, UserEntity> authors, UUID viewerId, Set<UUID> likedCommentIds) {
         UserEntity author = authors.get(c.getAuthorUserId());
         return new ExamCommentResponse(
                 c.getId(),
@@ -251,7 +294,9 @@ public class ExamCommentService {
                 author != null ? uploadService.resolvePublicUrl(author.getAvatarUrl()) : null,
                 c.getParentCommentId(),
                 c.getBodyHtml(),
-                c.getAuthorUserId().equals(viewerId),
+                c.getLikeCount(),
+                likedCommentIds.contains(c.getId()),
+                viewerId != null && c.getAuthorUserId().equals(viewerId),
                 c.getCreatedAt(),
                 c.getUpdatedAt());
     }
