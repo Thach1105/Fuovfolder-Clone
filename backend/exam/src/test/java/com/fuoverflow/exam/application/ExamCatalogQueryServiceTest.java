@@ -3,7 +3,8 @@ package com.fuoverflow.exam.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuoverflow.common.exception.ForbiddenException;
 import com.fuoverflow.exam.api.dto.PublicFeQuestionListResponse;
-import com.fuoverflow.exam.persistence.ExamFeOptionRepository;
+import com.fuoverflow.exam.api.dto.PublicFeQuestionResponse;
+import com.fuoverflow.exam.persistence.ExamCommentRepository;
 import com.fuoverflow.exam.persistence.ExamFeQuestionEntity;
 import com.fuoverflow.exam.persistence.ExamFeQuestionRepository;
 import com.fuoverflow.exam.persistence.ExamPeItemRepository;
@@ -34,9 +35,9 @@ import static org.mockito.Mockito.when;
 class ExamCatalogQueryServiceTest {
     @Mock private ExamSubjectRepository subjectRepository;
     @Mock private ExamFeQuestionRepository feQuestionRepository;
-    @Mock private ExamFeOptionRepository feOptionRepository;
     @Mock private ExamPeItemRepository peItemRepository;
     @Mock private ExamPeResourceRepository peResourceRepository;
+    @Mock private ExamCommentRepository commentRepository;
     @Mock private ExamAccessGuard accessGuard;
     @Mock private ExamMediaUrlResolver urlResolver;
 
@@ -47,59 +48,70 @@ class ExamCatalogQueryServiceTest {
     @BeforeEach
     void setUp() {
         service = new ExamCatalogQueryService(
-                subjectRepository, feQuestionRepository, feOptionRepository,
-                peItemRepository, peResourceRepository, accessGuard, urlResolver, new ObjectMapper());
+                subjectRepository, feQuestionRepository,
+                peItemRepository, peResourceRepository, commentRepository,
+                accessGuard, urlResolver, new ObjectMapper());
         userId = UUID.randomUUID();
         subjectId = UUID.randomUUID();
-        lenient().when(feOptionRepository.findByQuestionIdOrderBySortOrderAsc(any())).thenReturn(List.of());
+        lenient().when(urlResolver.signed(any())).thenAnswer(inv -> "signed:" + inv.getArgument(0));
         lenient().when(urlResolver.signedAll(any())).thenReturn(List.of());
+        lenient().when(commentRepository.countBySubjectTypeAndSubjectIdAndDeletedAtIsNull(any(), any()))
+                .thenReturn(0L);
     }
 
     @Test
-    void nonMember_getsOnlyPreviewSlice_locked() {
-        ExamSubjectEntity subject = subject(3);
+    void nonMember_allPostsVisible_previewImagesFull_restBlurred() {
+        ExamSubjectEntity subject = subject(1);
         when(subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull("MLN111")).thenReturn(Optional.of(subject));
         when(accessGuard.hasActiveMembership(userId)).thenReturn(false);
         when(feQuestionRepository.findBySubjectIdAndDeletedAtIsNullOrderBySortOrderAsc(subjectId))
-                .thenReturn(questions(10));
+                .thenReturn(questionsWithImages(3, 2));
 
         PublicFeQuestionListResponse res = service.listFeQuestions("MLN111", userId);
 
         assertTrue(res.locked());
-        assertEquals(10, res.totalCount());
-        assertEquals(3, res.previewCount());
+        assertEquals(3, res.totalCount());
         assertEquals(3, res.questions().size());
-        assertTrue(res.questions().stream().allMatch(q -> q.preview()));
+        for (PublicFeQuestionResponse q : res.questions()) {
+            assertEquals(2, q.totalImageCount());
+            assertEquals("full", q.images().get(0).type());
+            assertEquals("blur", q.images().get(1).type());
+        }
     }
 
     @Test
-    void member_getsFullBank_unlocked() {
-        ExamSubjectEntity subject = subject(3);
+    void member_allPostsVisible_allImagesFull_unlocked() {
+        ExamSubjectEntity subject = subject(1);
         when(subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull("MLN111")).thenReturn(Optional.of(subject));
         when(accessGuard.hasActiveMembership(userId)).thenReturn(true);
         when(feQuestionRepository.findBySubjectIdAndDeletedAtIsNullOrderBySortOrderAsc(subjectId))
-                .thenReturn(questions(10));
+                .thenReturn(questionsWithImages(3, 2));
 
         PublicFeQuestionListResponse res = service.listFeQuestions("MLN111", userId);
 
         assertFalse(res.locked());
-        assertEquals(10, res.totalCount());
-        assertEquals(10, res.questions().size());
-        assertTrue(res.questions().stream().noneMatch(q -> q.preview()));
+        assertEquals(3, res.totalCount());
+        assertEquals(3, res.questions().size());
+        for (PublicFeQuestionResponse q : res.questions()) {
+            assertTrue(q.images().stream().allMatch(img -> "full".equals(img.type())));
+        }
     }
 
     @Test
-    void nonMember_previewLargerThanBank_returnsAll() {
+    void nonMember_previewCountLargerThanImages_allImagesFull() {
         ExamSubjectEntity subject = subject(5);
         when(subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull("MLN111")).thenReturn(Optional.of(subject));
         when(accessGuard.hasActiveMembership(userId)).thenReturn(false);
         when(feQuestionRepository.findBySubjectIdAndDeletedAtIsNullOrderBySortOrderAsc(subjectId))
-                .thenReturn(questions(2));
+                .thenReturn(questionsWithImages(2, 2));
 
         PublicFeQuestionListResponse res = service.listFeQuestions("MLN111", userId);
 
         assertTrue(res.locked());
         assertEquals(2, res.questions().size());
+        for (PublicFeQuestionResponse q : res.questions()) {
+            assertTrue(q.images().stream().allMatch(img -> "full".equals(img.type())));
+        }
     }
 
     @Test
@@ -112,19 +124,30 @@ class ExamCatalogQueryServiceTest {
         assertThrows(ForbiddenException.class, () -> service.listPeItems("MLN111", userId));
     }
 
-    private ExamSubjectEntity subject(int previewCount) {
+    private ExamSubjectEntity subject(int previewImageCount) {
         return ExamSubjectEntity.create(
                 subjectId, "MLN111", "Title", null, null, null, null,
-                previewCount, true, 0, Instant.now());
+                previewImageCount, true, 0, Instant.now());
     }
 
-    private List<ExamFeQuestionEntity> questions(int n) {
+    private List<ExamFeQuestionEntity> questionsWithImages(int questionCount, int imagesPerQuestion) {
         List<ExamFeQuestionEntity> list = new ArrayList<>();
         Instant now = Instant.now();
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < questionCount; i++) {
+            String imageJson = imagesJson(imagesPerQuestion, "img");
+            String blurJson = imagesJson(imagesPerQuestion, "blur");
             list.add(ExamFeQuestionEntity.create(
-                    UUID.randomUUID(), subjectId, "Q" + i, "[]", null, false, i, now));
+                    UUID.randomUUID(), subjectId, "Q" + i, imageJson, blurJson, i, now));
         }
         return list;
+    }
+
+    private static String imagesJson(int count, String prefix) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < count; i++) {
+            if (i > 0) sb.append(',');
+            sb.append('"').append(prefix).append(i).append('"');
+        }
+        return sb.append(']').toString();
     }
 }

@@ -114,7 +114,7 @@ class ExamCommentServiceTest {
     }
 
     private ExamFeQuestionEntity feQuestion() {
-        return ExamFeQuestionEntity.create(questionId, UUID.randomUUID(), "Q", "[]", null, false, 0, Instant.now());
+        return ExamFeQuestionEntity.create(questionId, UUID.randomUUID(), "Q", "[]", "[]", 0, Instant.now());
     }
 
     private ExamCommentEntity comment(UUID author) {

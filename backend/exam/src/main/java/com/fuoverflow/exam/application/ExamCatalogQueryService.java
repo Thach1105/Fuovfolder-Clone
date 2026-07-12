@@ -7,8 +7,7 @@ import com.fuoverflow.exam.api.dto.PublicFeQuestionResponse;
 import com.fuoverflow.exam.api.dto.PublicPeItemResponse;
 import com.fuoverflow.exam.api.dto.PublicSubjectCardResponse;
 import com.fuoverflow.exam.api.dto.PublicSubjectDetailResponse;
-import com.fuoverflow.exam.persistence.ExamFeOptionEntity;
-import com.fuoverflow.exam.persistence.ExamFeOptionRepository;
+import com.fuoverflow.exam.persistence.ExamCommentRepository;
 import com.fuoverflow.exam.persistence.ExamFeQuestionEntity;
 import com.fuoverflow.exam.persistence.ExamFeQuestionRepository;
 import com.fuoverflow.exam.persistence.ExamPeItemEntity;
@@ -20,17 +19,20 @@ import com.fuoverflow.exam.persistence.ExamSubjectRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class ExamCatalogQueryService {
+    private static final String FE_QUESTION_SUBJECT_TYPE = "fe_question";
+
     private final ExamSubjectRepository subjectRepository;
     private final ExamFeQuestionRepository feQuestionRepository;
-    private final ExamFeOptionRepository feOptionRepository;
     private final ExamPeItemRepository peItemRepository;
     private final ExamPeResourceRepository peResourceRepository;
+    private final ExamCommentRepository commentRepository;
     private final ExamAccessGuard accessGuard;
     private final ExamMediaUrlResolver urlResolver;
     private final ObjectMapper objectMapper;
@@ -38,17 +40,17 @@ public class ExamCatalogQueryService {
     public ExamCatalogQueryService(
             ExamSubjectRepository subjectRepository,
             ExamFeQuestionRepository feQuestionRepository,
-            ExamFeOptionRepository feOptionRepository,
             ExamPeItemRepository peItemRepository,
             ExamPeResourceRepository peResourceRepository,
+            ExamCommentRepository commentRepository,
             ExamAccessGuard accessGuard,
             ExamMediaUrlResolver urlResolver,
             ObjectMapper objectMapper) {
         this.subjectRepository = subjectRepository;
         this.feQuestionRepository = feQuestionRepository;
-        this.feOptionRepository = feOptionRepository;
         this.peItemRepository = peItemRepository;
         this.peResourceRepository = peResourceRepository;
+        this.commentRepository = commentRepository;
         this.accessGuard = accessGuard;
         this.urlResolver = urlResolver;
         this.objectMapper = objectMapper;
@@ -76,14 +78,13 @@ public class ExamCatalogQueryService {
                 subject.getViewCount(),
                 (int) feQuestionRepository.countBySubjectIdAndDeletedAtIsNull(subject.getId()),
                 (int) peItemRepository.countBySubjectIdAndDeletedAtIsNull(subject.getId()),
-                subject.getFePreviewCount(),
+                subject.getFePreviewImageCount(),
                 member);
     }
 
     /**
-     * FE questions. Members get the full bank; non-members get only the first
-     * {@code fePreviewCount} questions (answers included, per product decision) with
-     * {@code locked=true}.
+     * FE questions. All posts are visible to all users; images are gated per
+     * {@code fePreviewImageCount} for non-members (first N images full, rest blurred).
      */
     @Transactional(readOnly = true)
     public PublicFeQuestionListResponse listFeQuestions(String idOrCode, UUID userId) {
@@ -92,17 +93,12 @@ public class ExamCatalogQueryService {
         List<ExamFeQuestionEntity> all =
                 feQuestionRepository.findBySubjectIdAndDeletedAtIsNullOrderBySortOrderAsc(subject.getId());
         int total = all.size();
-        int previewCount = Math.max(0, subject.getFePreviewCount());
+        int previewImageCount = Math.max(0, subject.getFePreviewImageCount());
 
-        List<ExamFeQuestionEntity> visible = member
-                ? all
-                : all.subList(0, Math.min(previewCount, total));
-
-        boolean locked = !member;
-        List<PublicFeQuestionResponse> questions = visible.stream()
-                .map(q -> toPublicQuestion(q, locked))
+        List<PublicFeQuestionResponse> questions = all.stream()
+                .map(q -> toPublicQuestion(q, member, previewImageCount))
                 .toList();
-        return new PublicFeQuestionListResponse(locked, total, previewCount, questions);
+        return new PublicFeQuestionListResponse(!member, total, previewImageCount, questions);
     }
 
     /** PE papers + downloadable resources. Members only. */
@@ -130,29 +126,35 @@ public class ExamCatalogQueryService {
                 (int) peItemRepository.countBySubjectIdAndDeletedAtIsNull(s.getId()));
     }
 
-    private PublicFeQuestionResponse toPublicQuestion(ExamFeQuestionEntity q, boolean preview) {
+    private PublicFeQuestionResponse toPublicQuestion(
+            ExamFeQuestionEntity q, boolean isMember, int previewImageCount) {
         List<String> imageKeys = ExamJsonUtil.deserialize(objectMapper, q.getQuestionImageUrls());
-        List<PublicFeQuestionResponse.PublicFeOptionResponse> options =
-                feOptionRepository.findByQuestionIdOrderBySortOrderAsc(q.getId()).stream()
-                        .map(this::toPublicOption)
-                        .toList();
+        List<String> blurKeys = ExamJsonUtil.deserialize(objectMapper, q.getQuestionBlurUrls());
+        int totalImages = imageKeys.size();
+
+        List<PublicFeQuestionResponse.PublicImageItem> images = new ArrayList<>();
+        for (int i = 0; i < totalImages; i++) {
+            if (isMember || i < previewImageCount) {
+                images.add(new PublicFeQuestionResponse.PublicImageItem(
+                        i, urlResolver.signed(imageKeys.get(i)), "full"));
+            } else {
+                String blurKey = (i < blurKeys.size()) ? blurKeys.get(i) : null;
+                String blurUrl = (blurKey != null) ? urlResolver.signed(blurKey) : null;
+                images.add(new PublicFeQuestionResponse.PublicImageItem(i, blurUrl, "blur"));
+            }
+        }
+
+        int commentCount = (int) commentRepository.countBySubjectTypeAndSubjectIdAndDeletedAtIsNull(
+                FE_QUESTION_SUBJECT_TYPE, q.getId());
+
         return new PublicFeQuestionResponse(
                 q.getId(),
                 q.getQuestionText(),
-                urlResolver.signedAll(imageKeys),
-                q.getExplanation(),
-                q.isMultipleCorrect(),
+                totalImages,
+                images,
                 q.getSortOrder(),
-                preview,
-                options);
-    }
-
-    private PublicFeQuestionResponse.PublicFeOptionResponse toPublicOption(ExamFeOptionEntity o) {
-        return new PublicFeQuestionResponse.PublicFeOptionResponse(
-                o.getId(),
-                o.getOptionText(),
-                urlResolver.signed(o.getOptionImageUrl()),
-                o.isCorrect());
+                commentCount,
+                q.getCreatedAt());
     }
 
     private PublicPeItemResponse toPublicPeItem(ExamPeItemEntity item) {
