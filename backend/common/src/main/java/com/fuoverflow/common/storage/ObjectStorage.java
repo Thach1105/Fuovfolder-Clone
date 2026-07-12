@@ -13,6 +13,8 @@ public interface ObjectStorage {
 
     StoredObject storeFile(MultipartFile file, String logicalFolder, FileKind kind);
 
+    void storeBytes(byte[] data, String objectKey, String contentType);
+
     InputStream openStream(String objectKeyOrLegacyReference);
 
     void delete(String objectKeyOrLegacyReference);

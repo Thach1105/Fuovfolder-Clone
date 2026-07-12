@@ -61,6 +61,16 @@ public class S3CompatibleObjectStorage implements ObjectStorage {
     }
 
     @Override
+    public void storeBytes(byte[] data, String objectKey, String contentType) {
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucket(s3.bucket())
+                .key(objectKey)
+                .contentType(contentType)
+                .build();
+        client.putObject(request, RequestBody.fromBytes(data));
+    }
+
+    @Override
     public InputStream openStream(String objectKeyOrLegacyReference) {
         String objectKey = normalizeToObjectKey(objectKeyOrLegacyReference);
         if (objectKey == null) {

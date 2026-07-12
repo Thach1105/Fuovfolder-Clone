@@ -42,6 +42,17 @@ public class LocalObjectStorage implements ObjectStorage {
     }
 
     @Override
+    public void storeBytes(byte[] data, String objectKey, String contentType) {
+        Path target = resolvePhysicalPath(objectKey);
+        try {
+            Files.createDirectories(target.getParent());
+            Files.write(target, data);
+        } catch (IOException ex) {
+            throw new BadRequestException("FILE_STORE_FAILED", "Failed to store file");
+        }
+    }
+
+    @Override
     public InputStream openStream(String objectKeyOrLegacyReference) {
         String objectKey = normalizeToObjectKey(objectKeyOrLegacyReference);
         if (objectKey == null) {
