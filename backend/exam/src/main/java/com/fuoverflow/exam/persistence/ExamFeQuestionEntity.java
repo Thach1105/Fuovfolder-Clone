@@ -47,6 +47,9 @@ public class ExamFeQuestionEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @Column(name = "view_count", nullable = false)
+    private long viewCount;
+
     public UUID getId() { return id; }
     public UUID getSubjectId() { return subjectId; }
     public String getQuestionText() { return questionText; }
@@ -57,6 +60,7 @@ public class ExamFeQuestionEntity {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public Instant getDeletedAt() { return deletedAt; }
+    public long getViewCount() { return viewCount; }
 
     public void setQuestionText(String questionText) { this.questionText = questionText; }
     public void setQuestionImageUrls(String questionImageUrls) { this.questionImageUrls = questionImageUrls; }
@@ -79,6 +83,7 @@ public class ExamFeQuestionEntity {
         e.lockVersion = 0;
         e.createdAt = now;
         e.updatedAt = now;
+        e.viewCount = 0;
         return e;
     }
 }

@@ -1,6 +1,7 @@
 package com.fuoverflow.exam.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -21,4 +22,9 @@ public interface ExamFeQuestionRepository extends JpaRepository<ExamFeQuestionEn
             + "AND CAST(q.question_image_urls AS text) LIKE '%' || :key || '%' LIMIT 1",
             nativeQuery = true)
     Optional<UUID> findSubjectIdByQuestionImageUrlsContaining(@Param("key") String key);
+
+    @Modifying
+    @Query(value = "UPDATE exam_fe_questions SET view_count = view_count + 1 WHERE id = :id AND deleted_at IS NULL",
+           nativeQuery = true)
+    void incrementViewCount(@Param("id") UUID id);
 }

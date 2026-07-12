@@ -50,6 +50,9 @@ public class ExamCommentEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @Column(name = "like_count", nullable = false)
+    private int likeCount;
+
     public UUID getId() { return id; }
     public String getSubjectType() { return subjectType; }
     public UUID getSubjectId() { return subjectId; }
@@ -62,12 +65,14 @@ public class ExamCommentEntity {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public Instant getDeletedAt() { return deletedAt; }
+    public int getLikeCount() { return likeCount; }
 
     public void setBodyMd(String bodyMd) { this.bodyMd = bodyMd; }
     public void setBodyHtml(String bodyHtml) { this.bodyHtml = bodyHtml; }
     public void setStatus(String status) { this.status = status; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
     public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
+    public void setLikeCount(int likeCount) { this.likeCount = likeCount; }
 
     public static ExamCommentEntity create(
             UUID id, String subjectType, UUID subjectId, UUID examSubjectId,
@@ -84,6 +89,7 @@ public class ExamCommentEntity {
         e.status = "visible";
         e.createdAt = now;
         e.updatedAt = now;
+        e.likeCount = 0;
         return e;
     }
 }
