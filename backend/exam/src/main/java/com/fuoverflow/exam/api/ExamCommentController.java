@@ -3,6 +3,7 @@ package com.fuoverflow.exam.api;
 import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.exam.api.dto.CreateCommentRequest;
+import com.fuoverflow.exam.api.dto.ExamCommentLikeResponse;
 import com.fuoverflow.exam.api.dto.ExamCommentResponse;
 import com.fuoverflow.exam.api.dto.UpdateCommentRequest;
 import com.fuoverflow.exam.application.ExamCommentService;
@@ -61,6 +62,15 @@ public class ExamCommentController {
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         return ApiResponse.ok(commentService.update(commentId, userId, request));
+    }
+
+    @PostMapping("/{commentId}/like")
+    @RequirePermission("exam.comment:create")
+    public ApiResponse<ExamCommentLikeResponse> toggleLike(
+            @PathVariable UUID commentId,
+            Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
+        return ApiResponse.ok(commentService.toggleLike(commentId, userId));
     }
 
     @DeleteMapping("/{commentId}")

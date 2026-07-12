@@ -7,11 +7,14 @@ import com.fuoverflow.exam.api.dto.PublicPeItemResponse;
 import com.fuoverflow.exam.api.dto.PublicSubjectCardResponse;
 import com.fuoverflow.exam.api.dto.PublicSubjectDetailResponse;
 import com.fuoverflow.exam.application.ExamCatalogQueryService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -55,6 +58,13 @@ public class ExamCatalogController {
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         return ApiResponse.ok(queryService.listPeItems(idOrCode, userId));
+    }
+
+    @PostMapping("/{idOrCode}/fe/{questionId}/view")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @RequirePermission(value = "exam.catalog:read", allowAnonymous = true)
+    public void incrementView(@PathVariable String idOrCode, @PathVariable UUID questionId) {
+        queryService.incrementViewCount(questionId);
     }
 
     private UUID resolveUserId(Authentication authentication) {
