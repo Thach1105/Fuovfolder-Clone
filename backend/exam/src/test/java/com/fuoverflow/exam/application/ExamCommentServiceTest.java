@@ -3,9 +3,12 @@ package com.fuoverflow.exam.application;
 import com.fuoverflow.common.exception.ForbiddenException;
 import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.exam.api.dto.CreateCommentRequest;
+import com.fuoverflow.exam.api.dto.ExamCommentLikeResponse;
 import com.fuoverflow.exam.api.dto.ExamCommentResponse;
 import com.fuoverflow.exam.api.dto.UpdateCommentRequest;
 import com.fuoverflow.exam.persistence.ExamCommentEntity;
+import com.fuoverflow.exam.persistence.ExamCommentLikeEntity;
+import com.fuoverflow.exam.persistence.ExamCommentLikeRepository;
 import com.fuoverflow.exam.persistence.ExamCommentRepository;
 import com.fuoverflow.exam.persistence.ExamFeQuestionEntity;
 import com.fuoverflow.exam.persistence.ExamFeQuestionRepository;
@@ -25,8 +28,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
@@ -42,6 +47,7 @@ class ExamCommentServiceTest {
     @Mock private ExamAccessGuard accessGuard;
     @Mock private UserRepository userRepository;
     @Mock private UploadService uploadService;
+    @Mock private ExamCommentLikeRepository likeRepository;
 
     private ExamCommentService service;
     private UUID userId;
@@ -52,11 +58,13 @@ class ExamCommentServiceTest {
     void setUp() {
         service = new ExamCommentService(
                 commentRepository, feQuestionRepository, peItemRepository,
-                subjectRepository, accessGuard, userRepository, uploadService);
+                subjectRepository, accessGuard, userRepository, uploadService, likeRepository);
         userId = UUID.randomUUID();
         otherUserId = UUID.randomUUID();
         questionId = UUID.randomUUID();
         lenient().when(userRepository.findAllById(any())).thenReturn(List.of());
+        lenient().when(likeRepository.findByCommentIdInAndUserId(any(), any())).thenReturn(List.of());
+        lenient().when(likeRepository.existsByCommentIdAndUserId(any(), any())).thenReturn(false);
     }
 
     @Test
@@ -121,5 +129,31 @@ class ExamCommentServiceTest {
         return ExamCommentEntity.create(
                 UUID.randomUUID(), "fe_question", questionId, UUID.randomUUID(),
                 author, null, "body", "<p>body</p>", Instant.now());
+    }
+
+    @Test
+    void toggleLike_likeThenUnlike() {
+        UUID commentId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        ExamCommentEntity comment = ExamCommentEntity.create(
+                commentId, "fe_question", UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), null, "md", "html", Instant.now());
+        when(commentRepository.findByIdAndDeletedAtIsNull(commentId)).thenReturn(Optional.of(comment));
+        when(likeRepository.findByCommentIdAndUserId(commentId, userId)).thenReturn(Optional.empty());
+        when(commentRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(likeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ExamCommentLikeResponse res = service.toggleLike(commentId, userId);
+        assertTrue(res.liked());
+        assertEquals(1, res.likeCount());
+
+        // Second toggle — unlike
+        ExamCommentLikeEntity likeEntity = ExamCommentLikeEntity.create(
+                UUID.randomUUID(), commentId, userId, Instant.now());
+        when(likeRepository.findByCommentIdAndUserId(commentId, userId)).thenReturn(Optional.of(likeEntity));
+
+        ExamCommentLikeResponse res2 = service.toggleLike(commentId, userId);
+        assertFalse(res2.liked());
+        assertEquals(0, res2.likeCount());
     }
 }
