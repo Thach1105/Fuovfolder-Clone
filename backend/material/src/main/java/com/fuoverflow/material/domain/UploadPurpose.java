@@ -15,7 +15,9 @@ public enum UploadPurpose {
     AWARD_ICON("award_icon", "awards/icons", FileKind.IMAGE, Set.of("admin.panel:access"), true),
     EXAM_FE_IMAGE("exam_fe_image", "exam/fe", FileKind.IMAGE, Set.of("exam.media.admin:create"), false),
     EXAM_PE_IMAGE("exam_pe_image", "exam/pe", FileKind.IMAGE, Set.of("exam.media.admin:create"), false),
-    EXAM_PE_RESOURCE("exam_pe_resource", "exam/pe/resources", FileKind.ARCHIVE, Set.of("exam.media.admin:create"), false);
+    EXAM_PE_RESOURCE("exam_pe_resource", "exam/pe/resources", FileKind.ARCHIVE, Set.of("exam.media.admin:create"), false),
+    EXAM_PAPER_IMAGE("exam_paper_image", "exam/papers/images", FileKind.IMAGE, Set.of("exam.media.admin:create"), false),
+    EXAM_PAPER_FILE("exam_paper_file", "exam/papers/files", FileKind.DOCUMENT, Set.of("exam.media.admin:create"), false);
 
     private final String slug;
     private final String folder;
