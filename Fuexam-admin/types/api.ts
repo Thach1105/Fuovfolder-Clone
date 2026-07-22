@@ -268,6 +268,35 @@ export interface BroadcastConfigResponse {
   updatedAt: string;
 }
 
+export interface AnnouncementResponse {
+  id: string;
+  title: string;
+  contentHtml: string;
+  backgroundColor: string;
+  linkUrl: string | null;
+  linkLabel: string | null;
+  priority: number;
+  scrollSpeed: number;
+  stepSeconds: number;
+  status: "DRAFT" | "SCHEDULED" | "ACTIVE" | "EXPIRED";
+  startAt: string;
+  endAt: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AnnouncementActiveResponse {
+  id: string;
+  contentHtml: string;
+  backgroundColor: string;
+  linkUrl: string | null;
+  linkLabel: string | null;
+  priority: number;
+  scrollSpeed: number;
+  stepSeconds: number;
+}
+
 export interface PaymentAnalyticsResponse {
   totalRevenue: number;
   totalTransactions: number;
