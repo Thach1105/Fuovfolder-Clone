@@ -271,11 +271,35 @@ export function AnnouncementForm({ initial }: AnnouncementFormProps) {
             </div>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-wrap gap-2 pt-2">
             {isEdit ? (
-              <Button onClick={() => handleSubmit("DRAFT")} disabled={submitting || !formValid}>
-                {submitting ? "Đang lưu..." : "Cập nhật"}
-              </Button>
+              <>
+                <Button onClick={() => handleSubmit("DRAFT")} disabled={submitting || !formValid}>
+                  {submitting ? "Đang lưu..." : "Cập nhật"}
+                </Button>
+                {(initial.status === "DRAFT" || initial.status === "SCHEDULED") && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      onClick={async () => {
+                        await handleSubmit("DRAFT");
+                        if (!submitting) {
+                          try {
+                            await announcementApi.activateAnnouncement(initial.id);
+                            toast.success("Đã kích hoạt thông báo.");
+                            router.push("/announcements");
+                          } catch (err) {
+                            toast.error(err instanceof ApiError ? err.message : "Kích hoạt thất bại.");
+                          }
+                        }
+                      }}
+                      disabled={submitting || !formValid}
+                    >
+                      Lưu & Kích hoạt
+                    </Button>
+                  </>
+                )}
+              </>
             ) : (
               <>
                 <Button variant="outline" onClick={() => handleSubmit("DRAFT")} disabled={submitting || !formValid}>

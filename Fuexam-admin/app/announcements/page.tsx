@@ -170,7 +170,7 @@ export default function AnnouncementsPage() {
                     >
                       Sửa
                     </button>
-                    {item.status === "SCHEDULED" && (
+                    {(item.status === "DRAFT" || item.status === "SCHEDULED") && (
                       <button
                         className="text-emerald-500 hover:underline"
                         onClick={() => handleActivate(item.id)}
