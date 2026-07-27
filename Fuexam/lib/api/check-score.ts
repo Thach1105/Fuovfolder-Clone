@@ -11,6 +11,16 @@ export interface CheckScoreResult {
   chargedPoints: number;
 }
 
+export interface CheckScoreSubjects {
+  items: string[];
+  total: number;
+  page: number;
+  limit: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  totalPages: number;
+}
+
 export function checkScore(file: File, voucherCode?: string) {
   const formData = new FormData();
   formData.set("file", file);
@@ -19,4 +29,8 @@ export function checkScore(file: File, voucherCode?: string) {
     method: "POST",
     body: formData,
   });
+}
+
+export function listCheckScoreSubjects() {
+  return apiFetch<CheckScoreSubjects>("/api/v1/check-score/subjects");
 }

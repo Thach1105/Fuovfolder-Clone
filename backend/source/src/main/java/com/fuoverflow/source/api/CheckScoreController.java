@@ -5,6 +5,7 @@ import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.source.api.dto.CheckScoreConfigRequest;
 import com.fuoverflow.source.api.dto.CheckScoreConfigResponse;
 import com.fuoverflow.source.api.dto.CheckScoreResponse;
+import com.fuoverflow.source.api.dto.CheckScoreSubjectsResponse;
 import com.fuoverflow.source.application.CheckScoreService;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
@@ -36,6 +37,12 @@ public class CheckScoreController {
             @RequestPart(value = "voucherCode", required = false) String voucherCode) {
         UUID userId = UUID.fromString(authentication.getName());
         return ApiResponse.ok(service.check(userId, file, voucherCode), "Chấm điểm thành công");
+    }
+
+    @GetMapping("/api/v1/check-score/subjects")
+    @RequirePermission("points:read")
+    public ApiResponse<CheckScoreSubjectsResponse> subjects() {
+        return ApiResponse.ok(service.subjects());
     }
 
     @RestController

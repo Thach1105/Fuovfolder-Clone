@@ -9,6 +9,7 @@ import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.common.voucher.VoucherRedemptionPort;
 import com.fuoverflow.source.api.dto.CheckScoreConfigResponse;
 import com.fuoverflow.source.api.dto.CheckScoreResponse;
+import com.fuoverflow.source.api.dto.CheckScoreSubjectsResponse;
 import com.fuoverflow.source.persistence.AppSettingEntity;
 import com.fuoverflow.source.persistence.AppSettingRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -38,6 +41,7 @@ public class CheckScoreService {
     private final PointsWalletService walletService;
     private final VoucherRedemptionPort voucherService;
     private final String checkScoreUrl;
+    private final String subjectsUrl;
 
     public CheckScoreService(
             AppSettingRepository settings,
@@ -45,13 +49,15 @@ public class CheckScoreService {
             ObjectMapper objectMapper,
             PointsWalletService walletService,
             VoucherRedemptionPort voucherService,
-            @Value("${ask4help.check-score-url:https://api.ask-4-help.com/api/v2/api/check-score}") String checkScoreUrl) {
+            @Value("${ask4help.check-score-url:https://api.ask-4-help.com/api/v2/api/check-score}") String checkScoreUrl,
+            @Value("${ask4help.subjects-url:https://api.ask-4-help.com/api/v2/api/subjects}") String subjectsUrl) {
         this.settings = settings;
         this.restClient = restClientBuilder.build();
         this.objectMapper = objectMapper;
         this.walletService = walletService;
         this.voucherService = voucherService;
         this.checkScoreUrl = checkScoreUrl;
+        this.subjectsUrl = subjectsUrl;
     }
 
     @Transactional(readOnly = true)
@@ -195,6 +201,52 @@ public class CheckScoreService {
                     chargedPoints);
         } catch (JsonProcessingException e) {
             throw new BadRequestException("CHECK_SCORE_BAD_RESPONSE", "Dịch vụ chấm điểm trả về dữ liệu không hợp lệ.");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public CheckScoreSubjectsResponse subjects() {
+        String xsrfCookie = settings.findById(XSRF_COOKIE_SETTING)
+                .map(AppSettingEntity::getValue)
+                .orElse(null);
+
+        String responseBody;
+        try {
+            RestClient.RequestHeadersSpec<?> request = restClient.get()
+                    .uri(subjectsUrl)
+                    .accept(MediaType.ALL)
+                    .header(HttpHeaders.USER_AGENT, "PostmanRuntime/7.53.0")
+                    .header(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate, br");
+            if (xsrfCookie != null && !xsrfCookie.isBlank()) {
+                request = request.header(HttpHeaders.COOKIE, xsrfCookie);
+            }
+            responseBody = request.retrieve().body(String.class);
+        } catch (RestClientException e) {
+            throw new BadRequestException("CHECK_SCORE_SUBJECTS_FAILED", "Không tải được danh sách môn có thể check điểm.");
+        }
+
+        if (responseBody == null || responseBody.isBlank()) {
+            throw new BadRequestException("CHECK_SCORE_SUBJECTS_BAD_RESPONSE", "Dịch vụ trả về danh sách môn không hợp lệ.");
+        }
+
+        try {
+            JsonNode data = objectMapper.readTree(responseBody).path("data");
+            JsonNode itemsNode = data.path("items");
+            if (!itemsNode.isArray()) {
+                throw new BadRequestException("CHECK_SCORE_SUBJECTS_BAD_RESPONSE", "Dịch vụ trả về danh sách môn không hợp lệ.");
+            }
+            List<String> items = new ArrayList<>();
+            itemsNode.forEach(item -> items.add(item.asText()));
+            return new CheckScoreSubjectsResponse(
+                    items,
+                    data.path("total").asInt(items.size()),
+                    data.path("page").asInt(1),
+                    data.path("limit").asInt(items.size()),
+                    data.path("hasPrevious").asBoolean(false),
+                    data.path("hasNext").asBoolean(false),
+                    data.path("totalPages").asInt(1));
+        } catch (JsonProcessingException e) {
+            throw new BadRequestException("CHECK_SCORE_SUBJECTS_BAD_RESPONSE", "Dịch vụ trả về danh sách môn không hợp lệ.");
         }
     }
 
