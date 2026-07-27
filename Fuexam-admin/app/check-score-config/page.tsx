@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,8 @@ export default function CheckScoreConfigPage() {
   const [cookieConfigured, setCookieConfigured] = useState(false);
   const [authorizeKey, setAuthorizeKey] = useState("");
   const [xsrfCookie, setXsrfCookie] = useState("");
+  const [showAuthorizeKey, setShowAuthorizeKey] = useState(false);
+  const [showCookie, setShowCookie] = useState(false);
   const [checkScoreUrl, setCheckScoreUrl] = useState("https://api.ask-4-help.com/api/v2/api/check-score");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -24,6 +27,8 @@ export default function CheckScoreConfigPage() {
       .then((config) => {
         setConfigured(config.configured);
         setCookieConfigured(config.cookieConfigured);
+        setAuthorizeKey(config.authorizeKey ?? "");
+        setXsrfCookie(config.xsrfCookie ?? "");
         setCheckScoreUrl(config.checkScoreUrl);
       })
       .catch((error) => toast.error(error instanceof ApiError ? error.message : "Không tải được cấu hình."))
@@ -38,8 +43,8 @@ export default function CheckScoreConfigPage() {
       setConfigured(config.configured);
       setCookieConfigured(config.cookieConfigured);
       setCheckScoreUrl(config.checkScoreUrl);
-      setAuthorizeKey("");
-      setXsrfCookie("");
+      setAuthorizeKey(config.authorizeKey ?? "");
+      setXsrfCookie(config.xsrfCookie ?? "");
       toast.success("Đã lưu token chấm điểm.");
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Lưu token thất bại.");
@@ -64,14 +69,25 @@ export default function CheckScoreConfigPage() {
             </p>
             <div className="space-y-2">
               <Label htmlFor="authorize-key">X-Authorize-Key</Label>
-              <Input
-                id="authorize-key"
-                type="password"
-                value={authorizeKey}
-                onChange={(event) => setAuthorizeKey(event.target.value)}
-                placeholder={configured ? "Để trống nếu không đổi token" : "a4h_..."}
-                required={!configured}
-              />
+              <div className="relative">
+                <Input
+                  id="authorize-key"
+                  type={showAuthorizeKey ? "text" : "password"}
+                  value={authorizeKey}
+                  onChange={(event) => setAuthorizeKey(event.target.value)}
+                  placeholder="a4h_..."
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAuthorizeKey((value) => !value)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+                  aria-label={showAuthorizeKey ? "Ẩn token" : "Hiện token"}
+                >
+                  {showAuthorizeKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="check-score-url">API URL</Label>
@@ -85,13 +101,24 @@ export default function CheckScoreConfigPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="xsrf-cookie">Cookie</Label>
-              <Input
-                id="xsrf-cookie"
-                type="password"
-                value={xsrfCookie}
-                onChange={(event) => setXsrfCookie(event.target.value)}
-                placeholder={cookieConfigured ? "Để trống nếu không đổi cookie" : "XSRF-TOKEN=..."}
-              />
+              <div className="relative">
+                <Input
+                  id="xsrf-cookie"
+                  type={showCookie ? "text" : "password"}
+                  value={xsrfCookie}
+                  onChange={(event) => setXsrfCookie(event.target.value)}
+                  placeholder="XSRF-TOKEN=..."
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCookie((value) => !value)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+                  aria-label={showCookie ? "Ẩn cookie" : "Hiện cookie"}
+                >
+                  {showCookie ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <Button type="submit" disabled={saving}>
               {saving ? "Đang lưu..." : "Lưu token"}

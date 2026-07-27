@@ -59,6 +59,8 @@ public class CheckScoreService {
         return new CheckScoreConfigResponse(
                 settings.existsById(AUTHORIZE_KEY_SETTING),
                 settings.existsById(XSRF_COOKIE_SETTING),
+                settings.findById(AUTHORIZE_KEY_SETTING).map(AppSettingEntity::getValue).orElse(""),
+                settings.findById(XSRF_COOKIE_SETTING).map(AppSettingEntity::getValue).orElse(""),
                 settings.findById(CHECK_SCORE_URL_SETTING).map(AppSettingEntity::getValue).orElse(checkScoreUrl));
     }
 
@@ -89,6 +91,8 @@ public class CheckScoreService {
         return new CheckScoreConfigResponse(
                 settings.existsById(AUTHORIZE_KEY_SETTING),
                 settings.existsById(XSRF_COOKIE_SETTING),
+                settings.findById(AUTHORIZE_KEY_SETTING).map(AppSettingEntity::getValue).orElse(""),
+                settings.findById(XSRF_COOKIE_SETTING).map(AppSettingEntity::getValue).orElse(""),
                 normalizedUrl);
     }
 

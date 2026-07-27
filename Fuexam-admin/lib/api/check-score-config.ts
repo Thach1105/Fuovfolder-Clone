@@ -3,6 +3,8 @@ import { apiFetch } from "@/lib/api/client";
 export interface CheckScoreConfig {
   configured: boolean;
   cookieConfigured: boolean;
+  authorizeKey: string;
+  xsrfCookie: string;
   checkScoreUrl: string;
 }
 

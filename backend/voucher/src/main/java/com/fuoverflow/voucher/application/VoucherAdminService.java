@@ -23,7 +23,7 @@ import java.util.UUID;
 @Service
 public class VoucherAdminService {
     private static final Set<String> VALID_DISCOUNT_TYPES = Set.of("percentage", "fixed");
-    private static final Set<String> VALID_APPLICABLE_TYPES = Set.of("source", "membership", "coursera");
+    private static final Set<String> VALID_APPLICABLE_TYPES = Set.of("source", "membership", "coursera", "check_score");
 
     private final VoucherRepository voucherRepository;
     private final VoucherUserAssignmentRepository assignmentRepository;
