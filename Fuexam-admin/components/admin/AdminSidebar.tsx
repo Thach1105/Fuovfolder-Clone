@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   FileText,
+  KeyRound,
   ClipboardCheck,
   MessageSquare,
   Flag,
@@ -86,6 +87,12 @@ const NAV: NavSection[] = [
         label: "Exam — Bình luận",
         icon: MessageSquare,
         permission: "exam.comment.admin:delete",
+      },
+      {
+        href: "/check-score-config",
+        label: "Check điểm — Token",
+        icon: KeyRound,
+        permission: "admin.panel:access",
       },
       {
         href: "/coursera/catalog",

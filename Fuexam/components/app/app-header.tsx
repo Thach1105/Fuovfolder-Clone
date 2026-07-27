@@ -27,6 +27,7 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 const NAV_ITEMS = [
   { href: "/suoc", label: "Source" },
   { href: "/exam", label: "Thi FE/PE" },
+  { href: "/check-score", label: "Check điểm" },
   { href: "/forums", label: "Diễn đàn" },
   { href: "/coursera", label: "Coursera" },
   { href: "/membership", label: "Membership" },
