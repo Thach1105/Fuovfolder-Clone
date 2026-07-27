@@ -126,7 +126,7 @@ services:
       - "${FUEXAM_PUBLISH_PORT:-3336}:3000"
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
 
   fuexam_admin:
     build:
@@ -145,7 +145,7 @@ services:
       - "${FUEXAM_ADMIN_PUBLISH_PORT:-4446}:3000"
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
 
 volumes:
   postgres_data:
