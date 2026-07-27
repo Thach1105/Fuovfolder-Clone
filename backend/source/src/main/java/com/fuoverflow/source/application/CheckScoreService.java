@@ -12,17 +12,17 @@ import com.fuoverflow.source.api.dto.CheckScoreResponse;
 import com.fuoverflow.source.persistence.AppSettingEntity;
 import com.fuoverflow.source.persistence.AppSettingRepository;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Service
@@ -113,16 +113,11 @@ public class CheckScoreService {
             throw new BadRequestException("INVALID_FILE", "Không đọc được file tải lên.");
         }
 
-        ByteArrayResource resource = new ByteArrayResource(bytes) {
-            @Override
-            public String getFilename() {
-                return file.getOriginalFilename();
-            }
-        };
-        MultipartBodyBuilder bodyBuilder = new MultipartBodyBuilder();
-        bodyBuilder.part("file", resource)
-                .filename(file.getOriginalFilename() != null ? file.getOriginalFilename() : "submission.dat")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM);
+        String boundary = "----WebKitFormBoundary" + UUID.randomUUID().toString().replace("-", "");
+        byte[] multipartBody = buildMultipartBody(
+                boundary,
+                file.getOriginalFilename() != null ? file.getOriginalFilename() : "submission.dat",
+                bytes);
 
         String targetUrl = settings.findById(CHECK_SCORE_URL_SETTING)
                 .map(AppSettingEntity::getValue)
@@ -138,11 +133,12 @@ public class CheckScoreService {
                     .accept(MediaType.ALL)
                     .header(HttpHeaders.USER_AGENT, "PostmanRuntime/7.53.0")
                     .header("X-Authorize-Key", authorizeKey)
-                    .contentType(MediaType.MULTIPART_FORM_DATA);
+                    .header(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate, br")
+                    .contentType(MediaType.parseMediaType("multipart/form-data; boundary=" + boundary));
             if (xsrfCookie != null && !xsrfCookie.isBlank()) {
                 request = request.header(HttpHeaders.COOKIE, xsrfCookie);
             }
-            responseBody = request.body(bodyBuilder.build())
+            responseBody = request.body(multipartBody)
                     .retrieve()
                     .body(String.class);
         } catch (RestClientException e) {
@@ -212,4 +208,25 @@ public class CheckScoreService {
         return null;
     }
 
+    private byte[] buildMultipartBody(String boundary, String filename, byte[] fileBytes) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            out.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+            out.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + sanitizeFilename(filename) + "\"\r\n")
+                    .getBytes(StandardCharsets.UTF_8));
+            out.write("Content-Type: application/octet-stream\r\n\r\n".getBytes(StandardCharsets.UTF_8));
+            out.write(fileBytes);
+            out.write(("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new BadRequestException("INVALID_FILE", "Không đọc được file tải lên.");
+        }
+    }
+
+    private String sanitizeFilename(String filename) {
+        return filename.replace("\\", "_")
+                .replace("\"", "_")
+                .replace("\r", "_")
+                .replace("\n", "_");
+    }
 }
