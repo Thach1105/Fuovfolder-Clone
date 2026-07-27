@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, MailCheck } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import * as authApi from "@/lib/api/auth";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const COOLDOWN = 120;
 
@@ -44,6 +45,10 @@ function VerifyEmailContent() {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [otpCode, setOtpCode] = useState("");
+  const [otpState, setOtpState] = useState<"idle" | "verifying" | "error">("idle");
+  const [otpError, setOtpError] = useState<string | null>(null);
+
   const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [resendError, setResendError] = useState<string | null>(null);
   const { countdown, startCooldown } = useResendCooldown();
@@ -56,6 +61,9 @@ function VerifyEmailContent() {
       await authApi.resendVerificationEmail(emailParam);
       setResendStatus("sent");
       startCooldown();
+      setOtpCode("");
+      setOtpState("idle");
+      setOtpError(null);
     } catch (err) {
       setResendStatus("error");
       setResendError(
@@ -63,6 +71,28 @@ function VerifyEmailContent() {
       );
     }
   }
+
+  async function handleOtpSubmit() {
+    if (!emailParam || otpCode.length !== 6 || otpState === "verifying") return;
+    setOtpState("verifying");
+    setOtpError(null);
+    try {
+      const user = await authApi.verifyEmailCode(emailParam, otpCode);
+      setDisplayName(user.displayName);
+      setState("success");
+    } catch (err) {
+      setOtpState("error");
+      setOtpError(
+        err instanceof ApiError ? err.message : "Mã xác minh không hợp lệ. Vui lòng thử lại."
+      );
+    }
+  }
+
+  useEffect(() => {
+    if (otpCode.length === 6 && emailParam) {
+      handleOtpSubmit();
+    }
+  }, [otpCode]);
 
   useEffect(() => {
     if (!token) return;
@@ -139,11 +169,45 @@ function VerifyEmailContent() {
             <div>
               <p className="font-semibold">Email xác thực đã được gửi.</p>
               <p className="mt-1 text-sky-800/80">
-                Mở hộp thư email bạn vừa đăng ký, rồi bấm vào liên kết xác thực để kích hoạt tài khoản.
+                Nhập mã xác minh 6 số trong email để kích hoạt tài khoản.
               </p>
             </div>
           </div>
         </div>
+
+        {emailParam && (
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-slate-700">Nhập mã xác minh</p>
+            <div className="flex justify-center">
+              <InputOTP
+                maxLength={6}
+                value={otpCode}
+                onChange={setOtpCode}
+                disabled={otpState === "verifying"}
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+
+            {otpState === "verifying" && (
+              <div className="flex items-center justify-center gap-2 text-sm text-slate-600">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-fuo-600 border-t-transparent" />
+                Đang xác minh...
+              </div>
+            )}
+
+            {otpState === "error" && otpError && (
+              <p className="text-sm text-red-600">{otpError}</p>
+            )}
+          </div>
+        )}
 
         <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-4 text-left text-sm text-amber-950 shadow-sm">
           <div className="flex gap-3">

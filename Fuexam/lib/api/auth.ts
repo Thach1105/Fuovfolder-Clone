@@ -26,6 +26,13 @@ export function verifyEmail(token: string) {
   });
 }
 
+export function verifyEmailCode(email: string, code: string) {
+  return apiFetch<AuthenticatedUserResponse>(`${API_V1}/auth/email/verify-code`, {
+    method: "POST",
+    body: JSON.stringify({ email, code }),
+  });
+}
+
 export function resendVerificationEmail(email: string) {
   return apiFetch<void>(`${API_V1}/auth/email/resend`, {
     method: "POST",

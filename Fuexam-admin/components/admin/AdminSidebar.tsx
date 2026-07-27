@@ -22,6 +22,7 @@ import {
   Radio,
   Ticket,
   Wallet,
+  Megaphone,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { can } from "@/lib/auth/permissions";
@@ -129,6 +130,12 @@ const NAV: NavSection[] = [
         label: "Thông báo server",
         icon: Radio,
         permission: "broadcast.admin:read",
+      },
+      {
+        href: "/announcements",
+        label: "Thông báo toàn server",
+        icon: Megaphone,
+        permission: "announcement.admin:read",
       },
       {
         href: "/vouchers",
