@@ -1,18 +1,52 @@
 "use client";
 
 import { useState } from "react";
-import { FileUp, Trophy } from "lucide-react";
+import {
+  CheckCircle2,
+  Coins,
+  FileUp,
+  Loader2,
+  TicketPercent,
+  Trophy,
+  UploadCloud,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { checkScore, type CheckScoreResult } from "@/lib/api/check-score";
 import { ApiError } from "@/lib/api/client";
+import { type VoucherPreviewResponse, previewVoucher } from "@/lib/api/voucher";
+
+const CHECK_SCORE_PRICE_POINTS = 29000;
 
 export default function CheckScorePage() {
   const [file, setFile] = useState<File | null>(null);
   const [voucherCode, setVoucherCode] = useState("");
+  const [voucherPreview, setVoucherPreview] = useState<VoucherPreviewResponse | null>(null);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [applyingVoucher, setApplyingVoucher] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckScoreResult | null>(null);
+
+  async function handleApplyVoucher() {
+    if (!voucherCode.trim()) return;
+    setApplyingVoucher(true);
+    setVoucherError(null);
+    try {
+      const preview = await previewVoucher(voucherCode.trim(), "check_score", CHECK_SCORE_PRICE_POINTS);
+      if (preview.valid) {
+        setVoucherPreview(preview);
+      } else {
+        setVoucherPreview(null);
+        setVoucherError(preview.message);
+      }
+    } catch (error) {
+      setVoucherPreview(null);
+      setVoucherError(error instanceof ApiError ? error.message : "Không thể áp dụng voucher.");
+    } finally {
+      setApplyingVoucher(false);
+    }
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -20,7 +54,7 @@ export default function CheckScorePage() {
     setLoading(true);
     setResult(null);
     try {
-      setResult(await checkScore(file, voucherCode));
+      setResult(await checkScore(file, voucherPreview ? voucherCode : undefined));
       toast.success("Chấm điểm thành công.");
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Chấm điểm thất bại.");
@@ -31,9 +65,9 @@ export default function CheckScorePage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-border/70 bg-card p-6">
+      <section className="rounded-xl border border-border/70 bg-card p-6 shadow-sm">
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <FileUp className="h-5 w-5" />
           </div>
           <div>
@@ -42,25 +76,82 @@ export default function CheckScorePage() {
           </div>
         </div>
 
-        <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px_144px]">
-          <Input
-            type="file"
-            accept=".dat"
-            onChange={(event) => {
-              setFile(event.target.files?.[0] ?? null);
-              setResult(null);
-            }}
-          />
-          <Input
-            value={voucherCode}
-            onChange={(event) => setVoucherCode(event.target.value)}
-            placeholder="Voucher"
-          />
-          <Button type="submit" disabled={!file || loading} className="sm:w-36">
-            {loading ? "Đang chấm..." : "Chấm điểm"}
+        <form onSubmit={submit} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px_148px] lg:items-stretch">
+          <label
+            htmlFor="score-file"
+            className="group flex min-h-24 cursor-pointer items-center gap-4 rounded-lg border border-dashed border-border bg-background/70 px-4 py-3 transition hover:border-primary/60 hover:bg-primary/5"
+          >
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground transition group-hover:bg-primary/10 group-hover:text-primary">
+              {file ? <CheckCircle2 className="h-5 w-5" /> : <UploadCloud className="h-5 w-5" />}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium">
+                {file ? file.name : "Chọn file .dat"}
+              </span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                {file ? `${(file.size / 1024).toFixed(1)} KB` : "Bấm để tải file bài làm lên"}
+              </span>
+            </span>
+            <input
+              id="score-file"
+              type="file"
+              accept=".dat"
+              className="sr-only"
+              onChange={(event) => {
+                setFile(event.target.files?.[0] ?? null);
+                setResult(null);
+              }}
+            />
+          </label>
+
+          <div className="space-y-2 rounded-lg border border-border bg-background/70 px-4 py-3">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <TicketPercent className="h-4 w-4" />
+              Voucher
+            </div>
+            <Input
+              value={voucherCode}
+              onChange={(event) => {
+                setVoucherCode(event.target.value.toUpperCase());
+                setVoucherPreview(null);
+                setVoucherError(null);
+              }}
+              placeholder="Nhập mã nếu có"
+              className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={applyingVoucher || !voucherCode.trim()}
+              onClick={handleApplyVoucher}
+              className="h-8 w-full"
+            >
+              {applyingVoucher ? "..." : "Áp dụng"}
+            </Button>
+          </div>
+
+          <Button type="submit" disabled={!file || loading} className="h-full min-h-12 gap-2">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
+            {loading ? "Đang chấm" : "Chấm điểm"}
           </Button>
         </form>
-        <p className="mt-3 text-sm text-muted-foreground">Phí chấm: 29,000 points.</p>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="flex w-fit items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground">
+            <Coins className="h-4 w-4" />
+            Phí chấm:{" "}
+            <span className="font-medium text-foreground">
+              {(voucherPreview?.finalPoints ?? CHECK_SCORE_PRICE_POINTS).toLocaleString("vi-VN")} points
+            </span>
+          </div>
+          {voucherPreview && (
+            <p className="text-sm text-emerald-600">
+              {voucherPreview.message} · giảm {voucherPreview.discountPoints.toLocaleString("vi-VN")} points
+            </p>
+          )}
+          {voucherError && <p className="text-sm text-destructive">{voucherError}</p>}
+        </div>
       </section>
 
       {result && (

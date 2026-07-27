@@ -15,9 +15,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.multipart.MultipartFile;
@@ -113,13 +113,16 @@ public class CheckScoreService {
             throw new BadRequestException("INVALID_FILE", "Không đọc được file tải lên.");
         }
 
-        var body = new LinkedMultiValueMap<String, Object>();
-        body.add("file", new ByteArrayResource(bytes) {
+        ByteArrayResource resource = new ByteArrayResource(bytes) {
             @Override
             public String getFilename() {
                 return file.getOriginalFilename();
             }
-        });
+        };
+        MultipartBodyBuilder bodyBuilder = new MultipartBodyBuilder();
+        bodyBuilder.part("file", resource)
+                .filename(file.getOriginalFilename() != null ? file.getOriginalFilename() : "submission.dat")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM);
 
         String targetUrl = settings.findById(CHECK_SCORE_URL_SETTING)
                 .map(AppSettingEntity::getValue)
@@ -137,7 +140,7 @@ public class CheckScoreService {
             if (xsrfCookie != null && !xsrfCookie.isBlank()) {
                 request = request.header(HttpHeaders.COOKIE, xsrfCookie);
             }
-            responseBody = request.body(body)
+            responseBody = request.body(bodyBuilder.build())
                     .retrieve()
                     .body(String.class);
         } catch (RestClientException e) {
@@ -155,10 +158,10 @@ public class CheckScoreService {
                 throw new BadRequestException("CHECK_SCORE_BAD_RESPONSE", "Dịch vụ chấm điểm trả về dữ liệu không hợp lệ.");
             }
             CheckScoreResponse externalResult = new CheckScoreResponse(
-                    text(data, "totalQuestions"),
+                    text(data, "totalQuestions", "total_questions", "totalquestions"),
                     text(data, "score"),
                     text(data, "subject"),
-                    text(data, "correctAnswers"),
+                    text(data, "correctAnswers", "correct_answers", "correctanswers"),
                     text(data, "charged"),
                     CHECK_SCORE_PRICE_POINTS,
                     0,
@@ -197,8 +200,13 @@ public class CheckScoreService {
         }
     }
 
-    private String text(JsonNode node, String field) {
-        JsonNode value = node.get(field);
-        return value == null || value.isNull() ? null : value.asText();
+    private String text(JsonNode node, String... fields) {
+        for (String field : fields) {
+            JsonNode value = node.get(field);
+            if (value != null && !value.isNull()) {
+                return value.asText();
+            }
+        }
+        return null;
     }
 }
