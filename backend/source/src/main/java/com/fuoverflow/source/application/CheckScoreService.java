@@ -1,8 +1,12 @@
 package com.fuoverflow.source.application;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fuoverflow.award.application.PointsWalletService;
 import com.fuoverflow.common.exception.BadRequestException;
 import com.fuoverflow.common.exception.NotFoundException;
+import com.fuoverflow.common.voucher.VoucherRedemptionPort;
 import com.fuoverflow.source.api.dto.CheckScoreConfigResponse;
 import com.fuoverflow.source.api.dto.CheckScoreResponse;
 import com.fuoverflow.source.persistence.AppSettingEntity;
@@ -10,6 +14,7 @@ import com.fuoverflow.source.persistence.AppSettingRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
@@ -18,22 +23,34 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @Service
 public class CheckScoreService {
+    private static final int CHECK_SCORE_PRICE_POINTS = 29_000;
     private static final String AUTHORIZE_KEY_SETTING = "ask4help.authorize_key";
+    private static final String XSRF_COOKIE_SETTING = "ask4help.xsrf_cookie";
     private static final String CHECK_SCORE_URL_SETTING = "ask4help.check_score_url";
 
     private final AppSettingRepository settings;
     private final RestClient restClient;
+    private final ObjectMapper objectMapper;
+    private final PointsWalletService walletService;
+    private final VoucherRedemptionPort voucherService;
     private final String checkScoreUrl;
 
     public CheckScoreService(
             AppSettingRepository settings,
             RestClient.Builder restClientBuilder,
+            ObjectMapper objectMapper,
+            PointsWalletService walletService,
+            VoucherRedemptionPort voucherService,
             @Value("${ask4help.check-score-url:https://api.ask-4-help.com/api/v2/api/check-score}") String checkScoreUrl) {
         this.settings = settings;
         this.restClient = restClientBuilder.build();
+        this.objectMapper = objectMapper;
+        this.walletService = walletService;
+        this.voucherService = voucherService;
         this.checkScoreUrl = checkScoreUrl;
     }
 
@@ -41,16 +58,25 @@ public class CheckScoreService {
     public CheckScoreConfigResponse config() {
         return new CheckScoreConfigResponse(
                 settings.existsById(AUTHORIZE_KEY_SETTING),
+                settings.existsById(XSRF_COOKIE_SETTING),
                 settings.findById(CHECK_SCORE_URL_SETTING).map(AppSettingEntity::getValue).orElse(checkScoreUrl));
     }
 
     @Transactional
-    public CheckScoreConfigResponse updateConfig(String authorizeKey, String checkScoreUrl) {
+    public CheckScoreConfigResponse updateConfig(String authorizeKey, String xsrfCookie, String checkScoreUrl) {
         if (authorizeKey != null && !authorizeKey.isBlank()) {
             String normalized = authorizeKey.trim();
             AppSettingEntity setting = settings.findById(AUTHORIZE_KEY_SETTING)
                     .orElseGet(() -> new AppSettingEntity(AUTHORIZE_KEY_SETTING, normalized));
             setting.setValue(normalized);
+            settings.save(setting);
+        }
+
+        if (xsrfCookie != null && !xsrfCookie.isBlank()) {
+            String normalizedCookie = xsrfCookie.trim();
+            AppSettingEntity setting = settings.findById(XSRF_COOKIE_SETTING)
+                    .orElseGet(() -> new AppSettingEntity(XSRF_COOKIE_SETTING, normalizedCookie));
+            setting.setValue(normalizedCookie);
             settings.save(setting);
         }
 
@@ -60,11 +86,14 @@ public class CheckScoreService {
         urlSetting.setValue(normalizedUrl);
         settings.save(urlSetting);
 
-        return new CheckScoreConfigResponse(settings.existsById(AUTHORIZE_KEY_SETTING), normalizedUrl);
+        return new CheckScoreConfigResponse(
+                settings.existsById(AUTHORIZE_KEY_SETTING),
+                settings.existsById(XSRF_COOKIE_SETTING),
+                normalizedUrl);
     }
 
-    @Transactional(readOnly = true)
-    public CheckScoreResponse check(MultipartFile file) {
+    @Transactional
+    public CheckScoreResponse check(UUID userId, MultipartFile file, String voucherCode) {
         String authorizeKey = settings.findById(AUTHORIZE_KEY_SETTING)
                 .map(AppSettingEntity::getValue)
                 .orElseThrow(() -> new NotFoundException("CHECK_SCORE_KEY_MISSING", "Chưa cấu hình token chấm điểm."));
@@ -91,27 +120,81 @@ public class CheckScoreService {
         String targetUrl = settings.findById(CHECK_SCORE_URL_SETTING)
                 .map(AppSettingEntity::getValue)
                 .orElse(checkScoreUrl);
+        String xsrfCookie = settings.findById(XSRF_COOKIE_SETTING)
+                .map(AppSettingEntity::getValue)
+                .orElse(null);
 
-        Ask4HelpResponse response;
+        String responseBody;
         try {
-            response = restClient.post()
+            RestClient.RequestBodySpec request = restClient.post()
                     .uri(targetUrl)
                     .header("X-Authorize-Key", authorizeKey)
-                    .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .body(body)
+                    .contentType(MediaType.MULTIPART_FORM_DATA);
+            if (xsrfCookie != null && !xsrfCookie.isBlank()) {
+                request = request.header(HttpHeaders.COOKIE, xsrfCookie);
+            }
+            responseBody = request.body(body)
                     .retrieve()
-                    .body(Ask4HelpResponse.class);
+                    .body(String.class);
         } catch (RestClientException e) {
             throw new BadRequestException("CHECK_SCORE_FAILED", "Dịch vụ chấm điểm xử lý thất bại.");
         }
 
-        if (response == null || response.data() == null) {
+        if (responseBody == null || responseBody.isBlank()) {
             throw new BadRequestException("CHECK_SCORE_BAD_RESPONSE", "Dịch vụ chấm điểm trả về dữ liệu không hợp lệ.");
         }
-        return response.data();
+
+        try {
+            JsonNode root = objectMapper.readTree(responseBody);
+            JsonNode data = root.path("data");
+            if (!data.isObject()) {
+                throw new BadRequestException("CHECK_SCORE_BAD_RESPONSE", "Dịch vụ chấm điểm trả về dữ liệu không hợp lệ.");
+            }
+            CheckScoreResponse externalResult = new CheckScoreResponse(
+                    text(data, "totalQuestions"),
+                    text(data, "score"),
+                    text(data, "subject"),
+                    text(data, "correctAnswers"),
+                    text(data, "charged"),
+                    CHECK_SCORE_PRICE_POINTS,
+                    0,
+                    CHECK_SCORE_PRICE_POINTS);
+            if (externalResult.score() == null || externalResult.correctAnswers() == null || externalResult.totalQuestions() == null) {
+                throw new BadRequestException("CHECK_SCORE_EMPTY_RESULT", "Dịch vụ chấm điểm chưa trả về kết quả. Kiểm tra lại token, cookie và URL.");
+            }
+            UUID transactionId = UUID.randomUUID();
+            int chargedPoints = CHECK_SCORE_PRICE_POINTS;
+            int discountPoints = 0;
+            if (voucherCode != null && !voucherCode.isBlank()) {
+                var voucherResult = voucherService.redeem(
+                        voucherCode, userId, "check_score", transactionId, CHECK_SCORE_PRICE_POINTS);
+                chargedPoints = voucherResult.finalPoints();
+                discountPoints = voucherResult.discountPoints();
+            }
+            if (chargedPoints > 0) {
+                walletService.debit(
+                        userId,
+                        chargedPoints,
+                        "Check điểm: " + externalResult.subject(),
+                        PointsWalletService.SOURCE_CHECK_SCORE,
+                        transactionId);
+            }
+            return new CheckScoreResponse(
+                    externalResult.totalQuestions(),
+                    externalResult.score(),
+                    externalResult.subject(),
+                    externalResult.correctAnswers(),
+                    externalResult.charged(),
+                    CHECK_SCORE_PRICE_POINTS,
+                    discountPoints,
+                    chargedPoints);
+        } catch (JsonProcessingException e) {
+            throw new BadRequestException("CHECK_SCORE_BAD_RESPONSE", "Dịch vụ chấm điểm trả về dữ liệu không hợp lệ.");
+        }
     }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record Ask4HelpResponse(int status, String message, CheckScoreResponse data) {
+    private String text(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return value == null || value.isNull() ? null : value.asText();
     }
 }

@@ -8,6 +8,7 @@ import com.fuoverflow.source.api.dto.CheckScoreResponse;
 import com.fuoverflow.source.application.CheckScoreService;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.UUID;
 
 @RestController
 public class CheckScoreController {
@@ -26,8 +29,13 @@ public class CheckScoreController {
     }
 
     @PostMapping(value = "/api/v1/check-score", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<CheckScoreResponse> check(@RequestPart("file") MultipartFile file) {
-        return ApiResponse.ok(service.check(file), "Chấm điểm thành công");
+    @RequirePermission("points:read")
+    public ApiResponse<CheckScoreResponse> check(
+            Authentication authentication,
+            @RequestPart("file") MultipartFile file,
+            @RequestPart(value = "voucherCode", required = false) String voucherCode) {
+        UUID userId = UUID.fromString(authentication.getName());
+        return ApiResponse.ok(service.check(userId, file, voucherCode), "Chấm điểm thành công");
     }
 
     @RestController
@@ -48,7 +56,10 @@ public class CheckScoreController {
         @PutMapping("/config")
         public ApiResponse<CheckScoreConfigResponse> updateConfig(
                 @Valid @RequestBody CheckScoreConfigRequest request) {
-            return ApiResponse.ok(service.updateConfig(request.authorizeKey(), request.checkScoreUrl()));
+            return ApiResponse.ok(service.updateConfig(
+                    request.authorizeKey(),
+                    request.xsrfCookie(),
+                    request.checkScoreUrl()));
         }
     }
 }

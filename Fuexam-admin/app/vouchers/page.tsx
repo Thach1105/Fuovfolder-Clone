@@ -19,6 +19,7 @@ import { can } from "@/lib/auth/permissions";
 
 const APPLICABLE_OPTIONS = [
   { value: "source", label: "Source (tài liệu)" },
+  { value: "check_score", label: "Check điểm" },
   { value: "membership", label: "Membership (gói)" },
   { value: "coursera", label: "Coursera (khóa học)" },
 ];

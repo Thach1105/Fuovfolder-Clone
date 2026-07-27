@@ -45,6 +45,16 @@ jobs:
             exit 1
           fi
 
+      - name: Verify Flyway migration versions
+        run: |
+          versions="$(find backend/app/src/main/resources/db/migration -maxdepth 1 -type f -name 'V*__*.sql' -printf '%f\n' | sed -E 's/^V([0-9]+)__.*/\1/' | sort)"
+          duplicates="$(printf '%s\n' "$versions" | uniq -d)"
+          if [ -n "$duplicates" ]; then
+            echo "::error::Duplicate Flyway migration version(s): $duplicates"
+            find backend/app/src/main/resources/db/migration -maxdepth 1 -type f -name 'V*__*.sql' -printf '%f\n' | sort -V
+            exit 1
+          fi
+
       - name: Stop legacy systemd services
         run: |
           for svc in fuoverflow-backend; do

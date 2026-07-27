@@ -10,6 +10,7 @@ import { ApiError } from "@/lib/api/client";
 
 export default function CheckScorePage() {
   const [file, setFile] = useState<File | null>(null);
+  const [voucherCode, setVoucherCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckScoreResult | null>(null);
 
@@ -19,7 +20,7 @@ export default function CheckScorePage() {
     setLoading(true);
     setResult(null);
     try {
-      setResult(await checkScore(file));
+      setResult(await checkScore(file, voucherCode));
       toast.success("Chấm điểm thành công.");
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Chấm điểm thất bại.");
@@ -41,7 +42,7 @@ export default function CheckScorePage() {
           </div>
         </div>
 
-        <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px_144px]">
           <Input
             type="file"
             accept=".dat"
@@ -50,10 +51,16 @@ export default function CheckScorePage() {
               setResult(null);
             }}
           />
+          <Input
+            value={voucherCode}
+            onChange={(event) => setVoucherCode(event.target.value)}
+            placeholder="Voucher"
+          />
           <Button type="submit" disabled={!file || loading} className="sm:w-36">
             {loading ? "Đang chấm..." : "Chấm điểm"}
           </Button>
         </form>
+        <p className="mt-3 text-sm text-muted-foreground">Phí chấm: 29,000 points.</p>
       </section>
 
       {result && (
@@ -69,8 +76,9 @@ export default function CheckScorePage() {
           <ResultBox label="Môn" value={result.subject} mono />
           <ResultBox
             label="Tính phí"
-            value={result.charged === "true" ? "Có" : "Không"}
+            value={`${result.chargedPoints.toLocaleString("vi-VN")} points`}
           />
+          <ResultBox label="Giảm" value={`${result.discountPoints.toLocaleString("vi-VN")} points`} />
         </section>
       )}
     </div>

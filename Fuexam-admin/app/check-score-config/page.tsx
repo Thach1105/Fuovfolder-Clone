@@ -12,7 +12,9 @@ import { ApiError } from "@/lib/api/client";
 
 export default function CheckScoreConfigPage() {
   const [configured, setConfigured] = useState(false);
+  const [cookieConfigured, setCookieConfigured] = useState(false);
   const [authorizeKey, setAuthorizeKey] = useState("");
+  const [xsrfCookie, setXsrfCookie] = useState("");
   const [checkScoreUrl, setCheckScoreUrl] = useState("https://api.ask-4-help.com/api/v2/api/check-score");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -21,6 +23,7 @@ export default function CheckScoreConfigPage() {
     getCheckScoreConfig()
       .then((config) => {
         setConfigured(config.configured);
+        setCookieConfigured(config.cookieConfigured);
         setCheckScoreUrl(config.checkScoreUrl);
       })
       .catch((error) => toast.error(error instanceof ApiError ? error.message : "Không tải được cấu hình."))
@@ -31,10 +34,12 @@ export default function CheckScoreConfigPage() {
     event.preventDefault();
     setSaving(true);
     try {
-      const config = await updateCheckScoreConfig(authorizeKey, checkScoreUrl);
+      const config = await updateCheckScoreConfig(authorizeKey, xsrfCookie, checkScoreUrl);
       setConfigured(config.configured);
+      setCookieConfigured(config.cookieConfigured);
       setCheckScoreUrl(config.checkScoreUrl);
       setAuthorizeKey("");
+      setXsrfCookie("");
       toast.success("Đã lưu token chấm điểm.");
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Lưu token thất bại.");
@@ -53,6 +58,9 @@ export default function CheckScoreConfigPage() {
           <form onSubmit={submit} className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Trạng thái: {loading ? "Đang tải..." : configured ? "Đã cấu hình" : "Chưa cấu hình"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Cookie: {loading ? "Đang tải..." : cookieConfigured ? "Đã cấu hình" : "Chưa cấu hình"}
             </p>
             <div className="space-y-2">
               <Label htmlFor="authorize-key">X-Authorize-Key</Label>
@@ -73,6 +81,16 @@ export default function CheckScoreConfigPage() {
                 value={checkScoreUrl}
                 onChange={(event) => setCheckScoreUrl(event.target.value)}
                 required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="xsrf-cookie">Cookie</Label>
+              <Input
+                id="xsrf-cookie"
+                type="password"
+                value={xsrfCookie}
+                onChange={(event) => setXsrfCookie(event.target.value)}
+                placeholder={cookieConfigured ? "Để trống nếu không đổi cookie" : "XSRF-TOKEN=..."}
               />
             </div>
             <Button type="submit" disabled={saving}>

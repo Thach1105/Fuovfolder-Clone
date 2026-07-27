@@ -5,6 +5,9 @@ public record CheckScoreResponse(
         String score,
         String subject,
         String correctAnswers,
-        String charged
+        String charged,
+        int originalPricePoints,
+        int discountPoints,
+        int chargedPoints
 ) {
 }
