@@ -135,6 +135,8 @@ public class CheckScoreService {
         try {
             RestClient.RequestBodySpec request = restClient.post()
                     .uri(targetUrl)
+                    .accept(MediaType.ALL)
+                    .header(HttpHeaders.USER_AGENT, "PostmanRuntime/7.53.0")
                     .header("X-Authorize-Key", authorizeKey)
                     .contentType(MediaType.MULTIPART_FORM_DATA);
             if (xsrfCookie != null && !xsrfCookie.isBlank()) {
@@ -209,4 +211,5 @@ public class CheckScoreService {
         }
         return null;
     }
+
 }
