@@ -94,6 +94,7 @@ public class SecurityConfig {
                                 "/oauth2/authorization/google",
                                 "/login/oauth2/code/google",
                                 "/api/v1/payment/payos/webhook",
+                                "/api/v1/public/data",
                                 "/actuator/health",
                                 "/actuator/health/**"
                         ).permitAll()
