@@ -19,10 +19,36 @@ env:
 jobs:
   deploy:
     runs-on: self-hosted
+    # Explicit: the checkout step below fetches over HTTPS with GITHUB_TOKEN,
+    # and this is a private repository.
+    permissions:
+      contents: read
 
     steps:
+      # Plain git instead of actions/checkout: downloading actions from
+      # codeload.github.com is persistently rate-limited (HTTP 429) on this
+      # runner's egress IP, which failed the deploy before any step could run.
+      # This workflow used no other action, so nothing now hits codeload.
       - name: Checkout
-        uses: actions/checkout@v4
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git init -q .
+          git remote add origin "https://github.com/${{ github.repository }}.git" 2>/dev/null \
+            || git remote set-url origin "https://github.com/${{ github.repository }}.git"
+          auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraheader="AUTHORIZATION: basic $auth" \
+            fetch --no-tags --depth 1 origin "$GITHUB_SHA"
+          git checkout -q --force FETCH_HEAD
+          git clean -qffdx
+          # Never deploy a stale workspace silently.
+          head="$(git rev-parse HEAD)"
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "::error::Workspace is at $head, expected $GITHUB_SHA"
+            exit 1
+          fi
+          echo "Checked out $head"
 
       - name: Verify production env file
         run: |
