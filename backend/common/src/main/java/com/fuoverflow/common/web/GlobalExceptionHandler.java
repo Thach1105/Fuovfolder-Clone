@@ -3,6 +3,7 @@ package com.fuoverflow.common.web;
 import com.fuoverflow.common.config.SupportProperties;
 import com.fuoverflow.common.exception.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
 import java.util.List;
 
@@ -45,6 +47,23 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException exception, HttpServletRequest request) {
         return ResponseEntity.badRequest()
                 .body(error("VALIDATION_ERROR", "Request validation failed", request, null));
+    }
+
+    /**
+     * An idle SSE/async connection reaching its timeout is normal lifecycle, not a server fault.
+     * Once the response is committed (SSE headers already flushed) there is nothing we may write,
+     * so return null and let the container close the stream. The client reconnects on its own.
+     */
+    @ExceptionHandler(AsyncRequestTimeoutException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAsyncTimeout(AsyncRequestTimeoutException exception,
+                                                               HttpServletRequest request,
+                                                               HttpServletResponse response) {
+        if (response.isCommitted()) {
+            log.debug("Async request timed out after response was committed: path={}", request.getRequestURI());
+            return null;
+        }
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(error("ASYNC_REQUEST_TIMEOUT", "Kết nối đã hết thời gian chờ. Vui lòng thử lại.", request, null));
     }
 
     @ExceptionHandler(Exception.class)
