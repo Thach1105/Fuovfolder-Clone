@@ -330,7 +330,8 @@ cho `SUB_ADMIN`.
 
 | Method | Endpoint | Việc |
 |---|---|---|
-| POST | `/api/v1/admin/grading/papers/import` | JSON thô hoặc `{payloadId}`. Validate → tạo đề `DRAFT`. Idempotent: đề đã có và `DRAFT` thì trả về đề cũ, không mất đáp án |
+| POST | `/api/v1/admin/grading/papers/preview` | JSON thô hoặc `{payloadId}`. Validate + tách câu + phát hiện đáp án có sẵn, **không ghi gì vào DB**. Trả về đủ dữ liệu để admin xem trên giao diện |
+| POST | `/api/v1/admin/grading/papers/import` | Lưu thật. **Bắt buộc kèm `confirmedFingerprint`** lấy từ preview. Idempotent: đề đã có và `DRAFT` thì trả về đề cũ, không mất đáp án |
 | GET | `/api/v1/admin/grading/papers` | Danh sách, filter `subject`, `status` |
 | GET | `/api/v1/admin/grading/papers/{id}` | Chi tiết + `unansweredQids` |
 | GET | `/api/v1/admin/grading/papers/{id}/questions/{qid}/image` | Stream PNG rút từ `raw_payload` |
@@ -352,6 +353,39 @@ thái thay vì chặn lúc import:
 
 Điều kiện chặn nằm ở chỗ *dùng*, không chỉ ở chỗ *lưu*, nên đáp án nửa vời không bao giờ chấm ra
 điểm sai.
+
+### Xem trước rồi mới lưu
+
+Chuyển đổi và lưu là **hai bước tách rời**. Admin không bao giờ lưu một thứ chưa nhìn thấy.
+
+```
+1. POST /papers/preview   → parse, validate, tách 50 câu, trả về cho giao diện. DB không đổi.
+2. Admin xem trên màn hình: mã đề, số câu, ảnh từng câu, các lựa chọn, đáp án phát hiện được (nếu có)
+3. POST /papers/import    → mới ghi vào DB, kèm confirmedFingerprint
+```
+
+`preview` trả về:
+
+- `examCode`, `subjectCode`, `durationMinutes`, `totalMark`, `questionCount`
+- `fingerprint` — admin gửi lại y nguyên ở bước import
+- `collision` — `NONE` | `EXISTING_DRAFT` | `EXISTING_PUBLISHED`, kèm `paperId` nếu có. Giao diện nhờ
+  đó biết trước là "tạo mới" hay "gộp vào đề đang có", không bị bất ngờ sau khi bấm lưu.
+- `questions[]` — mỗi câu có `qid`, `displayNo`, `section`, `answerMode`, `expectedAnswerCount`,
+  `questionText`, `imageBase64` (để giao diện vẽ ảnh ngay), và `options[]` gồm `qaid`, `optionIndex`,
+  `text`
+- `detectedAnswers[]` — đáp án tìm thấy sẵn trong payload (ví dụ `MatchQuestions.Solution` không bị
+  mask), kèm mức tin cậy. Rỗng là bình thường.
+- `warnings[]` — những điều đáng chú ý nhưng không chặn: câu không có cả text lẫn ảnh, section chưa hỗ
+  trợ chấm, `expectedAnswerCount` không đọc được.
+
+`import` **bắt buộc** có `confirmedFingerprint`. Server tự tính lại fingerprint từ payload nhận được
+và so; lệch → `400 FINGERPRINT_MISMATCH`. Đây là cách bắt buộc "phải xem trước khi lưu" ở tầng
+backend, không chỉ là quy ước của giao diện: muốn lưu thì phải gửi kèm dấu vân tay của đúng thứ mình
+đã xem.
+
+Bộ đáp án cũng có chế độ xem trước: `POST /papers/{id}/answers/apply` với `dryRun: true` tính đầy đủ
+kết quả từng câu (applied / suggested / skipped kèm lý do) mà **không ghi gì**. Admin xem xong mới gửi
+lại với `dryRun: false`.
 
 ### Nhập lại cùng một đề (idempotent)
 
@@ -522,8 +556,12 @@ Next.js App Router + shadcn/radix, đúng stack đang dùng.
 
 - **`/grading-papers`** — danh sách: mã đề, môn, số câu, `DRAFT`/`READY`, số câu còn thiếu đáp án,
   ngày import.
-- **`/grading-papers/import`** — dán JSON hoặc chọn từ `public_api_payloads` chưa import. Validate
-  xong hiện bản xem trước rồi mới tạo `DRAFT`. Lỗi validate hiện rõ chỗ lệch.
+- **`/grading-papers/import`** — dán JSON hoặc chọn từ `public_api_payloads` chưa import. Bấm
+  **Xem trước** gọi `/preview` (chưa ghi gì), màn hình hiện: mã đề, số câu, cảnh báo, và **danh sách
+  toàn bộ câu kèm ảnh và các lựa chọn** để admin duyệt bằng mắt. Nếu `collision` là `EXISTING_DRAFT`
+  thì nói rõ "sẽ gộp vào đề đang có, giữ N đáp án đã tick". Bấm **Lưu** mới gọi `/import` kèm
+  `confirmedFingerprint`. Lỗi validate hiện rõ chỗ lệch.
+  Nhập bộ đáp án cũng hai bước: `dryRun: true` xem kết quả từng câu, rồi mới `dryRun: false`.
 - **`/grading-papers/[id]`** — màn nhập đáp án, quan trọng nhất:
   - Mỗi câu hiện ảnh (qua endpoint stream) hoặc text; lựa chọn hiện theo `option_index` kèm `qaid`
     nhỏ bên cạnh, admin tick đáp án đúng.

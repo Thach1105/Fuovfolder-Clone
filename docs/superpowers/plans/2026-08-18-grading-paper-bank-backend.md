@@ -966,14 +966,21 @@ git commit -m "feat(grading): add order-independent paper fingerprint"
 - Create: `backend/grading/src/main/java/com/fuoverflow/grading/api/GradingPaperAdminController.java`
 - Create: `backend/grading/src/main/java/com/fuoverflow/grading/api/dto/ImportPaperRequest.java`
 - Create: `backend/grading/src/main/java/com/fuoverflow/grading/api/dto/PaperSummaryResponse.java`
+- Create: `backend/grading/src/main/java/com/fuoverflow/grading/api/dto/PaperPreviewResponse.java`
+- Create: `backend/grading/src/main/java/com/fuoverflow/grading/api/dto/PreviewQuestion.java`
+- Create: `backend/grading/src/main/java/com/fuoverflow/grading/api/dto/PreviewOption.java`
 - Test: `backend/grading/src/test/java/com/fuoverflow/grading/application/PaperImportServiceTest.java`
 
 **Interfaces:**
 - Consumes: `PaperPayloadNormalizer.normalize`, `PaperFingerprint.of`, `Sha256.hex`, 3 entity factory + 3 repository (Task 1–3).
 - Produces:
-  - `record ImportPaperRequest(JsonNode payload, UUID payloadId)`
+  - `record ImportPaperRequest(JsonNode payload, UUID payloadId, String confirmedFingerprint)`
+  - `record PreviewOption(long qaid, int optionIndex, String text)`
+  - `record PreviewQuestion(long qid, int displayNo, String section, String answerMode, Integer expectedAnswerCount, String questionText, String imageBase64, List<PreviewOption> options)`
+  - `record PaperPreviewResponse(String examCode, String subjectCode, Integer durationMinutes, BigDecimal totalMark, int questionCount, String fingerprint, String collision, UUID collisionPaperId, int existingAnsweredCount, List<PreviewQuestion> questions, List<String> warnings)` — `collision` ∈ `NONE`, `EXISTING_DRAFT`, `EXISTING_PUBLISHED`
   - `record PaperSummaryResponse(UUID id, String examCode, String subjectCode, String status, int questionCount, int answeredCount, int unansweredCount, Instant createdAt, Instant publishedAt)`
-  - `PaperImportService.importPayload(UUID adminId, JsonNode payload, UUID sourcePayloadId) : PaperSummaryResponse`
+  - `PaperImportService.preview(JsonNode payload) : PaperPreviewResponse` — **không ghi gì vào DB**
+  - `PaperImportService.importPayload(UUID adminId, JsonNode payload, UUID sourcePayloadId, String confirmedFingerprint) : PaperSummaryResponse`
 
 - [ ] **Step 1: Viết test thất bại**
 
@@ -982,8 +989,11 @@ package com.fuoverflow.grading.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fuoverflow.common.exception.BadRequestException;
 import com.fuoverflow.common.exception.ConflictException;
+import com.fuoverflow.grading.api.dto.PaperPreviewResponse;
 import com.fuoverflow.grading.api.dto.PaperSummaryResponse;
+import com.fuoverflow.grading.support.PaperFingerprint;
 import com.fuoverflow.grading.domain.AnswerMode;
 import com.fuoverflow.grading.domain.AnswerSource;
 import com.fuoverflow.grading.domain.PaperSection;
@@ -1054,7 +1064,10 @@ class PaperImportServiceTest {
         when(paperRepository.findByPayloadSha256AndDeletedAtIsNull(anyString())).thenReturn(Optional.empty());
         when(paperRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        PaperSummaryResponse response = service.importPayload(UUID.randomUUID(), payload(), null);
+        String fingerprint = service.preview(payload()).fingerprint();
+
+        PaperSummaryResponse response =
+                service.importPayload(UUID.randomUUID(), payload(), null, fingerprint);
 
         assertEquals("CSP201m_SU26_FE_315379", response.examCode());
         assertEquals("CSP201m", response.subjectCode());
@@ -1075,6 +1088,64 @@ class PaperImportServiceTest {
     }
 
     @Test
+    void previewParsesWithoutTouchingTheDatabase() {
+        when(paperRepository.findByFingerprintAndDeletedAtIsNull(anyString())).thenReturn(Optional.empty());
+
+        PaperPreviewResponse preview = service.preview(payload());
+
+        assertEquals("CSP201m_SU26_FE_315379", preview.examCode());
+        assertEquals(1, preview.questionCount());
+        assertEquals("NONE", preview.collision());
+        assertEquals(64, preview.fingerprint().length());
+        assertEquals(1, preview.questions().size());
+        assertEquals("aGVsbG8=", preview.questions().get(0).imageBase64(),
+                "giao dien can anh de admin xem truoc");
+        assertEquals(2, preview.questions().get(0).options().size());
+
+        verify(paperRepository, never()).save(any());
+        verify(questionRepository, never()).saveAll(any());
+        verify(answerRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void previewReportsCollisionWithExistingDraft() {
+        GradingPaperEntity existing = GradingPaperEntity.draft(
+                "CSP201m_SU26_FE_315379", "CSP201m", "a".repeat(64), 1, 60,
+                new BigDecimal("50.00"), "{}", "b".repeat(64), null, UUID.randomUUID());
+        GradingPaperQuestionEntity answered = GradingPaperQuestionEntity.of(
+                existing.getId(), 111L, PaperSection.GRAMMAR, 1, 1, BigDecimal.ONE, null,
+                null, null, "c".repeat(64), AnswerMode.SINGLE, 1);
+        answered.applyAnswer(AnswerSource.MANUAL, null);
+        when(paperRepository.findByFingerprintAndDeletedAtIsNull(anyString())).thenReturn(Optional.of(existing));
+        when(questionRepository.findByPaperIdOrderByDisplayNoAsc(existing.getId())).thenReturn(List.of(answered));
+
+        PaperPreviewResponse preview = service.preview(payload());
+
+        assertEquals("EXISTING_DRAFT", preview.collision());
+        assertEquals(existing.getId(), preview.collisionPaperId());
+        assertEquals(1, preview.existingAnsweredCount(),
+                "giao dien phai noi ro se giu bao nhieu dap an da tick");
+    }
+
+    @Test
+    void importRejectsFingerprintThatDoesNotMatchThePayload() {
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> service.importPayload(UUID.randomUUID(), payload(), null, "f".repeat(64)));
+
+        assertEquals("FINGERPRINT_MISMATCH", ex.code());
+        verify(paperRepository, never()).save(any());
+    }
+
+    @Test
+    void importRequiresConfirmedFingerprint() {
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> service.importPayload(UUID.randomUUID(), payload(), null, null));
+
+        assertEquals("FINGERPRINT_REQUIRED", ex.code());
+        verify(paperRepository, never()).save(any());
+    }
+
+    @Test
     void reimportOfDraftReturnsExistingPaperWithoutLosingAnswers() {
         GradingPaperEntity existing = GradingPaperEntity.draft(
                 "CSP201m_SU26_FE_315379", "CSP201m", "a".repeat(64), 1, 60,
@@ -1087,7 +1158,9 @@ class PaperImportServiceTest {
         when(questionRepository.findByPaperIdOrderByDisplayNoAsc(existing.getId()))
                 .thenReturn(List.of(answered));
 
-        PaperSummaryResponse response = service.importPayload(UUID.randomUUID(), payload(), null);
+        PaperSummaryResponse response = service.importPayload(
+                UUID.randomUUID(), payload(), null, PaperFingerprint.of(
+                        new PaperPayloadNormalizer().normalize(payload())));
 
         assertEquals(existing.getId(), response.id());
         assertEquals("DRAFT", response.status());
@@ -1104,8 +1177,10 @@ class PaperImportServiceTest {
         published.markReady();
         when(paperRepository.findByFingerprintAndDeletedAtIsNull(anyString())).thenReturn(Optional.of(published));
 
+        String fingerprint = PaperFingerprint.of(new PaperPayloadNormalizer().normalize(payload()));
+
         ConflictException ex = assertThrows(ConflictException.class,
-                () -> service.importPayload(UUID.randomUUID(), payload(), null));
+                () -> service.importPayload(UUID.randomUUID(), payload(), null, fingerprint));
 
         assertEquals("PAPER_ALREADY_PUBLISHED", ex.code());
         verify(paperRepository, never()).save(any());
@@ -1120,11 +1195,22 @@ Expected: FAIL — chưa có `PaperImportService`.
 
 - [ ] **Step 3: Viết service**
 
-`PaperImportService.importPayload(adminId, payload, sourcePayloadId)`:
+`PaperImportService.preview(payload)` — **chỉ đọc, không ghi**:
 
+1. `normalized = normalizer.normalize(payload)` (mọi lỗi validate bật ra ở đây, trước khi ghi bất cứ gì)
+2. `fingerprint = PaperFingerprint.of(normalized)`
+3. `findByFingerprintAndDeletedAtIsNull`: không có → `collision = "NONE"`; có và `DRAFT` → `"EXISTING_DRAFT"` kèm `collisionPaperId` và `existingAnsweredCount` đếm từ `questionRepository`; có và `READY` → `"EXISTING_PUBLISHED"`
+4. Map từng `NormalizedQuestion` sang `PreviewQuestion`, **giữ nguyên `imageBase64`** để giao diện vẽ được ảnh mà chưa cần lưu gì
+5. `warnings`: câu không có cả `questionText` lẫn `imageBase64` → `"Câu <qid> không có nội dung"`; câu thuộc `FILL_BLANK`/`MATCH` → `"Câu <qid> dạng <section> chưa chấm điểm được"`; `expectedAnswerCount == null` → `"Câu <qid> không đọc được số đáp án cần chọn"`
+
+`@Transactional(readOnly = true)`.
+
+`PaperImportService.importPayload(adminId, payload, sourcePayloadId, confirmedFingerprint)`:
+
+0. `confirmedFingerprint` null/rỗng → `BadRequestException("FINGERPRINT_REQUIRED", "Cần xem trước đề rồi mới lưu.")`
 1. `NormalizedPaper normalized = normalizer.normalize(payload)`
 2. `String rawJson = mapper.writeValueAsString(payload)`; `payloadSha256 = Sha256.hexUtf8(rawJson)`
-3. `fingerprint = PaperFingerprint.of(normalized)`
+3. `fingerprint = PaperFingerprint.of(normalized)`. Khác `confirmedFingerprint` → `BadRequestException("FINGERPRINT_MISMATCH", "Payload đã thay đổi so với lúc xem trước. Hãy xem lại.")`. Đây là chỗ ép ở tầng backend cái luật "phải xem trước khi lưu" — không phụ thuộc thiện chí của giao diện.
 4. `findByFingerprintAndDeletedAtIsNull` có kết quả:
    - `status == READY` → `ConflictException("PAPER_ALREADY_PUBLISHED", "Đề đã phát hành. Xoá đề cũ trước khi nhập lại.")`
    - `status == DRAFT` → **trả về đề cũ, không ghi gì thêm**. Đây là điểm quan trọng: nhập lại không được làm mất đáp án admin đã tick. Dựng `PaperSummaryResponse` từ đề cũ với `answeredCount` đếm từ `questionRepository`.
@@ -1165,6 +1251,12 @@ public class GradingPaperAdminController {
         this.importService = importService;
     }
 
+    @PostMapping("/preview")
+    @RequirePermission("grading.paper.admin:create")
+    public ApiResponse<PaperPreviewResponse> preview(@Valid @RequestBody ImportPaperRequest request) {
+        return ApiResponse.ok(importService.preview(request.payload()));
+    }
+
     @PostMapping("/import")
     @RequirePermission("grading.paper.admin:create")
     public ApiResponse<PaperSummaryResponse> importPaper(
@@ -1172,13 +1264,14 @@ public class GradingPaperAdminController {
             @Valid @RequestBody ImportPaperRequest request) {
         UUID adminId = UUID.fromString(authentication.getName());
         return ApiResponse.ok(
-                importService.importPayload(adminId, request.payload(), request.payloadId()),
-                "Đã nhập đề, hãy hoàn thiện đáp án trước khi phát hành");
+                importService.importPayload(adminId, request.payload(), request.payloadId(),
+                        request.confirmedFingerprint()),
+                "Đã lưu đề, hãy hoàn thiện đáp án trước khi phát hành");
     }
 }
 ```
 
-`ImportPaperRequest` là record `(JsonNode payload, UUID payloadId)`. Nếu `payload` null và `payloadId` null → service ném `BadRequestException("PAYLOAD_REQUIRED", "Cần payload JSON hoặc payloadId.")`. Nhánh đọc từ `public_api_payloads` theo `payloadId` làm ở Task 6 khi đã có repository đọc bảng đó; ở task này chỉ nhận `payload` trực tiếp.
+`ImportPaperRequest` là record `(JsonNode payload, UUID payloadId, String confirmedFingerprint)`. Endpoint `/preview` bỏ qua `confirmedFingerprint`. Nếu `payload` null và `payloadId` null → service ném `BadRequestException("PAYLOAD_REQUIRED", "Cần payload JSON hoặc payloadId.")`. Nhánh đọc từ `public_api_payloads` theo `payloadId` làm ở Task 6 khi đã có repository đọc bảng đó; ở task này chỉ nhận `payload` trực tiếp.
 
 - [ ] **Step 5: Chạy test, xác nhận PASS**
 
@@ -1706,7 +1799,7 @@ khác nhau.
 - Consumes: `PaperAnswerService.setAnswer` (Task 5) không dùng lại — service này ghi trực tiếp để đặt được `AnswerSource`. Dùng 3 repository của Task 1 và `AnswerSource` enum.
 - Produces:
   - `record AnswerItem(long qid, List<Long> qaids, List<String> optionTexts, List<String> letters)`
-  - `record ApplyAnswersRequest(String examCode, String sourceRef, String conflictPolicy, List<AnswerItem> items)`
+  - `record ApplyAnswersRequest(String examCode, String sourceRef, String conflictPolicy, boolean dryRun, List<AnswerItem> items)`
   - `record ApplyAnswersOutcome(long qid, String result, String reason)` — `result` ∈ `APPLIED`, `SUGGESTED`, `SKIPPED`
   - `record ApplyAnswersResponse(int applied, int suggested, int skipped, List<Long> stillUnansweredQids, List<ApplyAnswersOutcome> outcomes)`
   - `PaperAnswerImportService.apply(UUID paperId, ApplyAnswersRequest request) : ApplyAnswersResponse`
@@ -1747,6 +1840,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -1790,7 +1886,12 @@ class PaperAnswerImportServiceTest {
 
     private ApplyAnswersRequest request(AnswerItem... items) {
         return new ApplyAnswersRequest("CSP201m_SU26_FE_315379", "dump-2026-08", "KEEP_EXISTING",
-                List.of(items));
+                false, List.of(items));
+    }
+
+    private ApplyAnswersRequest dryRun(AnswerItem... items) {
+        return new ApplyAnswersRequest("CSP201m_SU26_FE_315379", "dump-2026-08", "KEEP_EXISTING",
+                true, List.of(items));
     }
 
     @Test
@@ -1924,6 +2025,26 @@ class PaperAnswerImportServiceTest {
     }
 
     @Test
+    void dryRunComputesOutcomesWithoutWritingAnything() {
+        GradingPaperQuestionEntity q = imageQuestion(111, 1);
+        List<GradingPaperAnswerEntity> opts = options(q, null, null);
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(questionRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(Optional.of(q));
+        when(answerRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(opts);
+        when(questionRepository.findByPaperIdOrderByDisplayNoAsc(paper.getId())).thenReturn(List.of(q));
+
+        ApplyAnswersResponse response = service.apply(paper.getId(),
+                dryRun(new AnswerItem(111L, List.of(9001L), null, null)));
+
+        assertEquals(1, response.applied(), "dry run van bao ket qua se ap duoc");
+        assertFalse(opts.get(1).isCorrect(), "dry run KHONG duoc doi du lieu");
+        assertFalse(q.isAnswered(), "dry run KHONG duoc doi du lieu");
+        assertEquals(null, q.getAnswerSource());
+        verify(answerRepository, never()).saveAll(any());
+        verify(questionRepository, never()).save(any());
+    }
+
+    @Test
     void examCodeMismatchIsRejectedOutright() {
         when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
 
@@ -1992,6 +2113,8 @@ public record ApplyAnswersRequest(
         String examCode,
         String sourceRef,
         String conflictPolicy,
+        /** true = chi tinh ket qua de admin xem truoc, KHONG ghi gi. */
+        boolean dryRun,
         @NotEmpty List<AnswerItem> items
 ) {
 }
@@ -2038,6 +2161,13 @@ public record ApplyAnswersResponse(
    - Mọi cách khoá: số lượng khác `expectedAnswerCount` (khi cột này không null) → `SKIPPED` / `ANSWER_COUNT_MISMATCH`. Loại trùng trước khi đếm.
 6. Nạp lại toàn bộ câu, `stillUnansweredQids` = qid của câu `answered == false`, giữ thứ tự `displayNo`.
 
+**Cấu trúc bắt buộc để `dryRun` đúng:** tách thành hai pha. Pha 1 `computePlan(...)` chỉ **đọc** và
+trả về danh sách `outcomes` kèm, với mỗi câu áp được, tập `qaid` sẽ bật `is_correct` và `AnswerSource`
+sẽ đặt. Pha 2 `persist(plan)` mới gọi `setCorrect` / `applyAnswer` / `suggestAnswer` và `saveAll`.
+`dryRun == true` thì chạy pha 1 rồi dừng — tuyệt đối không mutate entity, vì entity đang nằm trong
+persistence context nên chỉ cần gán field là Hibernate sẽ flush xuống DB dù chưa gọi `save`. Test
+`dryRunComputesOutcomesWithoutWritingAnything` khoá đúng điểm này.
+
 `confirmSuggestion(paperId, qid)`: nạp paper (`READY` → `ConflictException`), nạp câu; `answerSource != SUGGESTED` → `BadRequestException("NO_SUGGESTION_TO_CONFIRM", "Câu này không có gợi ý cần xác nhận.")`; ngược lại `applyAnswer(AnswerSource.MANUAL, question.getAnswerSourceRef())`, save. Cờ `is_correct` trên các option **không đổi** — gợi ý đã set sẵn, xác nhận chỉ nâng mức tin cậy.
 
 `@Transactional` cho cả hai method.
@@ -2083,7 +2213,7 @@ git commit -m "feat(grading): apply external answer keys with per-source trust l
 
 **Spec coverage.** Mục 4 (mô hình dữ liệu) → Task 1. Mục 2.2 + 2.8 + 5 (validator, cổng lưu) → Task 2, 5. Mục 3.2 (fingerprint) → Task 3. Mục 5 (bảng endpoint admin) → Task 4, 5, 6. Mục 3.4 (hash nội dung) → Task 4 step 3. Permission → Task 6.
 
-Mục "Nhập lại cùng một đề (idempotent)" → Task 4. Mục "Hai dạng JSON đáp án, hai mức tin cậy" → Task 7.
+Mục "Xem trước rồi mới lưu" → Task 4 (`preview`, `confirmedFingerprint`) và Task 7 (`dryRun`). Mục "Nhập lại cùng một đề (idempotent)" → Task 4. Mục "Hai dạng JSON đáp án, hai mức tin cậy" → Task 7.
 
 **Chưa phủ trong plan này, thuộc Plan 2 và 3:** mục 6 (decoder, hàng rào giới hạn, thuật toán chấm), mục 7 (throttle chống dò đáp án), mục 8 (UI). Nhánh import theo `payloadId` từ `public_api_payloads` cũng để Plan 2 vì nó cần repository đọc bảng đó.
 
