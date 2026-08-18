@@ -2,11 +2,14 @@ package com.fuoverflow.grading.api;
 
 import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
+import com.fuoverflow.grading.api.dto.ApplyAnswersRequest;
+import com.fuoverflow.grading.api.dto.ApplyAnswersResponse;
 import com.fuoverflow.grading.api.dto.ImportPaperRequest;
 import com.fuoverflow.grading.api.dto.PaperDetailResponse;
 import com.fuoverflow.grading.api.dto.PaperPreviewResponse;
 import com.fuoverflow.grading.api.dto.PaperSummaryResponse;
 import com.fuoverflow.grading.api.dto.SetAnswerRequest;
+import com.fuoverflow.grading.application.PaperAnswerImportService;
 import com.fuoverflow.grading.application.PaperAnswerService;
 import com.fuoverflow.grading.application.PaperImportService;
 import com.fuoverflow.grading.application.PaperQueryService;
@@ -35,13 +38,16 @@ public class GradingPaperAdminController {
     private final PaperImportService importService;
     private final PaperAnswerService answerService;
     private final PaperQueryService queryService;
+    private final PaperAnswerImportService answerImportService;
 
     public GradingPaperAdminController(PaperImportService importService,
                                        PaperAnswerService answerService,
-                                       PaperQueryService queryService) {
+                                       PaperQueryService queryService,
+                                       PaperAnswerImportService answerImportService) {
         this.importService = importService;
         this.answerService = answerService;
         this.queryService = queryService;
+        this.answerImportService = answerImportService;
     }
 
     @GetMapping
@@ -107,5 +113,21 @@ public class GradingPaperAdminController {
     public ApiResponse<Void> delete(@PathVariable UUID paperId) {
         answerService.softDelete(paperId);
         return ApiResponse.ok(null, "Đã xoá đề");
+    }
+
+    /** Applies an answer key from an external source. Use dryRun to review before writing. */
+    @PostMapping("/{paperId}/answers/apply")
+    @RequirePermission("grading.paper.admin:update")
+    public ApiResponse<ApplyAnswersResponse> applyAnswers(
+            @PathVariable UUID paperId,
+            @Valid @RequestBody ApplyAnswersRequest request) {
+        return ApiResponse.ok(answerImportService.apply(paperId, request), "Đã nhập bộ đáp án");
+    }
+
+    @PostMapping("/{paperId}/questions/{qid}/confirm")
+    @RequirePermission("grading.paper.admin:update")
+    public ApiResponse<Void> confirmSuggestion(@PathVariable UUID paperId, @PathVariable long qid) {
+        answerImportService.confirmSuggestion(paperId, qid);
+        return ApiResponse.ok(null, "Đã xác nhận đáp án");
     }
 }
