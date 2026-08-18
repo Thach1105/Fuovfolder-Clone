@@ -144,6 +144,26 @@ tập QID → đề dùng chung.
 
 **Thiết kế không phụ thuộc câu trả lời này** nhờ khớp theo fingerprint (mục 3.2).
 
+### 2.8 Payload ghi rõ số đáp án cần chọn
+
+`Text` của câu trắc nghiệm không phải boilerplate vô nghĩa. Trong CSP201m:
+
+```
+45 câu   '(Choose 1 answer)'
+ 3 câu   '(Choose 3 answers)'
+ 2 câu   '(Choose 2 answers)'
+```
+
+Đây là dữ liệu máy đọc được. Parse bằng regex `\(Choose (\d+) answers?\)` ra
+`expected_answer_count`, dùng để:
+
+- Suy ra `answer_mode`: `1` → `SINGLE`, `>1` → `MULTI`
+- **Ép admin tick đúng số lượng** trước khi cho publish
+- UI hiển thị "cần chọn 2 đáp án" ngay tại câu đó
+
+Với đề dạng ảnh, đây là nguồn duy nhất biết được câu đó multi-select, vì dòng
+"(choose all that apply)" nằm trong ảnh chứ không nằm trong dữ liệu.
+
 ## 3. Quyết định kiến trúc
 
 ### 3.1 Module mới `backend/grading`
@@ -230,6 +250,7 @@ CREATE TABLE grading_paper_questions (
     image_sha256    char(64),
     content_sha256  char(64)     NOT NULL,
     answer_mode     varchar(12)  NOT NULL,   -- SINGLE | MULTI | TEXT
+    expected_answer_count int,                -- parse từ "(Choose N answers)", NULL nếu không rõ
     answered        boolean      NOT NULL DEFAULT false,
     created_at      timestamptz  NOT NULL,
     updated_at      timestamptz  NOT NULL
@@ -312,7 +333,7 @@ cho `SUB_ADMIN`.
 | GET | `/api/v1/admin/grading/papers/{id}` | Chi tiết + `unansweredQids` |
 | GET | `/api/v1/admin/grading/papers/{id}/questions/{qid}/image` | Stream PNG rút từ `raw_payload` |
 | PUT | `/api/v1/admin/grading/papers/{id}/questions/{qid}/answer` | `{qaids:[...]}` → set `is_correct`, `answered=true` |
-| POST | `/api/v1/admin/grading/papers/{id}/publish` | Cổng lưu. Thiếu đáp án → `422` kèm danh sách qid |
+| POST | `/api/v1/admin/grading/papers/{id}/publish` | Cổng lưu. Thiếu/sai số đáp án → `409` kèm danh sách qid |
 | DELETE | `/api/v1/admin/grading/papers/{id}` | Soft delete, giải phóng fingerprint |
 
 ### Cổng lưu
@@ -321,7 +342,8 @@ Yêu cầu gốc là "json chưa có đáp án thì đợi admin hoàn thành r�
 thái thay vì chặn lúc import:
 
 - `import` luôn thành công, đề vào `DRAFT`. Admin cần lưu nháp để làm nhiều lượt.
-- `publish` mới là "ấn lưu", từ chối nếu còn `answered=false`.
+- `publish` mới là "ấn lưu", từ chối nếu còn `answered=false`, **hoặc** nếu câu nào có số đáp án
+  đã tick khác `expected_answer_count`.
 - **Chỉ đề `READY` được dùng để chấm.** Đề `DRAFT` vô hình với luồng sinh viên.
 
 Điều kiện chặn nằm ở chỗ *dùng*, không chỉ ở chỗ *lưu*, nên đáp án nửa vời không bao giờ chấm ra
@@ -456,6 +478,7 @@ Next.js App Router + shadcn/radix, đúng stack đang dùng.
     dựng và kiểm chứng ở `my-resource/parsed-exams/`.
   - Thanh dưới: `còn 12/50 câu` + nút **Lưu & phát hành** disable đến khi đủ. Backend vẫn trả 422
     thì hiện đúng danh sách qid thiếu (phòng hai admin làm song song).
+  - Câu multi-select hiện "cần chọn 2 đáp án", tick sai số lượng thì chặn ngay ở client.
 
 ### Sinh viên — `Fuexam/app/(app)/check-score/page.tsx`
 
@@ -482,7 +505,7 @@ tên máy.
   đã lược `ImageData` cho gọn); `QType` lạ → reject; số câu lệch `QD` → reject.
 - `GradingServiceTest` — key và submission biết trước → điểm đúng; `PAPER_NOT_FOUND` → **verify
   `walletService` chưa hề được gọi**; multi-select thiếu một lựa chọn → 0 điểm.
-- `PublishGateTest` — thiếu đáp án → 422 kèm danh sách qid.
+- `PublishGateTest` — thiếu đáp án → 409 kèm danh sách qid; tick 3 đáp án cho câu `(Choose 2 answers)` → 409.
 - MVC/security — student cần `points:read`; admin cần `grading.paper.admin:*`; và một test khẳng
   định không endpoint nào ngoài `grading` trả `is_correct`.
 - `OracleThrottleTest` — lượt thứ 4 trong ngày cùng `(user, fingerprint)` → từ chối; cùng
