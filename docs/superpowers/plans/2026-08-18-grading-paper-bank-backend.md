@@ -37,6 +37,7 @@
 - Create: `backend/grading/src/main/java/com/fuoverflow/grading/domain/PaperStatus.java`
 - Create: `backend/grading/src/main/java/com/fuoverflow/grading/domain/PaperSection.java`
 - Create: `backend/grading/src/main/java/com/fuoverflow/grading/domain/AnswerMode.java`
+- Create: `backend/grading/src/main/java/com/fuoverflow/grading/domain/AnswerSource.java`
 - Create: `backend/grading/src/main/java/com/fuoverflow/grading/persistence/GradingPaperEntity.java`
 - Create: `backend/grading/src/main/java/com/fuoverflow/grading/persistence/GradingPaperQuestionEntity.java`
 - Create: `backend/grading/src/main/java/com/fuoverflow/grading/persistence/GradingPaperAnswerEntity.java`
@@ -52,9 +53,12 @@
   - `PaperStatus { DRAFT, READY }`
   - `PaperSection { GRAMMAR, READING, FILL_BLANK, INDICATE_MISTAKE, MATCH }`
   - `AnswerMode { SINGLE, MULTI, TEXT }`
+  - `AnswerSource { MANUAL, IMPORTED, SUGGESTED }`
   - `GradingPaperEntity.draft(String examCode, String subjectCode, String fingerprint, int questionCount, Integer durationMinutes, BigDecimal totalMark, String rawPayload, String payloadSha256, UUID sourcePayloadId, UUID createdBy) -> GradingPaperEntity`
   - `GradingPaperEntity.markReady()`, `.softDelete()`, getters cho mọi cột
   - `GradingPaperQuestionEntity.of(UUID paperId, long qid, PaperSection section, Integer qType, int displayNo, BigDecimal mark, Integer chapterId, String questionText, String imageSha256, String contentSha256, AnswerMode answerMode, Integer expectedAnswerCount) -> GradingPaperQuestionEntity`
+  - `GradingPaperQuestionEntity.applyAnswer(AnswerSource source, String sourceRef)` — chỉ `MANUAL`/`IMPORTED`, bật `answered=true`
+  - `GradingPaperQuestionEntity.suggestAnswer(String sourceRef)` — `SUGGESTED`, giữ `answered=false`
   - `GradingPaperAnswerEntity.of(UUID paperId, UUID questionId, long qid, long qaid, int optionIndex, String optionText, String optionSha256) -> GradingPaperAnswerEntity`
   - `GradingPaperRepository.findByFingerprintAndDeletedAtIsNull(String) : Optional<GradingPaperEntity>`
   - `GradingPaperRepository.findByIdAndDeletedAtIsNull(UUID) : Optional<GradingPaperEntity>`
@@ -104,6 +108,8 @@ CREATE TABLE grading_paper_questions (
     content_sha256        char(64)     NOT NULL,
     answer_mode           varchar(12)  NOT NULL,
     expected_answer_count int,
+    answer_source         varchar(12),
+    answer_source_ref     varchar(120),
     answered              boolean      NOT NULL DEFAULT false,
     created_at            timestamptz  NOT NULL,
     updated_at            timestamptz  NOT NULL
@@ -205,6 +211,17 @@ public enum PaperSection { GRAMMAR, READING, FILL_BLANK, INDICATE_MISTAKE, MATCH
 package com.fuoverflow.grading.domain;
 
 public enum AnswerMode { SINGLE, MULTI, TEXT }
+```
+
+```java
+// domain/AnswerSource.java
+package com.fuoverflow.grading.domain;
+
+/**
+ * Nguon dap an. Chi MANUAL va IMPORTED duoc tinh la da tra loi khi phat hanh de;
+ * SUGGESTED la de nghi tu file khong cung he dinh danh, phai co nguoi xac nhan.
+ */
+public enum AnswerSource { MANUAL, IMPORTED, SUGGESTED }
 ```
 
 - [ ] **Step 4: Viết test thất bại cho entity factory**
@@ -400,7 +417,30 @@ public class GradingPaperEntity {
 }
 ```
 
-`GradingPaperQuestionEntity` — cùng khuôn. Cột: `paper_id`, `qid`, `section` (`@Enumerated(EnumType.STRING)`, length 24), `q_type` (`Integer`), `display_no`, `mark`, `chapter_id`, `question_text` (`columnDefinition = "text"`), `image_sha256`, `content_sha256`, `answer_mode` (`@Enumerated(EnumType.STRING)`, length 12), `expected_answer_count` (`Integer`), `answered` (`boolean`), `created_at`, `updated_at`. Factory `of(...)` gán `id = UUID.randomUUID()`, `answered = false`, timestamps = now. Thêm `markAnswered(boolean value)` set `answered` và `updatedAt`.
+`GradingPaperQuestionEntity` — cùng khuôn. Cột: `paper_id`, `qid`, `section` (`@Enumerated(EnumType.STRING)`, length 24), `q_type` (`Integer`), `display_no`, `mark`, `chapter_id`, `question_text` (`columnDefinition = "text"`), `image_sha256`, `content_sha256`, `answer_mode` (`@Enumerated(EnumType.STRING)`, length 12), `expected_answer_count` (`Integer`), `answer_source` (`@Enumerated(EnumType.STRING)`, length 12, nullable `AnswerSource`), `answer_source_ref` (`String`, length 120), `answered` (`boolean`), `created_at`, `updated_at`. Factory `of(...)` gán `id = UUID.randomUUID()`, `answered = false`, `answerSource = null`, timestamps = now.
+
+Hai method thay cho `markAnswered` đơn thuần:
+
+```java
+    /** MANUAL/IMPORTED: dap an tin duoc, tinh la da tra loi. */
+    public void applyAnswer(AnswerSource source, String sourceRef) {
+        if (source == AnswerSource.SUGGESTED) {
+            throw new IllegalArgumentException("use suggestAnswer for SUGGESTED");
+        }
+        this.answerSource = source;
+        this.answerSourceRef = sourceRef;
+        this.answered = true;
+        this.updatedAt = Instant.now();
+    }
+
+    /** SUGGESTED: de nghi tu nguon khac he dinh danh, KHONG tinh la da tra loi. */
+    public void suggestAnswer(String sourceRef) {
+        this.answerSource = AnswerSource.SUGGESTED;
+        this.answerSourceRef = sourceRef;
+        this.answered = false;
+        this.updatedAt = Instant.now();
+    }
+```
 
 `GradingPaperAnswerEntity` — cột: `paper_id`, `question_id`, `qid`, `qaid`, `option_index`, `option_text` (`columnDefinition = "text"`), `option_sha256`, `is_correct` (`boolean`), `created_at`, `updated_at`. Factory `of(...)` gán id, `isCorrect = false`, timestamps. Thêm `setCorrect(boolean value)` set `isCorrect` và `updatedAt`.
 
@@ -944,6 +984,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuoverflow.common.exception.ConflictException;
 import com.fuoverflow.grading.api.dto.PaperSummaryResponse;
+import com.fuoverflow.grading.domain.AnswerMode;
+import com.fuoverflow.grading.domain.AnswerSource;
+import com.fuoverflow.grading.domain.PaperSection;
 import com.fuoverflow.grading.persistence.GradingPaperAnswerEntity;
 import com.fuoverflow.grading.persistence.GradingPaperAnswerRepository;
 import com.fuoverflow.grading.persistence.GradingPaperEntity;
@@ -1032,16 +1075,39 @@ class PaperImportServiceTest {
     }
 
     @Test
-    void importRejectsDuplicateFingerprint() {
+    void reimportOfDraftReturnsExistingPaperWithoutLosingAnswers() {
         GradingPaperEntity existing = GradingPaperEntity.draft(
                 "CSP201m_SU26_FE_315379", "CSP201m", "a".repeat(64), 1, 60,
                 new BigDecimal("50.00"), "{}", "b".repeat(64), null, UUID.randomUUID());
+        GradingPaperQuestionEntity answered = GradingPaperQuestionEntity.of(
+                existing.getId(), 111L, PaperSection.GRAMMAR, 1, 1, BigDecimal.ONE, null,
+                null, null, "c".repeat(64), AnswerMode.SINGLE, 1);
+        answered.applyAnswer(AnswerSource.MANUAL, null);
         when(paperRepository.findByFingerprintAndDeletedAtIsNull(anyString())).thenReturn(Optional.of(existing));
+        when(questionRepository.findByPaperIdOrderByDisplayNoAsc(existing.getId()))
+                .thenReturn(List.of(answered));
+
+        PaperSummaryResponse response = service.importPayload(UUID.randomUUID(), payload(), null);
+
+        assertEquals(existing.getId(), response.id());
+        assertEquals("DRAFT", response.status());
+        assertEquals(1, response.answeredCount(), "dap an da tick phai duoc giu");
+        verify(paperRepository, never()).save(any());
+        verify(answerRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void reimportOfPublishedPaperIsRejected() {
+        GradingPaperEntity published = GradingPaperEntity.draft(
+                "CSP201m_SU26_FE_315379", "CSP201m", "a".repeat(64), 1, 60,
+                new BigDecimal("50.00"), "{}", "b".repeat(64), null, UUID.randomUUID());
+        published.markReady();
+        when(paperRepository.findByFingerprintAndDeletedAtIsNull(anyString())).thenReturn(Optional.of(published));
 
         ConflictException ex = assertThrows(ConflictException.class,
                 () -> service.importPayload(UUID.randomUUID(), payload(), null));
 
-        assertEquals("PAPER_ALREADY_IMPORTED", ex.code());
+        assertEquals("PAPER_ALREADY_PUBLISHED", ex.code());
         verify(paperRepository, never()).save(any());
     }
 }
@@ -1059,8 +1125,10 @@ Expected: FAIL — chưa có `PaperImportService`.
 1. `NormalizedPaper normalized = normalizer.normalize(payload)`
 2. `String rawJson = mapper.writeValueAsString(payload)`; `payloadSha256 = Sha256.hexUtf8(rawJson)`
 3. `fingerprint = PaperFingerprint.of(normalized)`
-4. `findByFingerprintAndDeletedAtIsNull` có kết quả → `ConflictException("PAPER_ALREADY_IMPORTED", "Đề này đã được nhập. Xoá đề cũ trước khi nhập lại.")`
-5. `findByPayloadSha256AndDeletedAtIsNull` có kết quả → cùng exception (payload trùng y nguyên)
+4. `findByFingerprintAndDeletedAtIsNull` có kết quả:
+   - `status == READY` → `ConflictException("PAPER_ALREADY_PUBLISHED", "Đề đã phát hành. Xoá đề cũ trước khi nhập lại.")`
+   - `status == DRAFT` → **trả về đề cũ, không ghi gì thêm**. Đây là điểm quan trọng: nhập lại không được làm mất đáp án admin đã tick. Dựng `PaperSummaryResponse` từ đề cũ với `answeredCount` đếm từ `questionRepository`.
+5. `findByPayloadSha256AndDeletedAtIsNull` có kết quả → xử lý y như bước 4
 6. `paperRepository.save(GradingPaperEntity.draft(...))`
 7. Mỗi câu: `contentSha256` = `Sha256.hexUtf8(questionText)` nếu có text, ngược lại `Sha256.hex(Base64.getDecoder().decode(imageBase64))`; `imageSha256` = hash ảnh nếu có ảnh, else `null`. Câu không có cả text lẫn ảnh → `contentSha256 = Sha256.hexUtf8("qid:" + qid)` để cột `NOT NULL` luôn có giá trị.
 8. `questionRepository.saveAll(...)`, `answerRepository.saveAll(...)` — `optionSha256` = hash text lựa chọn nếu có text, else `null`
@@ -1278,7 +1346,7 @@ class PaperAnswerServiceTest {
     @Test
     void publishSucceedsWhenEveryQuestionAnswered() {
         GradingPaperQuestionEntity q = question(111, AnswerMode.SINGLE, 1);
-        q.markAnswered(true);
+        q.applyAnswer(AnswerSource.MANUAL, null);
         when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
         when(questionRepository.findByPaperIdOrderByDisplayNoAsc(paper.getId())).thenReturn(List.of(q));
 
@@ -1312,13 +1380,13 @@ Expected: FAIL — chưa có `PaperAnswerService`.
 5. Nạp toàn bộ option của câu. Có `qaid` không thuộc câu → `BadRequestException("QAID_NOT_IN_QUESTION", ...)`
 6. `expectedAnswerCount != null` và `qaids.size() != expectedAnswerCount` → `BadRequestException("ANSWER_COUNT_MISMATCH", "Câu này cần chọn đúng N đáp án.")`. `expectedAnswerCount == null` thì bỏ qua bước này.
 7. Với mỗi option: `setCorrect(qaids.contains(option.getQaid()))`. `saveAll`.
-8. `question.markAnswered(true)`, `save`.
+8. `question.applyAnswer(AnswerSource.MANUAL, null)`, `save`.
 
 Dùng `Set` từ `qaids` để so, và loại trùng trước khi đếm — gửi `[1,1]` cho câu cần 2 đáp án phải bị chặn.
 
 `publish(paperId)`:
 1. Nạp paper, `READY` rồi → `ConflictException("PAPER_ALREADY_PUBLISHED", ...)`
-2. Nạp mọi câu. Câu `answered == false` → thu vào danh sách thiếu.
+2. Nạp mọi câu. Câu `answered == false` → thu vào danh sách thiếu. Câu chỉ có `answer_source == SUGGESTED` có `answered == false` nên tự động nằm trong danh sách thiếu — đúng chủ ý, gợi ý từ file không mở được cổng phát hành.
 3. Danh sách thiếu không rỗng → `ConflictException("PAPER_INCOMPLETE", "Còn N câu chưa có đáp án: qid1, qid2, ...")`. Message **phải** chứa các qid.
 4. `paper.markReady()`, `save`, trả `PaperSummaryResponse`.
 
@@ -1450,7 +1518,9 @@ class PaperQueryServiceTest {
         GradingPaperQuestionEntity q = GradingPaperQuestionEntity.of(paper.getId(), qid,
                 PaperSection.GRAMMAR, 1, (int) qid, BigDecimal.ONE, null, null, null,
                 "c".repeat(64), AnswerMode.SINGLE, 1);
-        q.markAnswered(answered);
+        if (answered) {
+            q.applyAnswer(AnswerSource.MANUAL, null);
+        }
         return q;
     }
 
@@ -1619,10 +1689,402 @@ git commit -m "feat(grading): add paper read endpoints, question image streaming
 
 ---
 
+### Task 7: Nhập bộ đáp án rời và xác nhận gợi ý
+
+Đây là task trả lời tình huống: admin có một file JSON **có** đáp án và một file **không có**. Hai
+dialect JSON không chung field định danh nào (spec mục "Hai dạng JSON đáp án"), nên độ tin cậy phải
+khác nhau.
+
+**Files:**
+- Create: `backend/grading/src/main/java/com/fuoverflow/grading/application/PaperAnswerImportService.java`
+- Create: `backend/grading/src/main/java/com/fuoverflow/grading/api/dto/ApplyAnswersRequest.java`
+- Create: `backend/grading/src/main/java/com/fuoverflow/grading/api/dto/ApplyAnswersResponse.java`
+- Modify: `backend/grading/src/main/java/com/fuoverflow/grading/api/GradingPaperAdminController.java`
+- Test: `backend/grading/src/test/java/com/fuoverflow/grading/application/PaperAnswerImportServiceTest.java`
+
+**Interfaces:**
+- Consumes: `PaperAnswerService.setAnswer` (Task 5) không dùng lại — service này ghi trực tiếp để đặt được `AnswerSource`. Dùng 3 repository của Task 1 và `AnswerSource` enum.
+- Produces:
+  - `record AnswerItem(long qid, List<Long> qaids, List<String> optionTexts, List<String> letters)`
+  - `record ApplyAnswersRequest(String examCode, String sourceRef, String conflictPolicy, List<AnswerItem> items)`
+  - `record ApplyAnswersOutcome(long qid, String result, String reason)` — `result` ∈ `APPLIED`, `SUGGESTED`, `SKIPPED`
+  - `record ApplyAnswersResponse(int applied, int suggested, int skipped, List<Long> stillUnansweredQids, List<ApplyAnswersOutcome> outcomes)`
+  - `PaperAnswerImportService.apply(UUID paperId, ApplyAnswersRequest request) : ApplyAnswersResponse`
+  - `PaperAnswerImportService.confirmSuggestion(UUID paperId, long qid) : void`
+
+- [ ] **Step 1: Viết test thất bại**
+
+```java
+package com.fuoverflow.grading.application;
+
+import com.fuoverflow.common.exception.BadRequestException;
+import com.fuoverflow.grading.api.dto.AnswerItem;
+import com.fuoverflow.grading.api.dto.ApplyAnswersRequest;
+import com.fuoverflow.grading.api.dto.ApplyAnswersResponse;
+import com.fuoverflow.grading.domain.AnswerMode;
+import com.fuoverflow.grading.domain.AnswerSource;
+import com.fuoverflow.grading.domain.PaperSection;
+import com.fuoverflow.grading.persistence.GradingPaperAnswerEntity;
+import com.fuoverflow.grading.persistence.GradingPaperAnswerRepository;
+import com.fuoverflow.grading.persistence.GradingPaperEntity;
+import com.fuoverflow.grading.persistence.GradingPaperQuestionEntity;
+import com.fuoverflow.grading.persistence.GradingPaperQuestionRepository;
+import com.fuoverflow.grading.persistence.GradingPaperRepository;
+import com.fuoverflow.grading.support.Sha256;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class PaperAnswerImportServiceTest {
+
+    @Mock private GradingPaperRepository paperRepository;
+    @Mock private GradingPaperQuestionRepository questionRepository;
+    @Mock private GradingPaperAnswerRepository answerRepository;
+
+    private PaperAnswerImportService service;
+    private GradingPaperEntity paper;
+
+    @BeforeEach
+    void setUp() {
+        service = new PaperAnswerImportService(paperRepository, questionRepository, answerRepository);
+        paper = GradingPaperEntity.draft("CSP201m_SU26_FE_315379", "CSP201m", "a".repeat(64), 1, 60,
+                new BigDecimal("50.00"), "{}", "b".repeat(64), null, UUID.randomUUID());
+    }
+
+    /** Cau thuan anh: question_text null, image_sha256 khac null. */
+    private GradingPaperQuestionEntity imageQuestion(long qid, int expected) {
+        return GradingPaperQuestionEntity.of(paper.getId(), qid, PaperSection.GRAMMAR, 1, 1,
+                BigDecimal.ONE, null, null, "img".repeat(21) + "a", "c".repeat(64),
+                expected > 1 ? AnswerMode.MULTI : AnswerMode.SINGLE, expected);
+    }
+
+    /** Cau dang text: question_text co noi dung, khong co anh. */
+    private GradingPaperQuestionEntity textQuestion(long qid) {
+        return GradingPaperQuestionEntity.of(paper.getId(), qid, PaperSection.GRAMMAR, 1, 1,
+                BigDecimal.ONE, null, "Cau hoi text?", null, "c".repeat(64), AnswerMode.SINGLE, 1);
+    }
+
+    private List<GradingPaperAnswerEntity> options(GradingPaperQuestionEntity q, String... texts) {
+        List<GradingPaperAnswerEntity> list = new ArrayList<>();
+        for (int i = 0; i < texts.length; i++) {
+            list.add(GradingPaperAnswerEntity.of(paper.getId(), q.getId(), q.getQid(), 9000L + i, i,
+                    texts[i], texts[i] == null ? null : Sha256.hexUtf8(texts[i])));
+        }
+        return list;
+    }
+
+    private ApplyAnswersRequest request(AnswerItem... items) {
+        return new ApplyAnswersRequest("CSP201m_SU26_FE_315379", "dump-2026-08", "KEEP_EXISTING",
+                List.of(items));
+    }
+
+    @Test
+    void byQaidIsTrustedAndCountsAsAnswered() {
+        GradingPaperQuestionEntity q = imageQuestion(111, 1);
+        List<GradingPaperAnswerEntity> opts = options(q, null, null);
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(questionRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(Optional.of(q));
+        when(answerRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(opts);
+        when(questionRepository.findByPaperIdOrderByDisplayNoAsc(paper.getId())).thenReturn(List.of(q));
+
+        ApplyAnswersResponse response = service.apply(paper.getId(),
+                request(new AnswerItem(111L, List.of(9001L), null, null)));
+
+        assertEquals(1, response.applied());
+        assertEquals(0, response.suggested());
+        assertTrue(opts.get(1).isCorrect());
+        assertEquals(AnswerSource.IMPORTED, q.getAnswerSource());
+        assertTrue(q.isAnswered());
+    }
+
+    @Test
+    void byLetterOnImageQuestionIsOnlyASuggestion() {
+        GradingPaperQuestionEntity q = imageQuestion(111, 1);
+        List<GradingPaperAnswerEntity> opts = options(q, null, null, null, null);
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(questionRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(Optional.of(q));
+        when(answerRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(opts);
+        when(questionRepository.findByPaperIdOrderByDisplayNoAsc(paper.getId())).thenReturn(List.of(q));
+
+        ApplyAnswersResponse response = service.apply(paper.getId(),
+                request(new AnswerItem(111L, null, null, List.of("C"))));
+
+        assertEquals(0, response.applied());
+        assertEquals(1, response.suggested());
+        assertTrue(opts.get(2).isCorrect(), "C = option_index 2");
+        assertEquals(AnswerSource.SUGGESTED, q.getAnswerSource());
+        assertFalse(q.isAnswered(), "goi y KHONG duoc mo cong phat hanh");
+        assertEquals(List.of(111L), response.stillUnansweredQids());
+    }
+
+    @Test
+    void byLetterOnTextQuestionIsRejected() {
+        GradingPaperQuestionEntity q = textQuestion(111);
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(questionRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(Optional.of(q));
+        when(questionRepository.findByPaperIdOrderByDisplayNoAsc(paper.getId())).thenReturn(List.of(q));
+
+        ApplyAnswersResponse response = service.apply(paper.getId(),
+                request(new AnswerItem(111L, null, null, List.of("C"))));
+
+        assertEquals(0, response.applied());
+        assertEquals(1, response.skipped());
+        assertEquals("LETTER_NOT_ALLOWED_FOR_TEXT_QUESTION", response.outcomes().get(0).reason());
+    }
+
+    @Test
+    void byLetterBeyondOptionCountIsSkipped() {
+        GradingPaperQuestionEntity q = imageQuestion(111, 1);
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(questionRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(Optional.of(q));
+        when(answerRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(options(q, null, null));
+        when(questionRepository.findByPaperIdOrderByDisplayNoAsc(paper.getId())).thenReturn(List.of(q));
+
+        ApplyAnswersResponse response = service.apply(paper.getId(),
+                request(new AnswerItem(111L, null, null, List.of("D"))));
+
+        assertEquals(1, response.skipped());
+        assertEquals("LETTER_OUT_OF_RANGE", response.outcomes().get(0).reason());
+    }
+
+    @Test
+    void letterCountMustMatchExpectedAnswerCount() {
+        GradingPaperQuestionEntity q = imageQuestion(111, 2);
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(questionRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(Optional.of(q));
+        when(answerRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(options(q, null, null, null, null));
+        when(questionRepository.findByPaperIdOrderByDisplayNoAsc(paper.getId())).thenReturn(List.of(q));
+
+        ApplyAnswersResponse response = service.apply(paper.getId(),
+                request(new AnswerItem(111L, null, null, List.of("A"))));
+
+        assertEquals(1, response.skipped());
+        assertEquals("ANSWER_COUNT_MISMATCH", response.outcomes().get(0).reason());
+    }
+
+    @Test
+    void byOptionTextMatchesOnHashAndIsTrusted() {
+        GradingPaperQuestionEntity q = textQuestion(111);
+        List<GradingPaperAnswerEntity> opts = options(q, "Sai", "Dung");
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(questionRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(Optional.of(q));
+        when(answerRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(opts);
+        when(questionRepository.findByPaperIdOrderByDisplayNoAsc(paper.getId())).thenReturn(List.of(q));
+
+        ApplyAnswersResponse response = service.apply(paper.getId(),
+                request(new AnswerItem(111L, null, List.of("Dung"), null)));
+
+        assertEquals(1, response.applied());
+        assertTrue(opts.get(1).isCorrect());
+        assertEquals(AnswerSource.IMPORTED, q.getAnswerSource());
+    }
+
+    @Test
+    void keepExistingDoesNotOverwriteManualAnswer() {
+        GradingPaperQuestionEntity q = imageQuestion(111, 1);
+        q.applyAnswer(AnswerSource.MANUAL, null);
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(questionRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(Optional.of(q));
+        when(questionRepository.findByPaperIdOrderByDisplayNoAsc(paper.getId())).thenReturn(List.of(q));
+
+        ApplyAnswersResponse response = service.apply(paper.getId(),
+                request(new AnswerItem(111L, List.of(9001L), null, null)));
+
+        assertEquals(1, response.skipped());
+        assertEquals("ALREADY_ANSWERED_MANUALLY", response.outcomes().get(0).reason());
+        assertEquals(AnswerSource.MANUAL, q.getAnswerSource());
+    }
+
+    @Test
+    void unknownQidIsSkippedNotFatal() {
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(questionRepository.findByPaperIdAndQid(paper.getId(), 999L)).thenReturn(Optional.empty());
+        when(questionRepository.findByPaperIdOrderByDisplayNoAsc(paper.getId())).thenReturn(List.of());
+
+        ApplyAnswersResponse response = service.apply(paper.getId(),
+                request(new AnswerItem(999L, List.of(1L), null, null)));
+
+        assertEquals(1, response.skipped());
+        assertEquals("QID_NOT_IN_PAPER", response.outcomes().get(0).reason());
+    }
+
+    @Test
+    void examCodeMismatchIsRejectedOutright() {
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+
+        ApplyAnswersRequest wrong = new ApplyAnswersRequest("SCM302_SU26_FE_553972", "dump", "KEEP_EXISTING",
+                List.of(new AnswerItem(111L, List.of(9001L), null, null)));
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> service.apply(paper.getId(), wrong));
+
+        assertEquals("EXAM_CODE_MISMATCH", ex.code());
+    }
+
+    @Test
+    void confirmSuggestionPromotesItToManual() {
+        GradingPaperQuestionEntity q = imageQuestion(111, 1);
+        q.suggestAnswer("dump-2026-08");
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(questionRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(Optional.of(q));
+
+        service.confirmSuggestion(paper.getId(), 111L);
+
+        assertEquals(AnswerSource.MANUAL, q.getAnswerSource());
+        assertTrue(q.isAnswered());
+    }
+
+    @Test
+    void confirmRejectsQuestionWithoutSuggestion() {
+        GradingPaperQuestionEntity q = imageQuestion(111, 1);
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(questionRepository.findByPaperIdAndQid(paper.getId(), 111L)).thenReturn(Optional.of(q));
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> service.confirmSuggestion(paper.getId(), 111L));
+
+        assertEquals("NO_SUGGESTION_TO_CONFIRM", ex.code());
+    }
+}
+```
+
+- [ ] **Step 2: Chạy test, xác nhận FAIL**
+
+Run: `cd backend && mvn -q -pl grading -am test -Dtest=PaperAnswerImportServiceTest`
+Expected: FAIL — chưa có `PaperAnswerImportService`.
+
+- [ ] **Step 3: Viết 3 record DTO**
+
+```java
+// api/dto/AnswerItem.java
+package com.fuoverflow.grading.api.dto;
+
+import java.util.List;
+
+/** Dung dung MOT trong ba cach khoa: qaids, optionTexts, hoac letters. */
+public record AnswerItem(long qid, List<Long> qaids, List<String> optionTexts, List<String> letters) {
+}
+```
+
+```java
+// api/dto/ApplyAnswersRequest.java
+package com.fuoverflow.grading.api.dto;
+
+import jakarta.validation.constraints.NotEmpty;
+import java.util.List;
+
+public record ApplyAnswersRequest(
+        String examCode,
+        String sourceRef,
+        String conflictPolicy,
+        @NotEmpty List<AnswerItem> items
+) {
+}
+```
+
+```java
+// api/dto/ApplyAnswersResponse.java
+package com.fuoverflow.grading.api.dto;
+
+import java.util.List;
+
+public record ApplyAnswersOutcome(long qid, String result, String reason) {
+}
+
+// file rieng: ApplyAnswersResponse.java
+public record ApplyAnswersResponse(
+        int applied,
+        int suggested,
+        int skipped,
+        List<Long> stillUnansweredQids,
+        List<ApplyAnswersOutcome> outcomes
+) {
+}
+```
+
+`ApplyAnswersOutcome` và `ApplyAnswersResponse` là hai file riêng, mỗi record một file public.
+
+- [ ] **Step 4: Viết service**
+
+`apply(paperId, request)`:
+
+1. Nạp paper. Không có → `NotFoundException("PAPER_NOT_FOUND", "Không tìm thấy đề.")`
+2. `status == READY` → `ConflictException("PAPER_ALREADY_PUBLISHED", "Đề đã phát hành.")`
+3. `request.examCode()` không null và khác `paper.getExamCode()` → `BadRequestException("EXAM_CODE_MISMATCH", "Bộ đáp án thuộc mã đề khác.")`. Đây là kiểm tra chặn cả lô, vì nhập lệch đề là sai toàn bộ.
+4. `conflictPolicy` mặc định `KEEP_EXISTING` khi null. Giá trị lạ → `BadRequestException("INVALID_CONFLICT_POLICY", ...)`.
+5. Với **từng** item, không dừng cả lô khi một item lỗi — thu vào `outcomes`:
+   - Câu không tồn tại → `SKIPPED` / `QID_NOT_IN_PAPER`
+   - Câu đã `answered` và `answerSource == MANUAL` và policy `KEEP_EXISTING` → `SKIPPED` / `ALREADY_ANSWERED_MANUALLY`
+   - Policy `FAIL` mà câu đã có đáp án → ném `ConflictException("ANSWER_CONFLICT", "Câu <qid> đã có đáp án.")`
+   - Đúng một trong ba cách khoá phải có giá trị; 0 hoặc ≥2 → `SKIPPED` / `AMBIGUOUS_KEY`
+   - `qaids`: qaid không thuộc câu → `SKIPPED` / `QAID_NOT_IN_QUESTION`. Hợp lệ → `setCorrect`, `applyAnswer(IMPORTED, sourceRef)`, `APPLIED`
+   - `optionTexts`: khớp theo `Sha256.hexUtf8(text)` với `option_sha256`. Không khớp đủ → `SKIPPED` / `OPTION_TEXT_NOT_FOUND`. Khớp → `applyAnswer(IMPORTED, sourceRef)`, `APPLIED`
+   - `letters`: câu có `questionText != null` hoặc `imageSha256 == null` → `SKIPPED` / `LETTER_NOT_ALLOWED_FOR_TEXT_QUESTION`. Chữ cái ngoài dải `A..chr(64+optionCount)` → `SKIPPED` / `LETTER_OUT_OF_RANGE`. Hợp lệ → `setCorrect` theo `option_index = letter - 'A'`, `suggestAnswer(sourceRef)`, `SUGGESTED`
+   - Mọi cách khoá: số lượng khác `expectedAnswerCount` (khi cột này không null) → `SKIPPED` / `ANSWER_COUNT_MISMATCH`. Loại trùng trước khi đếm.
+6. Nạp lại toàn bộ câu, `stillUnansweredQids` = qid của câu `answered == false`, giữ thứ tự `displayNo`.
+
+`confirmSuggestion(paperId, qid)`: nạp paper (`READY` → `ConflictException`), nạp câu; `answerSource != SUGGESTED` → `BadRequestException("NO_SUGGESTION_TO_CONFIRM", "Câu này không có gợi ý cần xác nhận.")`; ngược lại `applyAnswer(AnswerSource.MANUAL, question.getAnswerSourceRef())`, save. Cờ `is_correct` trên các option **không đổi** — gợi ý đã set sẵn, xác nhận chỉ nâng mức tin cậy.
+
+`@Transactional` cho cả hai method.
+
+- [ ] **Step 5: Thêm 2 endpoint vào controller**
+
+```java
+    @PostMapping("/{paperId}/answers/apply")
+    @RequirePermission("grading.paper.admin:update")
+    public ApiResponse<ApplyAnswersResponse> applyAnswers(
+            @PathVariable UUID paperId,
+            @Valid @RequestBody ApplyAnswersRequest request) {
+        return ApiResponse.ok(answerImportService.apply(paperId, request),
+                "Đã nhập bộ đáp án");
+    }
+
+    @PostMapping("/{paperId}/questions/{qid}/confirm")
+    @RequirePermission("grading.paper.admin:update")
+    public ApiResponse<Void> confirmSuggestion(@PathVariable UUID paperId, @PathVariable long qid) {
+        answerImportService.confirmSuggestion(paperId, qid);
+        return ApiResponse.ok(null, "Đã xác nhận đáp án");
+    }
+```
+
+- [ ] **Step 6: Chạy test và build**
+
+Run: `cd backend && mvn -q -pl grading -am test`
+Expected: PASS toàn bộ.
+
+Run: `cd backend && mvn -q -DskipTests package`
+Expected: BUILD SUCCESS.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add backend/grading
+git commit -m "feat(grading): apply external answer keys with per-source trust levels"
+```
+
+---
+
 ## Self-Review
 
 **Spec coverage.** Mục 4 (mô hình dữ liệu) → Task 1. Mục 2.2 + 2.8 + 5 (validator, cổng lưu) → Task 2, 5. Mục 3.2 (fingerprint) → Task 3. Mục 5 (bảng endpoint admin) → Task 4, 5, 6. Mục 3.4 (hash nội dung) → Task 4 step 3. Permission → Task 6.
 
+Mục "Nhập lại cùng một đề (idempotent)" → Task 4. Mục "Hai dạng JSON đáp án, hai mức tin cậy" → Task 7.
+
 **Chưa phủ trong plan này, thuộc Plan 2 và 3:** mục 6 (decoder, hàng rào giới hạn, thuật toán chấm), mục 7 (throttle chống dò đáp án), mục 8 (UI). Nhánh import theo `payloadId` từ `public_api_payloads` cũng để Plan 2 vì nó cần repository đọc bảng đó.
 
-**Type consistency.** `expectedAnswerCount` là `Integer` xuyên suốt (nullable). `qid`/`qaid` là `long` primitive trong entity và record, `Long` chỉ trong `List<Long> qaids` của request. `markAnswered(boolean)` và `setCorrect(boolean)` dùng đúng tên ở Task 1, 5, 6. `PaperSummaryResponse` định nghĩa ở Task 4, dùng lại ở Task 5, 6.
+**Type consistency.** `expectedAnswerCount` là `Integer` xuyên suốt (nullable). `qid`/`qaid` là `long` primitive trong entity và record, `Long` chỉ trong `List<Long> qaids` của request. `applyAnswer(AnswerSource, String)` / `suggestAnswer(String)` / `setCorrect(boolean)` dùng đúng tên ở Task 1, 5, 6, 7 — không còn `markAnswered` ở đâu. `PaperSummaryResponse` định nghĩa ở Task 4, dùng lại ở Task 5, 6.

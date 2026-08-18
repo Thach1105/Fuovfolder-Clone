@@ -251,6 +251,8 @@ CREATE TABLE grading_paper_questions (
     content_sha256  char(64)     NOT NULL,
     answer_mode     varchar(12)  NOT NULL,   -- SINGLE | MULTI | TEXT
     expected_answer_count int,                -- parse từ "(Choose N answers)", NULL nếu không rõ
+    answer_source     varchar(12),            -- NULL | MANUAL | IMPORTED | SUGGESTED
+    answer_source_ref varchar(120),           -- hash file / payload id đã sinh ra đáp án
     answered        boolean      NOT NULL DEFAULT false,
     created_at      timestamptz  NOT NULL,
     updated_at      timestamptz  NOT NULL
@@ -328,11 +330,13 @@ cho `SUB_ADMIN`.
 
 | Method | Endpoint | Việc |
 |---|---|---|
-| POST | `/api/v1/admin/grading/papers/import` | JSON thô hoặc `{payloadId}`. Validate → tạo đề `DRAFT` |
+| POST | `/api/v1/admin/grading/papers/import` | JSON thô hoặc `{payloadId}`. Validate → tạo đề `DRAFT`. Idempotent: đề đã có và `DRAFT` thì trả về đề cũ, không mất đáp án |
 | GET | `/api/v1/admin/grading/papers` | Danh sách, filter `subject`, `status` |
 | GET | `/api/v1/admin/grading/papers/{id}` | Chi tiết + `unansweredQids` |
 | GET | `/api/v1/admin/grading/papers/{id}/questions/{qid}/image` | Stream PNG rút từ `raw_payload` |
 | PUT | `/api/v1/admin/grading/papers/{id}/questions/{qid}/answer` | `{qaids:[...]}` → set `is_correct`, `answered=true` |
+| POST | `/api/v1/admin/grading/papers/{id}/answers/apply` | Nhập bộ đáp án rời. `byQaid`/`byOptionText` → `IMPORTED`; `byLetter` → `SUGGESTED` |
+| POST | `/api/v1/admin/grading/papers/{id}/questions/{qid}/confirm` | Admin xác nhận gợi ý `SUGGESTED` → `MANUAL`, bật `answered` |
 | POST | `/api/v1/admin/grading/papers/{id}/publish` | Cổng lưu. Thiếu/sai số đáp án → `409` kèm danh sách qid |
 | DELETE | `/api/v1/admin/grading/papers/{id}` | Soft delete, giải phóng fingerprint |
 
@@ -343,11 +347,61 @@ thái thay vì chặn lúc import:
 
 - `import` luôn thành công, đề vào `DRAFT`. Admin cần lưu nháp để làm nhiều lượt.
 - `publish` mới là "ấn lưu", từ chối nếu còn `answered=false`, **hoặc** nếu câu nào có số đáp án
-  đã tick khác `expected_answer_count`.
+  đã tick khác `expected_answer_count`. Câu chỉ có đáp án `SUGGESTED` **không** tính là đã trả lời.
 - **Chỉ đề `READY` được dùng để chấm.** Đề `DRAFT` vô hình với luồng sinh viên.
 
 Điều kiện chặn nằm ở chỗ *dùng*, không chỉ ở chỗ *lưu*, nên đáp án nửa vời không bao giờ chấm ra
 điểm sai.
+
+### Nhập lại cùng một đề (idempotent)
+
+`import` **không báo lỗi** khi đề đã tồn tại:
+
+- Đề đã có và đang `DRAFT` → trả về đề cũ, **giữ nguyên mọi đáp án admin đã tick**, chỉ thêm câu
+  hoặc lựa chọn nào còn thiếu. Không bao giờ làm mất công đã nhập.
+- Đề đã có và đã `READY` → `409 PAPER_ALREADY_PUBLISHED`. Muốn sửa thì soft-delete rồi nhập lại.
+- Payload trùng y nguyên theo `payload_sha256` → trả về đề cũ, không tạo bản ghi mới.
+
+### Hai dạng JSON đáp án, hai mức tin cậy
+
+Có hai dialect JSON hoàn toàn khác nhau về định danh:
+
+| | JSON đề thi (payload) | JSON đáp án (askforhelp dump) |
+|---|---|---|
+| Định danh câu | `QID` (số) | `questionId` (UUID) |
+| Định danh lựa chọn | `QAID` (số) | **không có**, chỉ có chữ cái `"C"` |
+| Ảnh | base64 nhúng | URL ngoài |
+| Đáp án | không có | `correctAnswer`, `answers[].isCorrect` |
+
+Không có field nào chung. Cầu nối duy nhất là `examName` + `questionNo`, tức nối theo **vị trí**.
+
+Nối theo vị trí không an toàn: đã chứng minh server đảo thứ tự lựa chọn trước khi gửi (mục 2.6).
+Nếu nó đảo cả thứ tự câu thì lệch một câu là mọi đáp án sau đó sai **âm thầm**, không tự phát hiện
+được. Vì vậy:
+
+`POST /api/v1/admin/grading/papers/{id}/answers/apply` nhận bộ đáp án rời, với 3 cách khoá và 3 mức
+tin cậy khác nhau:
+
+| Cách khoá | Dùng khi | Kết quả |
+|---|---|---|
+| `byQaid` — `[{qid, qaids:[...]}]` | Nguồn cùng hệ QAID | `answer_source=IMPORTED`, tính là đã trả lời |
+| `byOptionText` — `[{qid, optionTexts:[...]}]` | Câu dạng text, khớp theo `option_sha256` | `IMPORTED`, tính là đã trả lời |
+| `byLetter` — `[{qid, letters:["C"]}]` | Nguồn chỉ có chữ cái | `answer_source=SUGGESTED`, **KHÔNG** tính là đã trả lời |
+
+Ràng buộc cho `byLetter`:
+
+- Chỉ cho phép với câu **thuần ảnh** (`question_text IS NULL AND image_sha256 IS NOT NULL`), vì các
+  lựa chọn nằm trong ảnh nên thứ tự cố định. Câu dạng text → từ chối, chữ cái vô nghĩa ở đó.
+- Số chữ cái phải bằng `expected_answer_count`; chữ cái vượt số lựa chọn (ví dụ `E` cho câu 4 lựa
+  chọn) → từ chối.
+- Admin phải xác nhận từng câu; xác nhận đổi `answer_source` sang `MANUAL` và bật `answered`.
+
+`conflictPolicy` = `KEEP_EXISTING` (mặc định) | `OVERWRITE` | `FAIL`. Mặc định không ghi đè cái admin
+đã tick tay — người đáng tin hơn file.
+
+Response luôn liệt kê: số câu đã điền, số câu bỏ qua kèm lý do, số câu còn thiếu.
+
+**Không bao giờ tự phát hành**, dù file có đáp án đủ 100%. Phát hành luôn là một cú bấm của người.
 
 ### Validator lúc import
 
@@ -536,7 +590,10 @@ mvn -q -DskipTests package        # vẫn 1 jar, không runtime mới
    quyết định admin phải nhập bao nhiêu đề. Cần 2 file `.dat` của 2 SV cùng môn cùng kỳ.
 3. **Đáp án chưa tái dùng được giữa các đề.** Hash đã lưu nhưng chưa dùng; bật lên là việc riêng.
 4. **`raw_payload` phình theo số đề**, ngưỡng cần chuyển sang S3 là ~2.000 đề.
-5. **`QType` 3 và 4 chưa từng thấy** — validator sẽ reject payload chứa chúng, đúng chủ ý, nhưng
+5. **Chưa biết thứ tự câu trong payload có bị đảo theo từng lần gửi hay không.** Nếu không đảo thì
+   nối `questionNo` ↔ `display_no` là an toàn và dialect đáp án ngoài có thể nâng lên `IMPORTED`.
+   Test: 2 payload của cùng một mã đề, so thứ tự QID.
+6. **`QType` 3 và 4 chưa từng thấy** — validator sẽ reject payload chứa chúng, đúng chủ ý, nhưng
    nghĩa là có thể gặp đề không import được.
 
 ## 12. Ngoài phạm vi
