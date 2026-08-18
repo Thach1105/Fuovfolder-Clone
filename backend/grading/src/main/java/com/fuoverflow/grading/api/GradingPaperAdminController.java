@@ -3,21 +3,29 @@ package com.fuoverflow.grading.api;
 import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.grading.api.dto.ImportPaperRequest;
+import com.fuoverflow.grading.api.dto.PaperDetailResponse;
 import com.fuoverflow.grading.api.dto.PaperPreviewResponse;
 import com.fuoverflow.grading.api.dto.PaperSummaryResponse;
 import com.fuoverflow.grading.api.dto.SetAnswerRequest;
 import com.fuoverflow.grading.application.PaperAnswerService;
 import com.fuoverflow.grading.application.PaperImportService;
+import com.fuoverflow.grading.application.PaperQueryService;
 import jakarta.validation.Valid;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -26,11 +34,37 @@ public class GradingPaperAdminController {
 
     private final PaperImportService importService;
     private final PaperAnswerService answerService;
+    private final PaperQueryService queryService;
 
     public GradingPaperAdminController(PaperImportService importService,
-                                       PaperAnswerService answerService) {
+                                       PaperAnswerService answerService,
+                                       PaperQueryService queryService) {
         this.importService = importService;
         this.answerService = answerService;
+        this.queryService = queryService;
+    }
+
+    @GetMapping
+    @RequirePermission("grading.paper.admin:read")
+    public ApiResponse<List<PaperSummaryResponse>> list(
+            @RequestParam(required = false) String subject,
+            @RequestParam(required = false) String status) {
+        return ApiResponse.ok(queryService.list(subject, status));
+    }
+
+    @GetMapping("/{paperId}")
+    @RequirePermission("grading.paper.admin:read")
+    public ApiResponse<PaperDetailResponse> detail(@PathVariable UUID paperId) {
+        return ApiResponse.ok(queryService.detail(paperId));
+    }
+
+    @GetMapping(value = "/{paperId}/questions/{qid}/image", produces = MediaType.IMAGE_PNG_VALUE)
+    @RequirePermission("grading.paper.admin:read")
+    public ResponseEntity<byte[]> questionImage(@PathVariable UUID paperId, @PathVariable long qid) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .cacheControl(CacheControl.noStore())
+                .body(queryService.questionImage(paperId, qid));
     }
 
     /** Converts and validates without storing anything, so the admin can review first. */
