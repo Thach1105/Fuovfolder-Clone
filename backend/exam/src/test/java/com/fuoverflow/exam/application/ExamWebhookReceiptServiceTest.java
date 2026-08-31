@@ -36,7 +36,7 @@ class ExamWebhookReceiptServiceTest {
 
     private static final String SECRET = "s3cr3t";
     private static final String PNG_BASE64 =
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAwAB/AF+AVsAAAAASUVORK5CYII=";
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
 
     @Mock private ExamWebhookEventRepository eventRepository;
 

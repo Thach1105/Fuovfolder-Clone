@@ -26,7 +26,7 @@ class ExamWebhookPayloadValidatorTest {
 
     /** Minimal 1x1 PNG: enough for a magic-byte check. */
     private static final String PNG_BASE64 =
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAwAB/AF+AVsAAAAASUVORK5CYII=";
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
     private static final byte[] PNG = Base64.getDecoder().decode(PNG_BASE64);
 
     private final ExamWebhookPayloadValidator validator =
