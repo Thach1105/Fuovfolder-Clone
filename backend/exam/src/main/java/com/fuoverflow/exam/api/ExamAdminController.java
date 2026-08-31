@@ -7,8 +7,10 @@ import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.exam.api.dto.AddPeResourceRequest;
 import com.fuoverflow.exam.api.dto.AdminCommentPageResponse;
 import com.fuoverflow.exam.api.dto.AdminFeQuestionResponse;
+import com.fuoverflow.exam.api.dto.AdminPaperResponse;
 import com.fuoverflow.exam.api.dto.AdminPeItemResponse;
 import com.fuoverflow.exam.api.dto.AdminSubjectResponse;
+import com.fuoverflow.exam.api.dto.AdminWebhookEventResponse;
 import com.fuoverflow.exam.api.dto.CreateFeQuestionRequest;
 import com.fuoverflow.exam.api.dto.CreatePeItemRequest;
 import com.fuoverflow.exam.api.dto.CreateSubjectRequest;
@@ -20,6 +22,7 @@ import com.fuoverflow.exam.api.dto.UpdateSubjectRequest;
 import com.fuoverflow.exam.application.ExamCommentService;
 import com.fuoverflow.exam.application.ExamFeQuestionAdminService;
 import com.fuoverflow.exam.application.ExamMediaService;
+import com.fuoverflow.exam.application.ExamPaperAdminService;
 import com.fuoverflow.exam.application.ExamPeItemAdminService;
 import com.fuoverflow.exam.application.ExamSubjectAdminService;
 import com.fuoverflow.material.domain.UploadPurpose;
@@ -50,6 +53,7 @@ public class ExamAdminController {
     private final ExamSubjectAdminService subjectService;
     private final ExamFeQuestionAdminService feQuestionService;
     private final ExamPeItemAdminService peItemService;
+    private final ExamPaperAdminService paperService;
     private final ExamCommentService commentService;
     private final ExamMediaService mediaService;
 
@@ -57,11 +61,13 @@ public class ExamAdminController {
             ExamSubjectAdminService subjectService,
             ExamFeQuestionAdminService feQuestionService,
             ExamPeItemAdminService peItemService,
+            ExamPaperAdminService paperService,
             ExamCommentService commentService,
             ExamMediaService mediaService) {
         this.subjectService = subjectService;
         this.feQuestionService = feQuestionService;
         this.peItemService = peItemService;
+        this.paperService = paperService;
         this.commentService = commentService;
         this.mediaService = mediaService;
     }
@@ -189,6 +195,41 @@ public class ExamAdminController {
             @PathVariable UUID itemId,
             @PathVariable UUID resourceId) {
         peItemService.deleteResource(subjectId, itemId, resourceId);
+    }
+
+    // --- papers (webhook-ingested + legacy) -----------------------------------
+
+    @GetMapping("/papers")
+    @RequirePermission("exam.paper.admin:read")
+    public ApiResponse<List<AdminPaperResponse>> listPapers(
+            @RequestParam(required = false) UUID subjectId,
+            @RequestParam(required = false) String status) {
+        return ApiResponse.ok(paperService.list(subjectId, status));
+    }
+
+    @GetMapping("/papers/{paperId}")
+    @RequirePermission("exam.paper.admin:read")
+    public ApiResponse<AdminPaperResponse> getPaper(@PathVariable UUID paperId) {
+        return ApiResponse.ok(paperService.get(paperId));
+    }
+
+    @PostMapping("/papers/{paperId}/publish")
+    @RequirePermission("exam.paper.admin:publish")
+    public ApiResponse<AdminPaperResponse> publishPaper(@PathVariable UUID paperId) {
+        return ApiResponse.ok(paperService.publish(paperId));
+    }
+
+    @DeleteMapping("/papers/{paperId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @RequirePermission("exam.paper.admin:delete")
+    public void deletePaper(@PathVariable UUID paperId) {
+        paperService.delete(paperId);
+    }
+
+    @GetMapping("/webhook-events/{receiptId}")
+    @RequirePermission("exam.webhook.admin:read")
+    public ApiResponse<AdminWebhookEventResponse> getWebhookEvent(@PathVariable UUID receiptId) {
+        return ApiResponse.ok(paperService.getWebhookEvent(receiptId));
     }
 
     // --- media upload ---------------------------------------------------------

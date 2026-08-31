@@ -4,6 +4,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(ExamProperties.class)
+@EnableConfigurationProperties({ExamProperties.class, ExamWebhookProperties.class})
 public class ExamModuleConfig {
 }

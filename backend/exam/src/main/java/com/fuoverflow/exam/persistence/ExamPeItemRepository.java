@@ -17,6 +17,10 @@ public interface ExamPeItemRepository extends JpaRepository<ExamPeItemEntity, UU
 
     long countBySubjectIdAndDeletedAtIsNull(UUID subjectId);
 
+    List<ExamPeItemEntity> findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(UUID paperId);
+
+    long countByPaperIdAndDeletedAtIsNull(UUID paperId);
+
     @Query(value = "SELECT p.subject_id FROM exam_pe_items p WHERE p.deleted_at IS NULL "
             + "AND CAST(p.exam_image_urls AS text) LIKE '%' || :key || '%' LIMIT 1",
             nativeQuery = true)

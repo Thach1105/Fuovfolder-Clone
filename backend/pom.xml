@@ -31,6 +31,7 @@
         <module>source</module>
         <module>membership</module>
         <module>exam</module>
+        <module>grading</module>
         <module>course</module>
         <module>material</module>
         <module>payment</module>

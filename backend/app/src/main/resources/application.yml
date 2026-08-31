@@ -89,6 +89,18 @@ fuexam:
     media-signing-secret: ${EXAM_MEDIA_SIGNING_SECRET:dev-exam-media-secret-change-me}
     signed-url-ttl-seconds: ${EXAM_MEDIA_URL_TTL:900}
     default-fe-preview-image-count: ${EXAM_FE_PREVIEW_COUNT:3}
+    webhook:
+      clients:
+        eos-crawler: ${EXAM_WEBHOOK_SECRET_EOS_CRAWLER:dev-exam-webhook-secret-change-me}
+      allowed-resource-hosts:
+        - cdn.example.com
+      max-payload-bytes: ${EXAM_WEBHOOK_MAX_PAYLOAD_BYTES:33554432}
+      max-image-bytes: ${EXAM_WEBHOOK_MAX_IMAGE_BYTES:5242880}
+      max-resource-bytes: ${EXAM_WEBHOOK_MAX_RESOURCE_BYTES:52428800}
+      max-questions: ${EXAM_WEBHOOK_MAX_QUESTIONS:200}
+      max-attempts: ${EXAM_WEBHOOK_MAX_ATTEMPTS:5}
+      signature-tolerance-seconds: ${EXAM_WEBHOOK_SIGNATURE_TOLERANCE:300}
+      poll-interval-ms: ${EXAM_WEBHOOK_POLL_INTERVAL_MS:30000}
   membership:
     expiry-cron: ${MEMBERSHIP_EXPIRY_CRON:0 0 0 * * *}
   scheduling:

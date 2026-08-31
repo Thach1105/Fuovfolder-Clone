@@ -97,7 +97,8 @@ function PaperCard({
   );
 }
 
-function PaperImages({ urls, paperId }: { urls: string[]; paperId: string }) {
+/** Paper images open in a plain lightbox: the backend has no per-image comment thread. */
+function PaperImages({ urls }: { urls: string[] }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   if (urls.length === 0) return null;
   return (
@@ -109,7 +110,7 @@ function PaperImages({ urls, paperId }: { urls: string[]; paperId: string }) {
             type="button"
             onClick={() => setLightboxIndex(idx)}
             className="group relative overflow-hidden rounded-xl border border-foreground/10"
-            aria-label="Xem ảnh lớn và bình luận"
+            aria-label="Xem ảnh lớn"
           >
             <ImageWithWatermark
               src={url}
@@ -127,9 +128,6 @@ function PaperImages({ urls, paperId }: { urls: string[]; paperId: string }) {
           currentIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onNavigate={setLightboxIndex}
-          renderSidePanel={(index) => (
-            <ExamCommentThread key={index} paperId={paperId} imageIndex={index} />
-          )}
         />
       )}
     </>
@@ -420,7 +418,7 @@ function PaperDetailView({ paperId, onBack }: { paperId: string; onBack: () => v
             <section className="space-y-2">
               <h3 className="app-eyebrow">Ảnh đề thi</h3>
               <p className="text-xs text-muted-foreground">Bấm vào ảnh để xem lớn và bình luận theo từng ảnh.</p>
-              <PaperImages urls={imageUrls} paperId={paper.id} />
+              <PaperImages urls={imageUrls} />
             </section>
           )}
 

@@ -10,7 +10,7 @@ public record PublicSubjectCardResponse(
         String cardColor,
         String coverImageUrl,
         long viewCount,
-        int feQuestionCount,
+        int fePaperCount,
         int pePaperCount
 ) {
 }

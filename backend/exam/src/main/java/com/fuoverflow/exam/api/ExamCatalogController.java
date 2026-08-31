@@ -3,6 +3,7 @@ package com.fuoverflow.exam.api;
 import com.fuoverflow.common.security.RequirePermission;
 import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.exam.api.dto.PublicFeQuestionListResponse;
+import com.fuoverflow.exam.api.dto.PublicPaperDetailResponse;
 import com.fuoverflow.exam.api.dto.PublicPeItemResponse;
 import com.fuoverflow.exam.api.dto.PublicSubjectCardResponse;
 import com.fuoverflow.exam.api.dto.PublicSubjectDetailResponse;
@@ -58,6 +59,15 @@ public class ExamCatalogController {
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         return ApiResponse.ok(queryService.listPeItems(idOrCode, userId));
+    }
+
+    @GetMapping("/papers/{paperId}")
+    @RequirePermission("exam.content:read")
+    public ApiResponse<PublicPaperDetailResponse> getPaper(
+            @PathVariable UUID paperId,
+            Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
+        return ApiResponse.ok(queryService.getPaper(paperId, userId));
     }
 
     @PostMapping("/{idOrCode}/fe/{questionId}/view")
