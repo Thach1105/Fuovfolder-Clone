@@ -165,52 +165,15 @@ export function createExamComment(subjectType: string, subjectId: string, body: 
   );
 }
 
-/** @deprecated Backend has no "papers" subject type; kept for backward compat with call sites not yet migrated. */
-export function listPaperComments(paperId: string) {
-  return apiFetch<ExamComment[]>(
-    `${API_V1}/exam/comments/papers/${encodeURIComponent(paperId)}`,
-  );
-}
-
-/** @deprecated Backend has no "papers" subject type; kept for backward compat with call sites not yet migrated. */
-export function createPaperComment(paperId: string, body: string, parentCommentId?: string) {
-  const payload: Record<string, unknown> = { body };
-  if (parentCommentId) payload.parentCommentId = parentCommentId;
-  return apiFetch<ExamComment>(
-    `${API_V1}/exam/comments/papers/${encodeURIComponent(paperId)}`,
-    { method: "POST", body: JSON.stringify(payload) },
-  );
-}
-
-export function listPaperImageComments(paperId: string, imageIndex: number) {
-  return apiFetch<ExamComment[]>(
-    `${API_V1}/exam/comments/papers/${encodeURIComponent(paperId)}/images/${imageIndex}`,
-  );
-}
-
-export function createPaperImageComment(
-  paperId: string,
-  imageIndex: number,
-  body: string,
-  parentCommentId?: string,
-) {
-  const payload: Record<string, unknown> = { body };
-  if (parentCommentId) payload.parentCommentId = parentCommentId;
-  return apiFetch<ExamComment>(
-    `${API_V1}/exam/comments/papers/${encodeURIComponent(paperId)}/images/${imageIndex}`,
-    { method: "POST", body: JSON.stringify(payload) },
-  );
-}
-
 export function updateExamComment(commentId: string, body: string) {
-  return apiFetch<ExamComment>(`${API_V1}/exam/comments/comments/${encodeURIComponent(commentId)}`, {
+  return apiFetch<ExamComment>(`${API_V1}/exam/comments/${encodeURIComponent(commentId)}`, {
     method: "PUT",
     body: JSON.stringify({ body }),
   });
 }
 
 export function deleteExamComment(commentId: string) {
-  return apiFetch<void>(`${API_V1}/exam/comments/comments/${encodeURIComponent(commentId)}`, {
+  return apiFetch<void>(`${API_V1}/exam/comments/${encodeURIComponent(commentId)}`, {
     method: "DELETE",
   });
 }
