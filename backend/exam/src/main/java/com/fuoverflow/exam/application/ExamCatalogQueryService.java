@@ -95,8 +95,12 @@ public class ExamCatalogQueryService {
         int total = all.size();
         int previewImageCount = Math.max(0, subject.getFePreviewImageCount());
 
+        // The preview budget is spent across the whole paper, not per post. Counting per post
+        // would hand a non-member every image of a paper whose questions carry one image each -
+        // exactly the shape a webhook-ingested EOS paper has.
+        int[] previewBudget = {previewImageCount};
         List<PublicFeQuestionResponse> questions = all.stream()
-                .map(q -> toPublicQuestion(q, member, previewImageCount))
+                .map(q -> toPublicQuestion(q, member, previewBudget))
                 .toList();
         return new PublicFeQuestionListResponse(!member, total, previewImageCount, questions);
     }
@@ -126,15 +130,23 @@ public class ExamCatalogQueryService {
                 (int) peItemRepository.countBySubjectIdAndDeletedAtIsNull(s.getId()));
     }
 
+    /**
+     * @param previewBudget single-element holder for the remaining free images of this paper;
+     *                      decremented as images are handed out full.
+     */
     private PublicFeQuestionResponse toPublicQuestion(
-            ExamFeQuestionEntity q, boolean isMember, int previewImageCount) {
+            ExamFeQuestionEntity q, boolean isMember, int[] previewBudget) {
         List<String> imageKeys = ExamJsonUtil.deserialize(objectMapper, q.getQuestionImageUrls());
         List<String> blurKeys = ExamJsonUtil.deserialize(objectMapper, q.getQuestionBlurUrls());
         int totalImages = imageKeys.size();
 
         List<PublicFeQuestionResponse.PublicImageItem> images = new ArrayList<>();
         for (int i = 0; i < totalImages; i++) {
-            if (isMember || i < previewImageCount) {
+            boolean readable = isMember || previewBudget[0] > 0;
+            if (!isMember && readable) {
+                previewBudget[0]--;
+            }
+            if (readable) {
                 images.add(new PublicFeQuestionResponse.PublicImageItem(
                         i, urlResolver.signed(imageKeys.get(i)), "full"));
             } else {
