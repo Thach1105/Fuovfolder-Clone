@@ -9,6 +9,8 @@ import com.fuoverflow.exam.api.dto.ReorderRequest;
 import com.fuoverflow.exam.api.dto.UpdateFeQuestionRequest;
 import com.fuoverflow.exam.persistence.ExamFeQuestionEntity;
 import com.fuoverflow.exam.persistence.ExamFeQuestionRepository;
+import com.fuoverflow.exam.persistence.ExamPaperRepository;
+import com.fuoverflow.exam.persistence.ExamSubjectEntity;
 import com.fuoverflow.exam.persistence.ExamSubjectRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class ExamFeQuestionAdminService {
     private final ExamFeQuestionRepository questionRepository;
     private final ExamSubjectRepository subjectRepository;
+    private final ExamPaperRepository paperRepository;
     private final ExamMediaService mediaService;
     private final ExamMediaUrlResolver urlResolver;
     private final ObjectMapper objectMapper;
@@ -31,11 +34,13 @@ public class ExamFeQuestionAdminService {
     public ExamFeQuestionAdminService(
             ExamFeQuestionRepository questionRepository,
             ExamSubjectRepository subjectRepository,
+            ExamPaperRepository paperRepository,
             ExamMediaService mediaService,
             ExamMediaUrlResolver urlResolver,
             ObjectMapper objectMapper) {
         this.questionRepository = questionRepository;
         this.subjectRepository = subjectRepository;
+        this.paperRepository = paperRepository;
         this.mediaService = mediaService;
         this.urlResolver = urlResolver;
         this.objectMapper = objectMapper;
@@ -56,7 +61,7 @@ public class ExamFeQuestionAdminService {
 
     @Transactional
     public AdminFeQuestionResponse create(UUID subjectId, CreateFeQuestionRequest request) {
-        requireSubject(subjectId);
+        ExamSubjectEntity subject = requireSubject(subjectId);
         Validated validated = validate(request.questionText(), request.questionImageUrls(), request.questionBlurUrls());
 
         Instant now = Instant.now();
@@ -72,7 +77,8 @@ public class ExamFeQuestionAdminService {
                 ExamJsonUtil.serialize(objectMapper, validated.imageKeys()),
                 ExamJsonUtil.serialize(objectMapper, validated.blurKeys()),
                 sortOrder,
-                now);
+                now,
+                legacyPaperId(subject));
         questionRepository.save(question);
         mediaService.markLinkedAll(validated.imageKeys());
         return get(subjectId, questionId);
@@ -186,10 +192,21 @@ public class ExamFeQuestionAdminService {
                 q.getUpdatedAt());
     }
 
-    private void requireSubject(UUID subjectId) {
-        if (subjectRepository.findByIdAndDeletedAtIsNull(subjectId).isEmpty()) {
-            throw new NotFoundException("EXAM_SUBJECT_NOT_FOUND", "Exam subject not found");
-        }
+    private ExamSubjectEntity requireSubject(UUID subjectId) {
+        return subjectRepository.findByIdAndDeletedAtIsNull(subjectId)
+                .orElseThrow(() -> new NotFoundException("EXAM_SUBJECT_NOT_FOUND", "Exam subject not found"));
+    }
+
+    /**
+     * Hand-entered questions join the subject's legacy paper, the one V53 backfilled, so the read
+     * path can assume every question belongs to a paper. Null on a database with no legacy paper
+     * yet (a fresh install), which the read path tolerates.
+     */
+    private UUID legacyPaperId(ExamSubjectEntity subject) {
+        return paperRepository
+                .findByExamCodeIgnoreCaseAndDeletedAtIsNull(subject.getCode().toUpperCase() + "_LEGACY_FE")
+                .map(paper -> paper.getId())
+                .orElse(null);
     }
 
     private ExamFeQuestionEntity requireQuestion(UUID subjectId, UUID questionId) {

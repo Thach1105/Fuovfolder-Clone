@@ -44,6 +44,7 @@ class ExamCatalogQueryServiceTest {
     private ExamCatalogQueryService service;
     private UUID userId;
     private UUID subjectId;
+    private UUID paperId;
 
     @BeforeEach
     void setUp() {
@@ -53,6 +54,7 @@ class ExamCatalogQueryServiceTest {
                 accessGuard, urlResolver, new ObjectMapper());
         userId = UUID.randomUUID();
         subjectId = UUID.randomUUID();
+        paperId = UUID.randomUUID();
         lenient().when(urlResolver.signed(any())).thenAnswer(inv -> "signed:" + inv.getArgument(0));
         lenient().when(urlResolver.signedAll(any())).thenReturn(List.of());
         lenient().when(commentRepository.countBySubjectTypeAndSubjectIdAndDeletedAtIsNull(any(), any()))
@@ -137,7 +139,7 @@ class ExamCatalogQueryServiceTest {
             String imageJson = imagesJson(imagesPerQuestion, "img");
             String blurJson = imagesJson(imagesPerQuestion, "blur");
             list.add(ExamFeQuestionEntity.create(
-                    UUID.randomUUID(), subjectId, "Q" + i, imageJson, blurJson, i, now));
+                    UUID.randomUUID(), subjectId, "Q" + i, imageJson, blurJson, i, now, paperId));
         }
         return list;
     }

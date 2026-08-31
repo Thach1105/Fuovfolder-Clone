@@ -50,6 +50,9 @@ public class ExamFeQuestionEntity {
     @Column(name = "view_count", nullable = false)
     private long viewCount;
 
+    @Column(name = "paper_id")
+    private UUID paperId;
+
     public UUID getId() { return id; }
     public UUID getSubjectId() { return subjectId; }
     public String getQuestionText() { return questionText; }
@@ -61,6 +64,7 @@ public class ExamFeQuestionEntity {
     public Instant getUpdatedAt() { return updatedAt; }
     public Instant getDeletedAt() { return deletedAt; }
     public long getViewCount() { return viewCount; }
+    public UUID getPaperId() { return paperId; }
 
     public void setQuestionText(String questionText) { this.questionText = questionText; }
     public void setQuestionImageUrls(String questionImageUrls) { this.questionImageUrls = questionImageUrls; }
@@ -68,11 +72,12 @@ public class ExamFeQuestionEntity {
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
     public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
+    public void setPaperId(UUID paperId) { this.paperId = paperId; }
 
     public static ExamFeQuestionEntity create(
             UUID id, UUID subjectId, String questionText,
             String questionImageUrls, String questionBlurUrls,
-            int sortOrder, Instant now) {
+            int sortOrder, Instant now, UUID paperId) {
         ExamFeQuestionEntity e = new ExamFeQuestionEntity();
         e.id = id;
         e.subjectId = subjectId;
@@ -84,6 +89,7 @@ public class ExamFeQuestionEntity {
         e.createdAt = now;
         e.updatedAt = now;
         e.viewCount = 0;
+        e.paperId = paperId;
         return e;
     }
 }

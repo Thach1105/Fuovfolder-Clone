@@ -46,6 +46,9 @@ public class ExamPeItemEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @Column(name = "paper_id")
+    private UUID paperId;
+
     public UUID getId() { return id; }
     public UUID getSubjectId() { return subjectId; }
     public String getTitle() { return title; }
@@ -56,6 +59,7 @@ public class ExamPeItemEntity {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public Instant getDeletedAt() { return deletedAt; }
+    public UUID getPaperId() { return paperId; }
 
     public void setTitle(String title) { this.title = title; }
     public void setDescription(String description) { this.description = description; }
@@ -63,6 +67,7 @@ public class ExamPeItemEntity {
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
     public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
+    public void setPaperId(UUID paperId) { this.paperId = paperId; }
 
     public static ExamPeItemEntity create(
             UUID id, UUID subjectId, String title, String description,
