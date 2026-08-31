@@ -14,6 +14,8 @@ import { NextRequest, NextResponse } from "next/server";
  * the browser replays them on exactly the right requests.
  */
 
+const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+
 const BACKEND_ORIGIN = (process.env.BACKEND_ORIGIN ?? "https://api-fuexam.fuexam.com").replace(
   /\/$/,
   "",
@@ -109,7 +111,12 @@ async function proxy(request: NextRequest, segments: string[]): Promise<NextResp
     responseHeaders.append("set-cookie", rewriteSetCookie(cookie, isHttps));
   }
 
-  const payload = await backendRes.arrayBuffer();
+  // 204/205/304 are null-body statuses: the Response constructor throws a TypeError if a body
+  // is passed with one, even an empty buffer. Every backend DELETE answers 204, so forwarding a
+  // body here turned each of them into a 500.
+  const payload = NULL_BODY_STATUSES.has(backendRes.status)
+    ? null
+    : await backendRes.arrayBuffer();
   return new NextResponse(payload, {
     status: backendRes.status,
     statusText: backendRes.statusText,
