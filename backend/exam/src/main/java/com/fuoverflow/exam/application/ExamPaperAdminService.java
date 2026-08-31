@@ -41,6 +41,7 @@ public class ExamPaperAdminService {
     private final ExamPeResourceRepository peResourceRepository;
     private final ExamWebhookEventRepository webhookEventRepository;
     private final ExamMediaService mediaService;
+    private final ExamMediaUrlResolver urlResolver;
     private final ObjectMapper objectMapper;
 
     public ExamPaperAdminService(
@@ -50,6 +51,7 @@ public class ExamPaperAdminService {
             ExamPeResourceRepository peResourceRepository,
             ExamWebhookEventRepository webhookEventRepository,
             ExamMediaService mediaService,
+            ExamMediaUrlResolver urlResolver,
             ObjectMapper objectMapper) {
         this.paperRepository = paperRepository;
         this.feQuestionRepository = feQuestionRepository;
@@ -57,6 +59,7 @@ public class ExamPaperAdminService {
         this.peResourceRepository = peResourceRepository;
         this.webhookEventRepository = webhookEventRepository;
         this.mediaService = mediaService;
+        this.urlResolver = urlResolver;
         this.objectMapper = objectMapper;
     }
 
@@ -129,7 +132,14 @@ public class ExamPaperAdminService {
         paperRepository.save(paper);
     }
 
-    /** Full content of one paper so an admin can look before publishing. */
+    /**
+     * Full content of one paper so an admin can look before publishing.
+     *
+     * <p>Image references go out as resolved public URLs, the same as every other admin endpoint.
+     * Returning the raw object key renders a broken image once storage is S3-backed, because the
+     * console's {@code examMediaUrl()} can only fall back to a local {@code /uploads} path that
+     * production does not serve.
+     */
     @Transactional(readOnly = true)
     public AdminPaperContentResponse getContent(UUID paperId) {
         ExamPaperEntity paper = requirePaper(paperId);
@@ -144,14 +154,17 @@ public class ExamPaperAdminService {
                 questions.add(new AdminPaperContentResponse.AdminPaperQuestion(
                         question.getId(),
                         question.getQuestionText(),
-                        ExamJsonUtil.deserialize(objectMapper, question.getQuestionImageUrls()),
-                        ExamJsonUtil.deserialize(objectMapper, question.getQuestionBlurUrls()),
+                        urlResolver.plainAll(
+                                ExamJsonUtil.deserialize(objectMapper, question.getQuestionImageUrls())),
+                        urlResolver.plainAll(
+                                ExamJsonUtil.deserialize(objectMapper, question.getQuestionBlurUrls())),
                         question.getSortOrder()));
             }
         } else {
             for (ExamPeItemEntity item
                     : peItemRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(paperId)) {
-                images.addAll(ExamJsonUtil.deserialize(objectMapper, item.getExamImageUrls()));
+                images.addAll(urlResolver.plainAll(
+                        ExamJsonUtil.deserialize(objectMapper, item.getExamImageUrls())));
                 for (ExamPeResourceEntity resource
                         : peResourceRepository.findByPeItemIdAndDeletedAtIsNullOrderBySortOrderAsc(item.getId())) {
                     resources.add(new AdminPeItemResponse.AdminPeResourceResponse(
