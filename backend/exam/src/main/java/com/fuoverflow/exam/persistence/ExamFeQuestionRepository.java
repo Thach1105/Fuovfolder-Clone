@@ -18,6 +18,10 @@ public interface ExamFeQuestionRepository extends JpaRepository<ExamFeQuestionEn
 
     long countBySubjectIdAndDeletedAtIsNull(UUID subjectId);
 
+    List<ExamFeQuestionEntity> findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(UUID paperId);
+
+    long countByPaperIdAndDeletedAtIsNull(UUID paperId);
+
     @Query(value = "SELECT q.subject_id FROM exam_fe_questions q WHERE q.deleted_at IS NULL "
             + "AND CAST(q.question_image_urls AS text) LIKE '%' || :key || '%' LIMIT 1",
             nativeQuery = true)

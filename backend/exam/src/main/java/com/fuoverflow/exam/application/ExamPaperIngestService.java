@@ -1,0 +1,299 @@
+package com.fuoverflow.exam.application;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fuoverflow.exam.config.ExamProperties;
+import com.fuoverflow.exam.domain.ExamPaperType;
+import com.fuoverflow.exam.domain.IngestAsset;
+import com.fuoverflow.exam.domain.IngestPaper;
+import com.fuoverflow.exam.domain.IngestQuestion;
+import com.fuoverflow.exam.domain.IngestResource;
+import com.fuoverflow.exam.persistence.ExamFeQuestionEntity;
+import com.fuoverflow.exam.persistence.ExamFeQuestionRepository;
+import com.fuoverflow.exam.persistence.ExamPaperEntity;
+import com.fuoverflow.exam.persistence.ExamPaperRepository;
+import com.fuoverflow.exam.persistence.ExamPeItemEntity;
+import com.fuoverflow.exam.persistence.ExamPeItemRepository;
+import com.fuoverflow.exam.persistence.ExamPeResourceEntity;
+import com.fuoverflow.exam.persistence.ExamPeResourceRepository;
+import com.fuoverflow.exam.persistence.ExamSubjectEntity;
+import com.fuoverflow.exam.persistence.ExamSubjectRepository;
+import com.fuoverflow.exam.support.ExamPaperFingerprint;
+import com.fuoverflow.material.domain.UploadPurpose;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * Turns a validated {@link IngestPaper} into a draft paper plus its FE questions or PE content.
+ *
+ * <p>Two rules drive the shape of this class. First, a redelivery must not duplicate: a paper is
+ * identified by content fingerprint, falling back to exam code, and an existing draft is rebuilt in
+ * place while an already-published paper is left untouched. Second, a partial build must not
+ * survive: every object key written during a run is tracked, and a failure deletes them along with
+ * a draft this run created, so a retry starts from a clean slate instead of accumulating orphans.
+ */
+@Service
+public class ExamPaperIngestService {
+    private static final Logger log = LoggerFactory.getLogger(ExamPaperIngestService.class);
+
+    private final ExamSubjectRepository subjectRepository;
+    private final ExamPaperRepository paperRepository;
+    private final ExamFeQuestionRepository feQuestionRepository;
+    private final ExamPeItemRepository peItemRepository;
+    private final ExamPeResourceRepository peResourceRepository;
+    private final ExamIngestStorage ingestStorage;
+    private final ExamResourceFetcher resourceFetcher;
+    private final ExamMediaService mediaService;
+    private final ExamProperties examProperties;
+    private final ObjectMapper objectMapper;
+
+    public ExamPaperIngestService(
+            ExamSubjectRepository subjectRepository,
+            ExamPaperRepository paperRepository,
+            ExamFeQuestionRepository feQuestionRepository,
+            ExamPeItemRepository peItemRepository,
+            ExamPeResourceRepository peResourceRepository,
+            ExamIngestStorage ingestStorage,
+            ExamResourceFetcher resourceFetcher,
+            ExamMediaService mediaService,
+            ExamProperties examProperties,
+            ObjectMapper objectMapper) {
+        this.subjectRepository = subjectRepository;
+        this.paperRepository = paperRepository;
+        this.feQuestionRepository = feQuestionRepository;
+        this.peItemRepository = peItemRepository;
+        this.peResourceRepository = peResourceRepository;
+        this.ingestStorage = ingestStorage;
+        this.resourceFetcher = resourceFetcher;
+        this.mediaService = mediaService;
+        this.examProperties = examProperties;
+        this.objectMapper = objectMapper;
+    }
+
+    @Transactional
+    public IngestOutcome ingest(IngestPaper paper, String ingestSource) {
+        Instant now = Instant.now();
+        ExamSubjectEntity subject = resolveOrCreateSubject(paper.subjectCode(), now);
+        String fingerprint = ExamPaperFingerprint.of(paper);
+
+        Optional<ExamPaperEntity> existing = paperRepository
+                .findByFingerprintAndDeletedAtIsNull(fingerprint)
+                .or(() -> paperRepository.findByExamCodeIgnoreCaseAndDeletedAtIsNull(paper.examCode()));
+
+        if (existing.isPresent() && existing.get().isPublished()) {
+            log.info("Exam paper {} already published; ingest skipped", paper.examCode());
+            return new IngestOutcome(existing.get().getId(), Outcome.SKIPPED_PUBLISHED);
+        }
+
+        boolean created = existing.isEmpty();
+        ExamPaperEntity entity = existing.orElseGet(() -> ExamPaperEntity.draft(
+                UUID.randomUUID(),
+                subject.getId(),
+                paper.paperType(),
+                paper.examCode(),
+                paper.term(),
+                paper.retakeLabel(),
+                paper.title(),
+                paper.description(),
+                paper.durationMinutes(),
+                paper.totalMark(),
+                paper.declaredQuestionCount(),
+                fingerprint,
+                ingestSource,
+                paper.externalPaperId(),
+                (int) paperRepository.countBySubjectIdAndPaperTypeAndDeletedAtIsNull(
+                        subject.getId(), paper.paperType().dbValue()),
+                now));
+
+        if (!created) {
+            applyMetadata(entity, paper, fingerprint, ingestSource, now);
+            clearExistingContent(entity, now);
+        }
+
+        List<String> storedImageKeys = new ArrayList<>();
+        List<String> storedBlurKeys = new ArrayList<>();
+        List<String> storedResourceKeys = new ArrayList<>();
+        try {
+            paperRepository.save(entity);
+            if (paper.paperType() == ExamPaperType.FE) {
+                buildFeQuestions(paper, entity, subject, now, storedImageKeys, storedBlurKeys);
+            } else {
+                buildPeContent(paper, entity, subject, now,
+                        storedImageKeys, storedBlurKeys, storedResourceKeys);
+            }
+        } catch (RuntimeException e) {
+            rollbackStoredObjects(storedImageKeys, storedBlurKeys, storedResourceKeys);
+            if (created) {
+                paperRepository.delete(entity);
+            }
+            throw e;
+        }
+
+        return new IngestOutcome(entity.getId(), created ? Outcome.CREATED : Outcome.UPDATED);
+    }
+
+    // --- subject --------------------------------------------------------------
+
+    /**
+     * A code we have never seen becomes a subject with the code as its title and {@code active =
+     * false}: the paper still lands for review, but an unnamed placeholder card never shows up in
+     * the public catalog before an admin fills in the real title.
+     */
+    private ExamSubjectEntity resolveOrCreateSubject(String subjectCode, Instant now) {
+        return subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull(subjectCode)
+                .orElseGet(() -> {
+                    log.info("Creating inactive exam subject {} from webhook ingest", subjectCode);
+                    return subjectRepository.save(ExamSubjectEntity.create(
+                            UUID.randomUUID(), subjectCode, subjectCode, null, null, null, null,
+                            examProperties.defaultFePreviewImageCountOrDefault(), false, 0, now));
+                });
+    }
+
+    // --- rebuild --------------------------------------------------------------
+
+    private void applyMetadata(ExamPaperEntity entity, IngestPaper paper,
+                               String fingerprint, String ingestSource, Instant now) {
+        entity.setTitle(paper.title());
+        entity.setTerm(paper.term());
+        entity.setRetakeLabel(paper.retakeLabel());
+        entity.setDescription(paper.description());
+        entity.setDurationMinutes(paper.durationMinutes());
+        entity.setTotalMark(paper.totalMark());
+        entity.setDeclaredQuestionCount(paper.declaredQuestionCount());
+        entity.setExternalPaperId(paper.externalPaperId());
+        entity.setIngestSource(ingestSource);
+        entity.setFingerprint(fingerprint);
+        entity.setUpdatedAt(now);
+    }
+
+    /**
+     * Wipes what the previous delivery built. Without this an update would leave the old questions
+     * in place next to the new ones, which reads as a duplicated paper to a member.
+     */
+    private void clearExistingContent(ExamPaperEntity entity, Instant now) {
+        for (ExamFeQuestionEntity question :
+                feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(entity.getId())) {
+            mediaService.deletePairedAll(
+                    ExamJsonUtil.deserialize(objectMapper, question.getQuestionImageUrls()),
+                    ExamJsonUtil.deserialize(objectMapper, question.getQuestionBlurUrls()));
+            question.setDeletedAt(now);
+            question.setUpdatedAt(now);
+            feQuestionRepository.save(question);
+        }
+
+        for (ExamPeItemEntity item :
+                peItemRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(entity.getId())) {
+            mediaService.deleteStoredReferences(
+                    ExamJsonUtil.deserialize(objectMapper, item.getExamImageUrls()));
+            for (ExamPeResourceEntity resource :
+                    peResourceRepository.findByPeItemIdAndDeletedAtIsNullOrderBySortOrderAsc(item.getId())) {
+                mediaService.deleteStoredReference(resource.getObjectKey());
+                resource.setDeletedAt(now);
+                peResourceRepository.save(resource);
+            }
+            item.setDeletedAt(now);
+            item.setUpdatedAt(now);
+            peItemRepository.save(item);
+        }
+    }
+
+    // --- FE -------------------------------------------------------------------
+
+    private void buildFeQuestions(IngestPaper paper, ExamPaperEntity entity, ExamSubjectEntity subject,
+                                  Instant now, List<String> storedImageKeys, List<String> storedBlurKeys) {
+        for (IngestQuestion question : paper.questions()) {
+            List<String> imageKeys = new ArrayList<>();
+            List<String> blurKeys = new ArrayList<>();
+            for (IngestAsset image : question.images()) {
+                ExamIngestStorage.StoredImage stored = ingestStorage.storeImage(
+                        image.content(), image.mimeType(), UploadPurpose.EXAM_FE_IMAGE, true);
+                imageKeys.add(stored.objectKey());
+                blurKeys.add(stored.blurObjectKey());
+                storedImageKeys.add(stored.objectKey());
+                storedBlurKeys.add(stored.blurObjectKey());
+            }
+
+            feQuestionRepository.save(ExamFeQuestionEntity.create(
+                    UUID.randomUUID(),
+                    subject.getId(),
+                    question.questionText(),
+                    ExamJsonUtil.serialize(objectMapper, imageKeys),
+                    ExamJsonUtil.serialize(objectMapper, blurKeys),
+                    question.displayNo() - 1,
+                    now,
+                    entity.getId()));
+        }
+    }
+
+    // --- PE -------------------------------------------------------------------
+
+    private void buildPeContent(IngestPaper paper, ExamPaperEntity entity, ExamSubjectEntity subject,
+                                Instant now, List<String> storedImageKeys, List<String> storedBlurKeys,
+                                List<String> storedResourceKeys) {
+        List<String> imageKeys = new ArrayList<>();
+        for (IngestAsset image : paper.images()) {
+            ExamIngestStorage.StoredImage stored = ingestStorage.storeImage(
+                    image.content(), image.mimeType(), UploadPurpose.EXAM_PE_IMAGE, false);
+            imageKeys.add(stored.objectKey());
+            storedImageKeys.add(stored.objectKey());
+            storedBlurKeys.add(null);
+        }
+
+        UUID itemId = UUID.randomUUID();
+        ExamPeItemEntity item = ExamPeItemEntity.create(
+                itemId,
+                subject.getId(),
+                paper.title(),
+                paper.description(),
+                ExamJsonUtil.serialize(objectMapper, imageKeys),
+                0,
+                now);
+        item.setPaperId(entity.getId());
+        peItemRepository.save(item);
+
+        for (IngestResource resource : paper.resources()) {
+            byte[] content = resourceFetcher.fetch(resource);
+            String objectKey = ingestStorage.storeResource(
+                    content, resource.mimeType(), resource.filename());
+            storedResourceKeys.add(objectKey);
+
+            peResourceRepository.save(ExamPeResourceEntity.create(
+                    UUID.randomUUID(),
+                    itemId,
+                    resource.folderLabel(),
+                    objectKey,
+                    resource.filename(),
+                    resource.mimeType(),
+                    content.length,
+                    resource.sortOrder(),
+                    now));
+        }
+    }
+
+    // --- cleanup --------------------------------------------------------------
+
+    private void rollbackStoredObjects(List<String> imageKeys, List<String> blurKeys,
+                                       List<String> resourceKeys) {
+        try {
+            mediaService.deletePairedAll(imageKeys, blurKeys);
+            mediaService.deleteStoredReferences(resourceKeys);
+        } catch (RuntimeException cleanupFailure) {
+            // Never mask the original failure with a cleanup problem; the orphan is logged instead.
+            log.warn("Failed to clean up partially ingested objects: {}", cleanupFailure.getMessage());
+        }
+    }
+
+    public enum Outcome {
+        CREATED, UPDATED, SKIPPED_PUBLISHED
+    }
+
+    public record IngestOutcome(UUID paperId, Outcome outcome) {
+    }
+}

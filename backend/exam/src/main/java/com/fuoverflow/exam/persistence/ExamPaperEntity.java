@@ -120,6 +120,7 @@ public class ExamPaperEntity {
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
     public void setExternalPaperId(String externalPaperId) { this.externalPaperId = externalPaperId; }
     public void setIngestSource(String ingestSource) { this.ingestSource = ingestSource; }
+    public void setFingerprint(String fingerprint) { this.fingerprint = fingerprint; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
     public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
 
