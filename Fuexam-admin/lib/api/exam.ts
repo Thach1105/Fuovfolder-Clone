@@ -291,6 +291,80 @@ export function deleteAdminExamComment(commentId: string) {
   return apiFetch<void>(`/api/v1/admin/exam/comments/${commentId}`, { method: "DELETE" });
 }
 
+// --- papers (webhook-ingested + legacy) --------------------------------------
+
+export type ExamPaperType = "FE" | "PE";
+export type ExamPaperStatus = "draft" | "published";
+
+export interface AdminPaper {
+  id: string;
+  subjectId: string;
+  paperType: ExamPaperType;
+  examCode: string;
+  term: string | null;
+  retakeLabel: string | null;
+  title: string;
+  status: ExamPaperStatus;
+  ingestSource: string | null;
+  questionCount: number;
+  resourceCount: number;
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminPaperQuestion {
+  id: string;
+  questionText: string | null;
+  imageUrls: string[];
+  blurUrls: string[];
+  sortOrder: number;
+}
+
+export interface AdminPaperContent {
+  paper: AdminPaper;
+  questions: AdminPaperQuestion[];
+  images: string[];
+  resources: AdminPeResource[];
+}
+
+export interface AdminWebhookEvent {
+  id: string;
+  clientId: string;
+  eventId: string;
+  status: "pending" | "processing" | "done" | "failed";
+  attemptCount: number;
+  paperId: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  processedAt: string | null;
+}
+
+export function listExamPapers(opts?: { subjectId?: string; status?: ExamPaperStatus }) {
+  const params = new URLSearchParams();
+  if (opts?.subjectId) params.set("subjectId", opts.subjectId);
+  if (opts?.status) params.set("status", opts.status);
+  const query = params.toString();
+  return apiFetch<AdminPaper[]>(`/api/v1/admin/exam/papers${query ? `?${query}` : ""}`);
+}
+
+export function getExamPaperContent(paperId: string) {
+  return apiFetch<AdminPaperContent>(`/api/v1/admin/exam/papers/${paperId}/content`);
+}
+
+export function publishExamPaper(paperId: string) {
+  return apiFetch<AdminPaper>(`/api/v1/admin/exam/papers/${paperId}/publish`, { method: "POST" });
+}
+
+export function deleteExamPaper(paperId: string) {
+  return apiFetch<void>(`/api/v1/admin/exam/papers/${paperId}`, { method: "DELETE" });
+}
+
+export function listExamWebhookEvents(status?: AdminWebhookEvent["status"]) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiFetch<AdminWebhookEvent[]>(`/api/v1/admin/exam/webhook-events${query}`);
+}
+
 const STORAGE_PUBLIC_BASE = process.env.NEXT_PUBLIC_STORAGE_PUBLIC_BASE_URL ?? "";
 
 export function examMediaUrl(urlOrKey: string | null | undefined): string | null {

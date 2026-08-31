@@ -14,6 +14,7 @@ import {
   FileText,
   KeyRound,
   ClipboardCheck,
+  FileStack,
   MessageSquare,
   Flag,
   Inbox,
@@ -82,6 +83,12 @@ const NAV: NavSection[] = [
         label: "Exam FE/PE",
         icon: ClipboardCheck,
         permission: "exam.subject.admin:read",
+      },
+      {
+        href: "/exam/papers",
+        label: "Exam — Đề thi",
+        icon: FileStack,
+        permission: "exam.paper.admin:read",
       },
       {
         href: "/exam/comments",
