@@ -51,6 +51,7 @@ class ExamPaperAdminServiceTest {
     @Mock private ExamPeResourceRepository peResourceRepository;
     @Mock private ExamWebhookEventRepository webhookEventRepository;
     @Mock private ExamMediaService mediaService;
+    @Mock private ExamMediaUrlResolver urlResolver;
 
     private ExamPaperAdminService service;
     private UUID subjectId;
@@ -59,9 +60,13 @@ class ExamPaperAdminServiceTest {
     void setUp() {
         service = new ExamPaperAdminService(
                 paperRepository, feQuestionRepository, peItemRepository, peResourceRepository,
-                webhookEventRepository, mediaService, new ObjectMapper());
+                webhookEventRepository, mediaService, urlResolver, new ObjectMapper());
         subjectId = UUID.randomUUID();
         lenient().when(paperRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(urlResolver.plainAll(any())).thenAnswer(inv -> {
+            List<String> keys = inv.getArgument(0);
+            return keys.stream().map(key -> "https://cdn.test/" + key).toList();
+        });
         lenient().when(feQuestionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(peItemRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(peResourceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -250,7 +255,7 @@ class ExamPaperAdminServiceTest {
         assertEquals(paper.getId(), content.paper().id());
         assertEquals(2, content.questions().size());
         assertEquals("Cau 1", content.questions().get(0).questionText());
-        assertEquals(List.of("exam/fe/a.png"), content.questions().get(0).imageUrls());
+        assertEquals(List.of("https://cdn.test/exam/fe/a.png"), content.questions().get(0).imageUrls());
         assertEquals(2, content.questions().get(1).imageUrls().size());
         assertTrue(content.images().isEmpty());
         assertTrue(content.resources().isEmpty());
@@ -272,7 +277,7 @@ class ExamPaperAdminServiceTest {
         AdminPaperContentResponse content = service.getContent(paper.getId());
 
         assertTrue(content.questions().isEmpty());
-        assertEquals(List.of("exam/pe/x.png"), content.images());
+        assertEquals(List.of("https://cdn.test/exam/pe/x.png"), content.images());
         assertEquals(1, content.resources().size());
         assertEquals("a.zip", content.resources().get(0).originalFilename());
     }
@@ -283,6 +288,25 @@ class ExamPaperAdminServiceTest {
         when(paperRepository.findByIdAndDeletedAtIsNull(missing)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> service.getContent(missing));
+    }
+
+    @Test
+    void paperContentResolvesImagesToPublicUrlsNotRawKeys() {
+        ExamPaperEntity paper = draft(ExamPaperType.FE);
+        ExamFeQuestionEntity question = ExamFeQuestionEntity.create(
+                UUID.randomUUID(), subjectId, null, "[\"exam/fe/a.png\"]",
+                "[\"exam/fe/a-blur.jpg\"]", 0, Instant.now(), paper.getId());
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(paper.getId()))
+                .thenReturn(List.of(question));
+
+        AdminPaperContentResponse content = service.getContent(paper.getId());
+
+        // A raw object key renders as a broken image against S3-backed storage: the console's
+        // examMediaUrl() only falls back to a local /uploads path, which production does not serve.
+        String url = content.questions().get(0).imageUrls().get(0);
+        assertTrue(url.startsWith("https://"), "expected a resolved public URL, got: " + url);
+        assertTrue(content.questions().get(0).blurUrls().get(0).startsWith("https://"));
     }
 
     @Test
