@@ -11,6 +11,9 @@ public interface ExamSubjectRepository extends JpaRepository<ExamSubjectEntity, 
 
     List<ExamSubjectEntity> findByActiveTrueAndDeletedAtIsNullOrderBySortOrderAscTitleAsc();
 
+    List<ExamSubjectEntity> findTop6ByCategorySlugAndActiveTrueAndDeletedAtIsNullOrderBySortOrderAsc(
+            String categorySlug);
+
     Optional<ExamSubjectEntity> findByIdAndDeletedAtIsNull(UUID id);
 
     Optional<ExamSubjectEntity> findByCodeIgnoreCaseAndDeletedAtIsNull(String code);

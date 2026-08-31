@@ -2,11 +2,17 @@ package com.fuoverflow.exam.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuoverflow.common.exception.ForbiddenException;
+import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.exam.api.dto.PublicFeQuestionListResponse;
 import com.fuoverflow.exam.api.dto.PublicFeQuestionResponse;
+import com.fuoverflow.exam.api.dto.PublicPaperDetailResponse;
+import com.fuoverflow.exam.api.dto.PublicSubjectDetailResponse;
 import com.fuoverflow.exam.persistence.ExamCommentRepository;
 import com.fuoverflow.exam.persistence.ExamFeQuestionEntity;
 import com.fuoverflow.exam.persistence.ExamFeQuestionRepository;
+import com.fuoverflow.exam.domain.ExamPaperType;
+import com.fuoverflow.exam.persistence.ExamPaperEntity;
+import com.fuoverflow.exam.persistence.ExamPaperRepository;
 import com.fuoverflow.exam.persistence.ExamPeItemRepository;
 import com.fuoverflow.exam.persistence.ExamPeResourceRepository;
 import com.fuoverflow.exam.persistence.ExamSubjectEntity;
@@ -34,6 +40,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ExamCatalogQueryServiceTest {
     @Mock private ExamSubjectRepository subjectRepository;
+    @Mock private ExamPaperRepository paperRepository;
     @Mock private ExamFeQuestionRepository feQuestionRepository;
     @Mock private ExamPeItemRepository peItemRepository;
     @Mock private ExamPeResourceRepository peResourceRepository;
@@ -49,7 +56,7 @@ class ExamCatalogQueryServiceTest {
     @BeforeEach
     void setUp() {
         service = new ExamCatalogQueryService(
-                subjectRepository, feQuestionRepository,
+                subjectRepository, paperRepository, feQuestionRepository,
                 peItemRepository, peResourceRepository, commentRepository,
                 accessGuard, urlResolver, new ObjectMapper());
         userId = UUID.randomUUID();
@@ -183,6 +190,101 @@ class ExamCatalogQueryServiceTest {
         for (PublicFeQuestionResponse q : res.questions()) {
             assertTrue(q.images().stream().allMatch(img -> "full".equals(img.type())));
         }
+    }
+
+    @Test
+    void subjectDetailListsOnlyPublishedPapers() {
+        ExamSubjectEntity subject = subject(2);
+        when(subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull("MLN111")).thenReturn(Optional.of(subject));
+        when(paperRepository.findBySubjectIdAndStatusAndDeletedAtIsNullOrderBySortOrderAscCreatedAtDesc(
+                subjectId, "published")).thenReturn(List.of(publishedFePaper()));
+        when(feQuestionRepository.countByPaperIdAndDeletedAtIsNull(any())).thenReturn(50L);
+
+        PublicSubjectDetailResponse detail = service.getDetail("MLN111", userId);
+
+        assertEquals(1, detail.papers().size());
+        assertEquals("FE", detail.papers().get(0).type());
+        assertEquals("SU26", detail.papers().get(0).term());
+        assertEquals(50, detail.papers().get(0).imageCount());
+        assertEquals(1, detail.fePaperCount());
+        assertEquals(0, detail.pePaperCount());
+    }
+
+    @Test
+    void relatedSubjectsExcludeTheCurrentOne() {
+        ExamSubjectEntity subject = ExamSubjectEntity.create(
+                subjectId, "MLN111", "Title", null, null, null, "chinh-tri",
+                2, true, 0, Instant.now());
+        ExamSubjectEntity sibling = ExamSubjectEntity.create(
+                UUID.randomUUID(), "MLN122", "Other", null, null, null, "chinh-tri",
+                2, true, 1, Instant.now());
+        when(subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull("MLN111")).thenReturn(Optional.of(subject));
+        when(subjectRepository.findTop6ByCategorySlugAndActiveTrueAndDeletedAtIsNullOrderBySortOrderAsc(
+                "chinh-tri")).thenReturn(List.of(subject, sibling));
+
+        PublicSubjectDetailResponse detail = service.getDetail("MLN111", userId);
+
+        assertEquals(1, detail.related().size());
+        assertEquals("MLN122", detail.related().get(0).code());
+    }
+
+    @Test
+    void relatedIsEmptyWithoutACategory() {
+        when(subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull("MLN111"))
+                .thenReturn(Optional.of(subject(2)));
+
+        assertTrue(service.getDetail("MLN111", userId).related().isEmpty());
+    }
+
+    @Test
+    void paperDetailRequiresMembership() {
+        UUID paperId = UUID.randomUUID();
+        org.mockito.Mockito.doThrow(new ForbiddenException("NO_ACTIVE_MEMBERSHIP", "no"))
+                .when(accessGuard).requireActiveMembership(userId);
+
+        assertThrows(ForbiddenException.class, () -> service.getPaper(paperId, userId));
+    }
+
+    @Test
+    void paperDetailRejectsADraft() {
+        ExamPaperEntity draft = draftFePaper();
+        when(paperRepository.findByIdAndDeletedAtIsNull(draft.getId())).thenReturn(Optional.of(draft));
+
+        assertThrows(NotFoundException.class, () -> service.getPaper(draft.getId(), userId));
+    }
+
+    @Test
+    void paperDetailReturnsSignedImagesOfEveryQuestion() {
+        ExamPaperEntity paper = publishedFePaper();
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(subjectRepository.findByIdAndDeletedAtIsNull(subjectId)).thenReturn(Optional.of(subject(2)));
+        when(feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(paper.getId()))
+                .thenReturn(questionsWithImages(2, 2));
+        when(urlResolver.signedAll(any())).thenAnswer(inv -> {
+            List<String> keys = inv.getArgument(0);
+            return keys.stream().map(k -> "signed:" + k).toList();
+        });
+
+        PublicPaperDetailResponse detail = service.getPaper(paper.getId(), userId);
+
+        assertEquals("FE", detail.type());
+        assertEquals("MLN111", detail.subjectCode());
+        assertEquals(4, detail.imageUrls().size());
+        assertTrue(detail.imageUrls().get(0).startsWith("signed:"));
+        assertTrue(detail.resources().isEmpty());
+    }
+
+    private ExamPaperEntity publishedFePaper() {
+        ExamPaperEntity paper = draftFePaper();
+        paper.publish(Instant.now());
+        return paper;
+    }
+
+    private ExamPaperEntity draftFePaper() {
+        return ExamPaperEntity.draft(
+                UUID.randomUUID(), subjectId, ExamPaperType.FE, "MLN111_SU26_FE_1",
+                "SU26", null, "MLN111 FE", null, 60, null, 50,
+                "a".repeat(64), "webhook:eos-crawler", "1", 0, Instant.now());
     }
 
     @Test

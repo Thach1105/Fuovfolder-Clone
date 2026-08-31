@@ -1,5 +1,6 @@
 package com.fuoverflow.exam.api.dto;
 
+import java.util.List;
 import java.util.UUID;
 
 public record PublicSubjectDetailResponse(
@@ -11,9 +12,11 @@ public record PublicSubjectDetailResponse(
         String cardColor,
         String coverImageUrl,
         long viewCount,
-        int feQuestionCount,
+        int fePaperCount,
         int pePaperCount,
         int fePreviewImageCount,
-        boolean hasActiveMembership
+        boolean hasActiveMembership,
+        List<PublicPaperSummaryResponse> papers,
+        List<PublicSubjectCardResponse> related
 ) {
 }

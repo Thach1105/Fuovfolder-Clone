@@ -4,12 +4,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.exam.api.dto.PublicFeQuestionListResponse;
 import com.fuoverflow.exam.api.dto.PublicFeQuestionResponse;
+import com.fuoverflow.exam.api.dto.PublicPaperDetailResponse;
+import com.fuoverflow.exam.api.dto.PublicPaperSummaryResponse;
 import com.fuoverflow.exam.api.dto.PublicPeItemResponse;
 import com.fuoverflow.exam.api.dto.PublicSubjectCardResponse;
 import com.fuoverflow.exam.api.dto.PublicSubjectDetailResponse;
 import com.fuoverflow.exam.persistence.ExamCommentRepository;
+import com.fuoverflow.exam.domain.ExamPaperStatus;
+import com.fuoverflow.exam.domain.ExamPaperType;
 import com.fuoverflow.exam.persistence.ExamFeQuestionEntity;
 import com.fuoverflow.exam.persistence.ExamFeQuestionRepository;
+import com.fuoverflow.exam.persistence.ExamPaperEntity;
+import com.fuoverflow.exam.persistence.ExamPaperRepository;
 import com.fuoverflow.exam.persistence.ExamPeItemEntity;
 import com.fuoverflow.exam.persistence.ExamPeItemRepository;
 import com.fuoverflow.exam.persistence.ExamPeResourceEntity;
@@ -29,6 +35,7 @@ public class ExamCatalogQueryService {
     private static final String FE_QUESTION_SUBJECT_TYPE = "fe_question";
 
     private final ExamSubjectRepository subjectRepository;
+    private final ExamPaperRepository paperRepository;
     private final ExamFeQuestionRepository feQuestionRepository;
     private final ExamPeItemRepository peItemRepository;
     private final ExamPeResourceRepository peResourceRepository;
@@ -39,6 +46,7 @@ public class ExamCatalogQueryService {
 
     public ExamCatalogQueryService(
             ExamSubjectRepository subjectRepository,
+            ExamPaperRepository paperRepository,
             ExamFeQuestionRepository feQuestionRepository,
             ExamPeItemRepository peItemRepository,
             ExamPeResourceRepository peResourceRepository,
@@ -47,6 +55,7 @@ public class ExamCatalogQueryService {
             ExamMediaUrlResolver urlResolver,
             ObjectMapper objectMapper) {
         this.subjectRepository = subjectRepository;
+        this.paperRepository = paperRepository;
         this.feQuestionRepository = feQuestionRepository;
         this.peItemRepository = peItemRepository;
         this.peResourceRepository = peResourceRepository;
@@ -67,6 +76,7 @@ public class ExamCatalogQueryService {
     public PublicSubjectDetailResponse getDetail(String idOrCode, UUID userId) {
         ExamSubjectEntity subject = resolveActive(idOrCode);
         boolean member = accessGuard.hasActiveMembership(userId);
+        List<ExamPaperEntity> papers = publishedPapers(subject.getId());
         return new PublicSubjectDetailResponse(
                 subject.getId(),
                 subject.getCode(),
@@ -76,10 +86,51 @@ public class ExamCatalogQueryService {
                 subject.getCardColor(),
                 urlResolver.signed(subject.getCoverImageUrl()),
                 subject.getViewCount(),
-                (int) feQuestionRepository.countBySubjectIdAndDeletedAtIsNull(subject.getId()),
-                (int) peItemRepository.countBySubjectIdAndDeletedAtIsNull(subject.getId()),
+                (int) countOfType(papers, ExamPaperType.FE),
+                (int) countOfType(papers, ExamPaperType.PE),
                 subject.getFePreviewImageCount(),
-                member);
+                member,
+                papers.stream().map(this::toPaperSummary).toList(),
+                relatedCards(subject));
+    }
+
+    /** Full content of one published paper. Members only, same gate PE items use. */
+    @Transactional(readOnly = true)
+    public PublicPaperDetailResponse getPaper(UUID paperId, UUID userId) {
+        accessGuard.requireActiveMembership(userId);
+        ExamPaperEntity paper = paperRepository.findByIdAndDeletedAtIsNull(paperId)
+                .filter(ExamPaperEntity::isPublished)
+                .orElseThrow(() -> new NotFoundException("EXAM_PAPER_NOT_FOUND", "Exam paper not found"));
+        ExamSubjectEntity subject = subjectRepository.findByIdAndDeletedAtIsNull(paper.getSubjectId())
+                .orElseThrow(() -> new NotFoundException("EXAM_SUBJECT_NOT_FOUND", "Exam subject not found"));
+
+        List<String> imageKeys = new ArrayList<>();
+        List<PublicPeItemResponse.PublicPeResourceResponse> resources = new ArrayList<>();
+        if (paper.paperTypeEnum() == ExamPaperType.FE) {
+            for (ExamFeQuestionEntity question
+                    : feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(paperId)) {
+                imageKeys.addAll(ExamJsonUtil.deserialize(objectMapper, question.getQuestionImageUrls()));
+            }
+        } else {
+            for (ExamPeItemEntity item
+                    : peItemRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(paperId)) {
+                imageKeys.addAll(ExamJsonUtil.deserialize(objectMapper, item.getExamImageUrls()));
+                peResourceRepository.findByPeItemIdAndDeletedAtIsNullOrderBySortOrderAsc(item.getId())
+                        .forEach(resource -> resources.add(toPublicResource(resource)));
+            }
+        }
+
+        return new PublicPaperDetailResponse(
+                paper.getId(),
+                subject.getId(),
+                subject.getCode(),
+                paper.getPaperType(),
+                paper.getTerm(),
+                paper.getRetakeLabel(),
+                paper.getTitle(),
+                paper.getDescription(),
+                urlResolver.signedAll(imageKeys),
+                resources);
     }
 
     /**
@@ -118,6 +169,7 @@ public class ExamCatalogQueryService {
     // --- mapping helpers ------------------------------------------------------
 
     private PublicSubjectCardResponse toCard(ExamSubjectEntity s) {
+        String published = ExamPaperStatus.PUBLISHED.dbValue();
         return new PublicSubjectCardResponse(
                 s.getId(),
                 s.getCode(),
@@ -126,8 +178,59 @@ public class ExamCatalogQueryService {
                 s.getCardColor(),
                 urlResolver.signed(s.getCoverImageUrl()),
                 s.getViewCount(),
-                (int) feQuestionRepository.countBySubjectIdAndDeletedAtIsNull(s.getId()),
-                (int) peItemRepository.countBySubjectIdAndDeletedAtIsNull(s.getId()));
+                (int) paperRepository.countBySubjectIdAndPaperTypeAndStatusAndDeletedAtIsNull(
+                        s.getId(), ExamPaperType.FE.dbValue(), published),
+                (int) paperRepository.countBySubjectIdAndPaperTypeAndStatusAndDeletedAtIsNull(
+                        s.getId(), ExamPaperType.PE.dbValue(), published));
+    }
+
+    private List<ExamPaperEntity> publishedPapers(UUID subjectId) {
+        return paperRepository.findBySubjectIdAndStatusAndDeletedAtIsNullOrderBySortOrderAscCreatedAtDesc(
+                subjectId, ExamPaperStatus.PUBLISHED.dbValue());
+    }
+
+    private static long countOfType(List<ExamPaperEntity> papers, ExamPaperType type) {
+        return papers.stream().filter(p -> type.dbValue().equals(p.getPaperType())).count();
+    }
+
+    private PublicPaperSummaryResponse toPaperSummary(ExamPaperEntity paper) {
+        int imageCount;
+        int resourceCount = 0;
+        if (paper.paperTypeEnum() == ExamPaperType.FE) {
+            imageCount = (int) feQuestionRepository.countByPaperIdAndDeletedAtIsNull(paper.getId());
+        } else {
+            int images = 0;
+            for (ExamPeItemEntity item
+                    : peItemRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(paper.getId())) {
+                images += ExamJsonUtil.deserialize(objectMapper, item.getExamImageUrls()).size();
+                resourceCount += peResourceRepository
+                        .findByPeItemIdAndDeletedAtIsNullOrderBySortOrderAsc(item.getId()).size();
+            }
+            imageCount = images;
+        }
+        return new PublicPaperSummaryResponse(
+                paper.getId(),
+                paper.getPaperType(),
+                paper.getTerm(),
+                paper.getRetakeLabel(),
+                paper.getTitle(),
+                imageCount,
+                resourceCount);
+    }
+
+    /** Up to five other active subjects in the same category. */
+    private List<PublicSubjectCardResponse> relatedCards(ExamSubjectEntity subject) {
+        if (subject.getCategorySlug() == null || subject.getCategorySlug().isBlank()) {
+            return List.of();
+        }
+        return subjectRepository
+                .findTop6ByCategorySlugAndActiveTrueAndDeletedAtIsNullOrderBySortOrderAsc(
+                        subject.getCategorySlug())
+                .stream()
+                .filter(candidate -> !candidate.getId().equals(subject.getId()))
+                .limit(5)
+                .map(this::toCard)
+                .toList();
     }
 
     /**
