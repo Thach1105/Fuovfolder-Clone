@@ -3,7 +3,9 @@ package com.fuoverflow.exam.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuoverflow.common.exception.BadRequestException;
 import com.fuoverflow.common.exception.NotFoundException;
+import com.fuoverflow.exam.api.dto.AdminPaperContentResponse;
 import com.fuoverflow.exam.api.dto.AdminPaperResponse;
+import com.fuoverflow.exam.api.dto.AdminPeItemResponse;
 import com.fuoverflow.exam.api.dto.AdminWebhookEventResponse;
 import com.fuoverflow.exam.domain.ExamPaperType;
 import com.fuoverflow.exam.persistence.ExamFeQuestionEntity;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -126,11 +129,67 @@ public class ExamPaperAdminService {
         paperRepository.save(paper);
     }
 
+    /** Full content of one paper so an admin can look before publishing. */
+    @Transactional(readOnly = true)
+    public AdminPaperContentResponse getContent(UUID paperId) {
+        ExamPaperEntity paper = requirePaper(paperId);
+
+        List<AdminPaperContentResponse.AdminPaperQuestion> questions = new ArrayList<>();
+        List<String> images = new ArrayList<>();
+        List<AdminPeItemResponse.AdminPeResourceResponse> resources = new ArrayList<>();
+
+        if (paper.paperTypeEnum() == ExamPaperType.FE) {
+            for (ExamFeQuestionEntity question
+                    : feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(paperId)) {
+                questions.add(new AdminPaperContentResponse.AdminPaperQuestion(
+                        question.getId(),
+                        question.getQuestionText(),
+                        ExamJsonUtil.deserialize(objectMapper, question.getQuestionImageUrls()),
+                        ExamJsonUtil.deserialize(objectMapper, question.getQuestionBlurUrls()),
+                        question.getSortOrder()));
+            }
+        } else {
+            for (ExamPeItemEntity item
+                    : peItemRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(paperId)) {
+                images.addAll(ExamJsonUtil.deserialize(objectMapper, item.getExamImageUrls()));
+                for (ExamPeResourceEntity resource
+                        : peResourceRepository.findByPeItemIdAndDeletedAtIsNullOrderBySortOrderAsc(item.getId())) {
+                    resources.add(new AdminPeItemResponse.AdminPeResourceResponse(
+                            resource.getId(),
+                            resource.getFolderLabel(),
+                            resource.getObjectKey(),
+                            resource.getOriginalFilename(),
+                            resource.getMimeType(),
+                            resource.getSizeBytes(),
+                            resource.getSortOrder()));
+                }
+            }
+        }
+
+        return new AdminPaperContentResponse(toAdmin(paper), questions, images, resources);
+    }
+
+    /**
+     * Recent webhook receipts, newest first. Without a listing a failed delivery is invisible:
+     * nobody knows the receipt id of a paper that never arrived.
+     */
+    @Transactional(readOnly = true)
+    public List<AdminWebhookEventResponse> listWebhookEvents(String status) {
+        List<ExamWebhookEventEntity> events = (status == null || status.isBlank())
+                ? webhookEventRepository.findTop50ByOrderByCreatedAtDesc()
+                : webhookEventRepository.findTop50ByStatusOrderByCreatedAtDesc(status.trim());
+        return events.stream().map(ExamPaperAdminService::toAdminEvent).toList();
+    }
+
     @Transactional(readOnly = true)
     public AdminWebhookEventResponse getWebhookEvent(UUID receiptId) {
         ExamWebhookEventEntity event = webhookEventRepository.findById(receiptId)
                 .orElseThrow(() -> new NotFoundException(
                         "EXAM_WEBHOOK_EVENT_NOT_FOUND", "Webhook receipt not found"));
+        return toAdminEvent(event);
+    }
+
+    private static AdminWebhookEventResponse toAdminEvent(ExamWebhookEventEntity event) {
         return new AdminWebhookEventResponse(
                 event.getId(),
                 event.getClientId(),

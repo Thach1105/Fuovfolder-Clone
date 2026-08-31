@@ -7,6 +7,7 @@ import com.fuoverflow.common.web.ApiResponse;
 import com.fuoverflow.exam.api.dto.AddPeResourceRequest;
 import com.fuoverflow.exam.api.dto.AdminCommentPageResponse;
 import com.fuoverflow.exam.api.dto.AdminFeQuestionResponse;
+import com.fuoverflow.exam.api.dto.AdminPaperContentResponse;
 import com.fuoverflow.exam.api.dto.AdminPaperResponse;
 import com.fuoverflow.exam.api.dto.AdminPeItemResponse;
 import com.fuoverflow.exam.api.dto.AdminSubjectResponse;
@@ -224,6 +225,19 @@ public class ExamAdminController {
     @RequirePermission("exam.paper.admin:delete")
     public void deletePaper(@PathVariable UUID paperId) {
         paperService.delete(paperId);
+    }
+
+    @GetMapping("/papers/{paperId}/content")
+    @RequirePermission("exam.paper.admin:read")
+    public ApiResponse<AdminPaperContentResponse> getPaperContent(@PathVariable UUID paperId) {
+        return ApiResponse.ok(paperService.getContent(paperId));
+    }
+
+    @GetMapping("/webhook-events")
+    @RequirePermission("exam.webhook.admin:read")
+    public ApiResponse<List<AdminWebhookEventResponse>> listWebhookEvents(
+            @RequestParam(required = false) String status) {
+        return ApiResponse.ok(paperService.listWebhookEvents(status));
     }
 
     @GetMapping("/webhook-events/{receiptId}")
