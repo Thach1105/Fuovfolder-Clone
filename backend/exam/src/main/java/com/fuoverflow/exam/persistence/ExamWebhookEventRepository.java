@@ -13,4 +13,8 @@ public interface ExamWebhookEventRepository extends JpaRepository<ExamWebhookEve
 
     List<ExamWebhookEventEntity> findTop20ByStatusAndAvailableAtBeforeOrderByAvailableAtAsc(
             String status, Instant before);
+
+    List<ExamWebhookEventEntity> findTop50ByStatusOrderByCreatedAtDesc(String status);
+
+    List<ExamWebhookEventEntity> findTop50ByOrderByCreatedAtDesc();
 }

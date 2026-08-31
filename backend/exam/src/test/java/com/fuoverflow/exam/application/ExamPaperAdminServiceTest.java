@@ -3,6 +3,7 @@ package com.fuoverflow.exam.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuoverflow.common.exception.BadRequestException;
 import com.fuoverflow.common.exception.NotFoundException;
+import com.fuoverflow.exam.api.dto.AdminPaperContentResponse;
 import com.fuoverflow.exam.api.dto.AdminPaperResponse;
 import com.fuoverflow.exam.api.dto.AdminWebhookEventResponse;
 import com.fuoverflow.exam.domain.ExamPaperType;
@@ -229,6 +230,88 @@ class ExamPaperAdminServiceTest {
         when(webhookEventRepository.findById(missing)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> service.getWebhookEvent(missing));
+    }
+
+    @Test
+    void paperContentReturnsFeQuestionsInOrderWithPlainImageUrls() {
+        ExamPaperEntity paper = draft(ExamPaperType.FE);
+        ExamFeQuestionEntity q1 = ExamFeQuestionEntity.create(
+                UUID.randomUUID(), subjectId, "Cau 1", "[\"exam/fe/a.png\"]",
+                "[\"exam/fe/a-blur.jpg\"]", 0, Instant.now(), paper.getId());
+        ExamFeQuestionEntity q2 = ExamFeQuestionEntity.create(
+                UUID.randomUUID(), subjectId, null, "[\"exam/fe/b.png\",\"exam/fe/c.png\"]",
+                "[\"exam/fe/b-blur.jpg\",\"exam/fe/c-blur.jpg\"]", 1, Instant.now(), paper.getId());
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(paper.getId()))
+                .thenReturn(List.of(q1, q2));
+
+        AdminPaperContentResponse content = service.getContent(paper.getId());
+
+        assertEquals(paper.getId(), content.paper().id());
+        assertEquals(2, content.questions().size());
+        assertEquals("Cau 1", content.questions().get(0).questionText());
+        assertEquals(List.of("exam/fe/a.png"), content.questions().get(0).imageUrls());
+        assertEquals(2, content.questions().get(1).imageUrls().size());
+        assertTrue(content.images().isEmpty());
+        assertTrue(content.resources().isEmpty());
+    }
+
+    @Test
+    void paperContentReturnsPeImagesAndResources() {
+        ExamPaperEntity paper = draft(ExamPaperType.PE);
+        ExamPeItemEntity item = ExamPeItemEntity.create(
+                UUID.randomUUID(), subjectId, "PE 1", "mo ta",
+                "[\"exam/pe/x.png\"]", 0, Instant.now());
+        item.setPaperId(paper.getId());
+        when(paperRepository.findByIdAndDeletedAtIsNull(paper.getId())).thenReturn(Optional.of(paper));
+        when(peItemRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(paper.getId()))
+                .thenReturn(List.of(item));
+        when(peResourceRepository.findByPeItemIdAndDeletedAtIsNullOrderBySortOrderAsc(item.getId()))
+                .thenReturn(List.of(resource(item.getId())));
+
+        AdminPaperContentResponse content = service.getContent(paper.getId());
+
+        assertTrue(content.questions().isEmpty());
+        assertEquals(List.of("exam/pe/x.png"), content.images());
+        assertEquals(1, content.resources().size());
+        assertEquals("a.zip", content.resources().get(0).originalFilename());
+    }
+
+    @Test
+    void paperContentRejectsAnUnknownPaper() {
+        UUID missing = UUID.randomUUID();
+        when(paperRepository.findByIdAndDeletedAtIsNull(missing)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> service.getContent(missing));
+    }
+
+    @Test
+    void webhookEventListFiltersByStatus() {
+        ExamWebhookEventEntity failed = ExamWebhookEventEntity.received(
+                UUID.randomUUID(), "eos-crawler", "evt-f", "exam.paper.upserted",
+                "{}", "a".repeat(64), true, Instant.now());
+        failed.markProcessing();
+        failed.markFailed("WEBHOOK_RESOURCE_FETCH_FAILED", "khong tai duoc", Instant.now());
+        when(webhookEventRepository.findTop50ByStatusOrderByCreatedAtDesc("failed"))
+                .thenReturn(List.of(failed));
+
+        List<AdminWebhookEventResponse> events = service.listWebhookEvents("failed");
+
+        assertEquals(1, events.size());
+        assertEquals("failed", events.get(0).status());
+        assertEquals("WEBHOOK_RESOURCE_FETCH_FAILED", events.get(0).errorCode());
+    }
+
+    @Test
+    void webhookEventListWithoutStatusReturnsEverything() {
+        ExamWebhookEventEntity done = ExamWebhookEventEntity.received(
+                UUID.randomUUID(), "eos-crawler", "evt-d", "exam.paper.upserted",
+                "{}", "b".repeat(64), true, Instant.now());
+        when(webhookEventRepository.findTop50ByOrderByCreatedAtDesc())
+                .thenReturn(List.of(done));
+
+        assertEquals(1, service.listWebhookEvents(null).size());
+        assertEquals(1, service.listWebhookEvents("  ").size());
     }
 
     private ExamPaperEntity draft(ExamPaperType type) {
