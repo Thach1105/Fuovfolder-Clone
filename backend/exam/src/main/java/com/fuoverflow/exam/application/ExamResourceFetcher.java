@@ -6,6 +6,7 @@ import com.fuoverflow.exam.domain.IngestResource;
 import com.fuoverflow.exam.support.Sha256;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.net.InetAddress;
@@ -33,6 +34,8 @@ public class ExamResourceFetcher {
     private final boolean allowPlainHttp;
     private final HttpClient httpClient;
 
+    // @Autowired disambiguates: the second constructor exists so tests can hit a loopback server.
+    @Autowired
     public ExamResourceFetcher(ExamWebhookProperties properties) {
         this(properties, false);
     }

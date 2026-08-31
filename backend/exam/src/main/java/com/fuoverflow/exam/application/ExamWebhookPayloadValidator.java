@@ -14,6 +14,7 @@ import com.fuoverflow.exam.domain.IngestPaper;
 import com.fuoverflow.exam.domain.IngestQuestion;
 import com.fuoverflow.exam.domain.IngestResource;
 import com.fuoverflow.exam.support.Sha256;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -47,6 +48,8 @@ public class ExamWebhookPayloadValidator {
     private final long maxImageBytes;
     private final int maxQuestions;
 
+    // @Autowired disambiguates: the second constructor exists for tests that pin the limits.
+    @Autowired
     public ExamWebhookPayloadValidator(ExamWebhookProperties properties) {
         this(properties.maxImageBytesOrDefault(), properties.maxQuestionsOrDefault());
     }
