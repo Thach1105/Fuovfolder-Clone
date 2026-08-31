@@ -187,11 +187,14 @@ WHERE slug = 'ADMIN'
 - [ ] **Step 3: Apply the migrations against a real database**
 
 ```bash
-cd backend && docker compose up -d postgres
-mvn -q -pl app -am spring-boot:run -Dspring-boot.run.profiles=local
+cd backend && docker compose up -d postgres redis
+mvn -q -DskipTests package
+java -jar app/target/fuoverflow-app-0.0.1-SNAPSHOT.jar --spring.profiles.active=local
 ```
 
-Expected: startup completes with no Flyway or Hibernate `validate` error. Stop the app once it reports the port is listening.
+Do NOT use `mvn -pl app -am spring-boot:run`: `-am` makes the plugin run on the aggregator module too, which has no main class and fails immediately.
+
+Expected: Flyway reaches version 54 and the log shows `Initialized JPA EntityManagerFactory` — that line is the proof Hibernate `validate` accepted every mapping. The `local` profile then tries to reach S3-compatible storage on `localhost:9000`; without MinIO running the context fails *after* validation with `s3CompatibleObjectStorage ... Connection refused`, which is expected and unrelated to this task. Stop the process there.
 
 - [ ] **Step 4: Verify the schema landed**
 
@@ -641,10 +644,12 @@ Expected: PASS, including the pre-existing exam tests.
 - [ ] **Step 6: Verify Hibernate accepts the mapping against the real schema**
 
 ```bash
-cd backend && mvn -q -pl app -am spring-boot:run -Dspring-boot.run.profiles=local
+cd backend && mvn -q -DskipTests package
+java -jar app/target/fuoverflow-app-0.0.1-SNAPSHOT.jar --spring.profiles.active=local 2>&1 \
+  | grep -E "Initialized JPA EntityManagerFactory|Schema-validation|SchemaManagementException"
 ```
 
-Expected: no `SchemaManagementException`. A column-type mismatch fails startup here — that is the whole point of running it.
+Expected: `Initialized JPA EntityManagerFactory`, no `Schema-validation` line. A column-type mismatch fails there — that is the whole point of running it. The later `s3CompatibleObjectStorage` connection failure is expected without MinIO and does not affect this check.
 
 - [ ] **Step 7: Commit**
 
@@ -1984,7 +1989,8 @@ Delete `listPaperComments`, `createPaperComment`, `listPaperImageComments` and `
 - [ ] **Step 3: Verify against a running backend**
 
 ```bash
-cd backend && mvn -q -pl app -am spring-boot:run -Dspring-boot.run.profiles=local
+cd backend && docker compose up -d postgres redis minio   # storage is required for image serving
+mvn -q -DskipTests package && java -jar app/target/fuoverflow-app-0.0.1-SNAPSHOT.jar --spring.profiles.active=local
 # separate shell
 cd Fuexam && npm run dev
 ```
