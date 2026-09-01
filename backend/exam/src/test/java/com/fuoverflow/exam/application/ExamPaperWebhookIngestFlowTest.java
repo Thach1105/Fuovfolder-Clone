@@ -83,9 +83,11 @@ class ExamPaperWebhookIngestFlowTest {
         ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         ExamWebhookPayloadValidator validator = new ExamWebhookPayloadValidator(5_242_880L, 200);
 
+        ExamWebhookPayloadReader payloadReader =
+                new ExamWebhookPayloadReader(objectMapper, new EosPayloadAdapter());
         receiptService = new ExamWebhookReceiptService(
                 new ExamWebhookSignatureVerifier(webhookProperties),
-                validator, eventRepository, webhookProperties, objectMapper);
+                validator, eventRepository, webhookProperties, payloadReader);
 
         ExamPaperIngestService ingestService = new ExamPaperIngestService(
                 subjectRepository, paperRepository, feQuestionRepository,
@@ -95,7 +97,8 @@ class ExamPaperWebhookIngestFlowTest {
                 mediaService, new ExamProperties(null, null, 2), objectMapper);
 
         worker = new ExamWebhookIngestWorker(
-                eventRepository, validator, ingestService, webhookProperties, objectMapper);
+                eventRepository, validator, payloadReader, ingestService,
+                webhookProperties, objectMapper);
         capturedPapers = paperRepository;
 
         body = Files.readString(Path.of(
@@ -209,6 +212,64 @@ class ExamPaperWebhookIngestFlowTest {
         assertTrue(originals.stream().allMatch(key -> key.startsWith("exam/fe/")));
         assertEquals(3, originals.stream().filter(key -> key.endsWith(".png")).count());
         assertEquals(3, originals.stream().filter(key -> key.endsWith("-blur.jpg")).count());
+    }
+
+    @Test
+    void ingestsARawEosFileWithNoConversionByTheSender() throws Exception {
+        String eos = Files.readString(Path.of(
+                getClass().getResource("/fixtures/eos-raw-paper.json").toURI()),
+                StandardCharsets.UTF_8);
+
+        WebhookReceiptResponse receipt = receiptService.receive("eos-crawler", eos, headerFor(eos));
+        worker.processPending();
+
+        assertFalse(receipt.duplicate());
+        ExamWebhookEventEntity event = stored.get(receipt.receiptId());
+        assertEquals("done", event.getStatus());
+        assertTrue(event.getEventId().startsWith("eos:SCM302_SU26_FE_553972:"), event.getEventId());
+
+        ArgumentCaptor<ExamPaperEntity> paper = ArgumentCaptor.forClass(ExamPaperEntity.class);
+        verify(capturedPapers, atLeastOnce()).save(paper.capture());
+        assertEquals("SCM302_SU26_FE_553972", paper.getValue().getExamCode());
+        assertEquals("SU26", paper.getValue().getTerm());
+        assertEquals("FE", paper.getValue().getPaperType());
+        assertEquals("draft", paper.getValue().getStatus());
+        assertEquals(60, paper.getValue().getDurationMinutes());
+
+        verify(feQuestionRepository, times(3)).save(any());
+        // 3 ảnh gốc + 3 ảnh blur, đúng như đường canonical.
+        verify(objectStorage, times(6)).storeBytes(any(), anyString(), anyString());
+    }
+
+    @Test
+    void storedEosPayloadLosesItsImageDataOnceProcessed() throws Exception {
+        String eos = Files.readString(Path.of(
+                getClass().getResource("/fixtures/eos-raw-paper.json").toURI()),
+                StandardCharsets.UTF_8);
+
+        WebhookReceiptResponse receipt = receiptService.receive("eos-crawler", eos, headerFor(eos));
+        worker.processPending();
+
+        String payload = stored.get(receipt.receiptId()).getPayloadJson();
+        assertTrue(payload.contains("\"ImageData\":null"));
+        assertFalse(payload.contains("iVBORw0KGgo"), "no base64 image data may remain");
+        assertTrue(payload.length() < eos.length() / 4, "stripping must shrink the row");
+    }
+
+    @Test
+    void replayingTheSameEosFileIsANoOp() throws Exception {
+        String eos = Files.readString(Path.of(
+                getClass().getResource("/fixtures/eos-raw-paper.json").toURI()),
+                StandardCharsets.UTF_8);
+
+        WebhookReceiptResponse first = receiptService.receive("eos-crawler", eos, headerFor(eos));
+        worker.processPending();
+        WebhookReceiptResponse second = receiptService.receive("eos-crawler", eos, headerFor(eos));
+
+        assertTrue(second.duplicate(), "cùng một file phải cho cùng eventId");
+        assertEquals(first.receiptId(), second.receiptId());
+        assertEquals(1, stored.size());
+        verify(feQuestionRepository, times(3)).save(any());
     }
 
     private static String headerFor(String payload) {

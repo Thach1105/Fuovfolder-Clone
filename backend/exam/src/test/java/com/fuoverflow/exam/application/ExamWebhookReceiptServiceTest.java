@@ -166,7 +166,9 @@ class ExamWebhookReceiptServiceTest {
                 new ExamWebhookPayloadValidator(5_242_880L, 200),
                 eventRepository,
                 properties,
-                new ObjectMapper().registerModule(new JavaTimeModule()));
+                new ExamWebhookPayloadReader(
+                        new ObjectMapper().registerModule(new JavaTimeModule()),
+                        new EosPayloadAdapter()));
     }
 
     private static ExamWebhookProperties properties(Long maxPayloadBytes) {
