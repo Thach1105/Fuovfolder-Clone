@@ -1,6 +1,5 @@
 package com.fuoverflow.exam.application;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -29,10 +28,12 @@ import java.util.List;
 @Component
 public class ExamWebhookIngestWorker {
     private static final Logger log = LoggerFactory.getLogger(ExamWebhookIngestWorker.class);
-    private static final String CONTENT_BASE64 = "contentBase64";
+    /** Fields that carry base64 image bytes: canonical uses one name, EOS the other. */
+    private static final List<String> IMAGE_BYTE_FIELDS = List.of("contentBase64", "ImageData");
 
     private final ExamWebhookEventRepository eventRepository;
     private final ExamWebhookPayloadValidator payloadValidator;
+    private final ExamWebhookPayloadReader payloadReader;
     private final ExamPaperIngestService ingestService;
     private final ExamWebhookProperties properties;
     private final ObjectMapper objectMapper;
@@ -40,11 +41,13 @@ public class ExamWebhookIngestWorker {
     public ExamWebhookIngestWorker(
             ExamWebhookEventRepository eventRepository,
             ExamWebhookPayloadValidator payloadValidator,
+            ExamWebhookPayloadReader payloadReader,
             ExamPaperIngestService ingestService,
             ExamWebhookProperties properties,
             ObjectMapper objectMapper) {
         this.eventRepository = eventRepository;
         this.payloadValidator = payloadValidator;
+        this.payloadReader = payloadReader;
         this.ingestService = ingestService;
         this.properties = properties;
         this.objectMapper = objectMapper;
@@ -70,10 +73,7 @@ public class ExamWebhookIngestWorker {
 
         PaperWebhookRequest request;
         try {
-            request = objectMapper
-                    .readerFor(PaperWebhookRequest.class)
-                    .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                    .readValue(event.getPayloadJson());
+            request = payloadReader.read(event.getPayloadJson());
         } catch (Exception e) {
             // A body that will not parse now will not parse on any retry either.
             event.markFailed("WEBHOOK_PAYLOAD_INVALID", "Body không phải JSON hợp lệ.", Instant.now());
@@ -136,8 +136,10 @@ public class ExamWebhookIngestWorker {
     private static void stripContent(JsonNode node) {
         if (node.isObject()) {
             ObjectNode object = (ObjectNode) node;
-            if (object.has(CONTENT_BASE64)) {
-                object.putNull(CONTENT_BASE64);
+            for (String field : IMAGE_BYTE_FIELDS) {
+                if (object.has(field)) {
+                    object.putNull(field);
+                }
             }
             object.forEach(ExamWebhookIngestWorker::stripContent);
         } else if (node.isArray()) {

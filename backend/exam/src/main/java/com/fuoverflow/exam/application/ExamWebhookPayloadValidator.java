@@ -282,8 +282,12 @@ public class ExamWebhookPayloadValidator {
             throw mismatch("examCode mang môn " + matcher.group("subject")
                     + " nhưng subjectCode là " + subjectCode + ".");
         }
-        if (!matcher.group("type").equals(paperType.dbValue())) {
-            throw mismatch("examCode mang loại " + matcher.group("type")
+        // Only FE and PE are storable types, so a PT/MID code has nothing to disagree with:
+        // such a paper is ingested as FE rather than refused.
+        String codeType = matcher.group("type");
+        if (("FE".equals(codeType) || "PE".equals(codeType))
+                && !codeType.equals(paperType.dbValue())) {
+            throw mismatch("examCode mang loại " + codeType
                     + " nhưng paperType là " + paperType.dbValue() + ".");
         }
         if (term != null && !matcher.group("term").equalsIgnoreCase(term)) {

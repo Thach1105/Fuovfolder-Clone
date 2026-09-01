@@ -150,12 +150,14 @@ class ExamWebhookIngestWorkerTest {
         ExamWebhookProperties properties = new ExamWebhookProperties(
                 Map.of("eos-crawler", "s3cr3t"), List.of("cdn.example.com"),
                 null, null, null, null, maxAttempts, null, null);
+        ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         return new ExamWebhookIngestWorker(
                 eventRepository,
                 new ExamWebhookPayloadValidator(5_242_880L, 200),
+                new ExamWebhookPayloadReader(objectMapper, new EosPayloadAdapter()),
                 ingestService,
                 properties,
-                new ObjectMapper().registerModule(new JavaTimeModule()));
+                objectMapper);
     }
 
     private static ExamWebhookEventEntity pendingEvent() {

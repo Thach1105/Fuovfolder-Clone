@@ -1,8 +1,5 @@
 package com.fuoverflow.exam.application;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuoverflow.common.exception.BadRequestException;
 import com.fuoverflow.common.exception.PayloadTooLargeException;
 import com.fuoverflow.exam.api.dto.webhook.PaperWebhookRequest;
@@ -28,6 +25,10 @@ import java.util.UUID;
  * Jackson, signature before the database so an unauthenticated caller cannot make us write, and
  * full payload validation before the row is stored so an unprocessable delivery fails as a 400 the
  * sender can act on instead of a queued row that fails silently later.
+ *
+ * <p>Both accepted body shapes — the canonical envelope and a raw EOS exam file — come in through
+ * {@link ExamWebhookPayloadReader}, so the stored row is always the sender's original bytes while
+ * everything downstream sees one shape.
  */
 @Service
 public class ExamWebhookReceiptService {
@@ -37,19 +38,19 @@ public class ExamWebhookReceiptService {
     private final ExamWebhookPayloadValidator payloadValidator;
     private final ExamWebhookEventRepository eventRepository;
     private final ExamWebhookProperties properties;
-    private final ObjectMapper objectMapper;
+    private final ExamWebhookPayloadReader payloadReader;
 
     public ExamWebhookReceiptService(
             ExamWebhookSignatureVerifier signatureVerifier,
             ExamWebhookPayloadValidator payloadValidator,
             ExamWebhookEventRepository eventRepository,
             ExamWebhookProperties properties,
-            ObjectMapper objectMapper) {
+            ExamWebhookPayloadReader payloadReader) {
         this.signatureVerifier = signatureVerifier;
         this.payloadValidator = payloadValidator;
         this.eventRepository = eventRepository;
         this.properties = properties;
-        this.objectMapper = objectMapper;
+        this.payloadReader = payloadReader;
     }
 
     @Transactional
@@ -62,7 +63,7 @@ public class ExamWebhookReceiptService {
 
         signatureVerifier.verify(clientId, rawBody, signatureHeader);
 
-        PaperWebhookRequest request = parse(rawBody);
+        PaperWebhookRequest request = payloadReader.read(rawBody);
         String normalizedClientId = clientId.trim();
         String eventId = request.eventId() == null ? null : request.eventId().trim();
 
@@ -91,19 +92,6 @@ public class ExamWebhookReceiptService {
         log.info("Exam paper webhook queued: client={} eventId={} receiptId={} bytes={}",
                 normalizedClientId, eventId, saved.getId(), size);
         return new WebhookReceiptResponse(saved.getId(), "queued", false);
-    }
-
-    private PaperWebhookRequest parse(String rawBody) {
-        try {
-            return objectMapper
-                    .readerFor(PaperWebhookRequest.class)
-                    .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                    .readValue(rawBody == null ? "" : rawBody);
-        } catch (JsonProcessingException e) {
-            throw new BadRequestException("WEBHOOK_PAYLOAD_INVALID", "Body không phải JSON hợp lệ.");
-        } catch (Exception e) {
-            throw new BadRequestException("WEBHOOK_PAYLOAD_INVALID", "Không đọc được body.");
-        }
     }
 
     private static String wireStatus(String storedStatus) {
