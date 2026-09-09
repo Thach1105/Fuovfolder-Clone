@@ -275,6 +275,7 @@ public class ExamPaperAdminService {
                 questionCount,
                 resourceCount,
                 paper.getPublishedAt(),
-                paper.getCreatedAt());
+                paper.getCreatedAt(),
+                paper.getCampus());
     }
 }

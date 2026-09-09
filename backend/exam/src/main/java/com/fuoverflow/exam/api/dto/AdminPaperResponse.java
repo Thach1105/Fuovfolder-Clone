@@ -16,6 +16,7 @@ public record AdminPaperResponse(
         int questionCount,
         int resourceCount,
         Instant publishedAt,
-        Instant createdAt
+        Instant createdAt,
+        String campus
 ) {
 }

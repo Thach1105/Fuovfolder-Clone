@@ -213,6 +213,17 @@ class ExamPaperAdminServiceTest {
     }
 
     @Test
+    void listIncludesCampus() {
+        ExamPaperEntity paper = draft(ExamPaperType.FE);
+        paper.setCampus("HCM");
+        when(paperRepository.findByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(paper));
+
+        List<AdminPaperResponse> result = service.list(null, null);
+
+        assertEquals("HCM", result.get(0).campus());
+    }
+
+    @Test
     void webhookEventIsReadBackWithItsError() {
         ExamWebhookEventEntity event = ExamWebhookEventEntity.received(
                 UUID.randomUUID(), "eos-crawler", "evt-1", "exam.paper.upserted",
