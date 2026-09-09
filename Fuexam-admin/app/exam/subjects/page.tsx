@@ -35,6 +35,8 @@ import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { can } from "@/lib/auth/permissions";
 
+const UNASSIGNED_TERM = "unassigned";
+
 const EMPTY_FORM = {
   code: "",
   title: "",
@@ -42,6 +44,7 @@ const EMPTY_FORM = {
   coverImageUrl: "",
   cardColor: "",
   categorySlug: "on-thi",
+  curriculumTerm: UNASSIGNED_TERM,
   active: true,
   sortOrder: "0",
   fePreviewImageCount: "2",
@@ -167,6 +170,7 @@ export default function AdminExamSubjectsPage() {
       coverImageUrl: item.coverImageUrl ?? "",
       cardColor: item.cardColor ?? "",
       categorySlug: item.categorySlug ?? "",
+      curriculumTerm: item.curriculumTerm != null ? String(item.curriculumTerm) : UNASSIGNED_TERM,
       active: item.active,
       sortOrder: String(item.sortOrder),
       fePreviewImageCount: String(item.fePreviewImageCount),
@@ -184,6 +188,8 @@ export default function AdminExamSubjectsPage() {
       coverImageUrl: form.coverImageUrl || undefined,
       cardColor: form.cardColor.trim() || undefined,
       categorySlug: form.categorySlug.trim() || undefined,
+      curriculumTerm:
+        form.curriculumTerm === UNASSIGNED_TERM ? undefined : Number.parseInt(form.curriculumTerm, 10),
       active: form.active,
       sortOrder: Number.parseInt(form.sortOrder, 10) || 0,
       fePreviewImageCount: Number.parseInt(form.fePreviewImageCount, 10) || 2,
@@ -317,6 +323,25 @@ export default function AdminExamSubjectsPage() {
                       value={form.categorySlug}
                       onChange={(e) => setForm({ ...form, categorySlug: e.target.value })}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="curriculumTerm">Kỳ học</Label>
+                    <Select
+                      value={form.curriculumTerm}
+                      onValueChange={(v) => setForm({ ...form, curriculumTerm: v })}
+                    >
+                      <SelectTrigger id="curriculumTerm">
+                        <SelectValue placeholder="Chưa rõ kỳ" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={UNASSIGNED_TERM}>Chưa rõ kỳ</SelectItem>
+                        {Array.from({ length: 10 }, (_, i) => i).map((term) => (
+                          <SelectItem key={term} value={String(term)}>
+                            Kỳ {term}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="sort">Thứ tự</Label>
