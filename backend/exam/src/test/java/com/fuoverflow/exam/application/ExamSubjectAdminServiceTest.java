@@ -165,6 +165,6 @@ class ExamSubjectAdminServiceTest {
                 UUID.randomUUID(), UUID.randomUUID(), ExamPaperType.FE, examCode, "SU26",
                 null, examCode + " title", null, 60, null, 50,
                 UUID.randomUUID().toString().replace("-", "").repeat(2),
-                "webhook:eos-crawler", "1", 0, createdAt);
+                "webhook:eos-crawler", "1", 0, null, createdAt);
     }
 }

@@ -288,7 +288,7 @@ class ExamCatalogQueryServiceTest {
         return ExamPaperEntity.draft(
                 UUID.randomUUID(), subjectId, ExamPaperType.FE, "MLN111_SU26_FE_1",
                 "SU26", null, "MLN111 FE", null, 60, null, 50,
-                "a".repeat(64), "webhook:eos-crawler", "1", 0, Instant.now());
+                "a".repeat(64), "webhook:eos-crawler", "1", 0, null, Instant.now());
     }
 
     @Test

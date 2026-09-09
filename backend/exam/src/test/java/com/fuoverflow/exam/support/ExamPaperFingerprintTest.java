@@ -48,7 +48,7 @@ class ExamPaperFingerprintTest {
         IngestPaper second = new IngestPaper(
                 "SCM302_SU26_FE_999999", first.paperType(), first.subjectCode(), first.term(),
                 null, first.title(), null, 60, new BigDecimal("50.00"), 1,
-                "eos-crawler", "999999", first.questions(), List.of(), List.of());
+                "eos-crawler", "999999", first.questions(), List.of(), List.of(), null);
 
         assertNotEquals(ExamPaperFingerprint.of(first), ExamPaperFingerprint.of(second));
     }
@@ -61,7 +61,7 @@ class ExamPaperFingerprintTest {
                 List.of(),
                 List.of(new IngestAsset(0, "image/png", 10, "aa".repeat(32), new byte[]{1})),
                 List.of(new IngestResource(0, null, "a.zip", "application/zip", 20,
-                        "bb".repeat(32), "https://cdn.example.com/a.zip")));
+                        "bb".repeat(32), "https://cdn.example.com/a.zip")), null);
 
         assertEquals(64, ExamPaperFingerprint.of(paper).length());
     }
@@ -70,7 +70,7 @@ class ExamPaperFingerprintTest {
         return new IngestPaper(
                 "SCM302_SU26_FE_553972", ExamPaperType.FE, "SCM302", "SU26", null,
                 "SCM302 FE", null, 60, new BigDecimal("50.00"), questions.size(),
-                "eos-crawler", "553972", questions, List.of(), List.of());
+                "eos-crawler", "553972", questions, List.of(), List.of(), null);
     }
 
     private static IngestQuestion question(String externalId, List<Long> optionIds) {

@@ -322,6 +322,7 @@ export interface AdminPaper {
   resourceCount: number;
   publishedAt: string | null;
   createdAt: string;
+  campus: string | null;
 }
 
 export interface AdminPaperQuestion {

@@ -83,6 +83,8 @@ public class ExamWebhookPayloadValidator {
         }
 
         String term = trimmed(paper.term());
+        String normalizedTerm = term != null ? term.toUpperCase(java.util.Locale.ROOT) : null;
+        String campus = trimmed(paper.campus());
         verifyExamCodeAgreement(examCode, paperType, subjectCode, term);
 
         List<QuestionPayload> questions = orEmpty(paper.questions());
@@ -115,7 +117,7 @@ public class ExamWebhookPayloadValidator {
                 examCode,
                 paperType,
                 subjectCode,
-                term,
+                normalizedTerm,
                 trimmed(paper.retakeLabel()),
                 title,
                 trimmed(paper.description()),
@@ -126,7 +128,8 @@ public class ExamWebhookPayloadValidator {
                 paper.source() != null ? trimmed(paper.source().externalPaperId()) : null,
                 validateQuestions(questions),
                 validateAssets(images),
-                validateResources(resources));
+                validateResources(resources),
+                campus != null ? campus.toUpperCase(java.util.Locale.ROOT) : null);
     }
 
     // --- questions ------------------------------------------------------------
