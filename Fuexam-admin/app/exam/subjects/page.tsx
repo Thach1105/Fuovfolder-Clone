@@ -239,6 +239,9 @@ export default function AdminExamSubjectsPage() {
     );
   }, [items, search]);
 
+  const editingItem = editingId ? items.find((i) => i.id === editingId) ?? null : null;
+  const clearTermDisabled = editingItem != null && editingItem.curriculumTerm != null;
+
   return (
     <AdminShell
       title="Exam FE/PE — Môn thi"
@@ -334,7 +337,9 @@ export default function AdminExamSubjectsPage() {
                         <SelectValue placeholder="Chưa rõ kỳ" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={UNASSIGNED_TERM}>Chưa rõ kỳ</SelectItem>
+                        <SelectItem value={UNASSIGNED_TERM} disabled={clearTermDisabled}>
+                          Chưa rõ kỳ{clearTermDisabled ? " (không thể bỏ gán)" : ""}
+                        </SelectItem>
                         {Array.from({ length: 10 }, (_, i) => i).map((term) => (
                           <SelectItem key={term} value={String(term)}>
                             Kỳ {term}
@@ -439,6 +444,11 @@ export default function AdminExamSubjectsPage() {
                               >
                                 {item.code}
                               </Link>
+                              {!item.active && (
+                                <span className="rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
+                                  Ẩn
+                                </span>
+                              )}
                               {canWrite && (
                                 <button
                                   type="button"
