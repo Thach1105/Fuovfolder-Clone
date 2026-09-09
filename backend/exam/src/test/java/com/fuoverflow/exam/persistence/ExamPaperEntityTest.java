@@ -94,6 +94,6 @@ class ExamPaperEntityTest {
                 UUID.randomUUID(), UUID.randomUUID(), ExamPaperType.FE,
                 "SCM302_SU26_FE_553972", "SU26", null, "SCM302 FE", null,
                 60, new BigDecimal("50.00"), 50, "a".repeat(64),
-                "webhook:eos-crawler", "553972", 0, Instant.now());
+                "webhook:eos-crawler", "553972", 0, null, Instant.now());
     }
 }

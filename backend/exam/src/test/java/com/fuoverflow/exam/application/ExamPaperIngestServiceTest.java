@@ -126,7 +126,8 @@ class ExamPaperIngestServiceTest {
     void createsADraftPaperWithOnePostPerQuestion() {
         stubSubject();
 
-        ExamPaperIngestService.IngestOutcome outcome = service.ingest(fePaper(3), "webhook:eos-crawler");
+        ExamPaperIngestService.IngestOutcome outcome =
+                service.ingest(fePaper(3, "HCM"), "webhook:eos-crawler");
 
         assertEquals(ExamPaperIngestService.Outcome.CREATED, outcome.outcome());
         assertNotNull(outcome.paperId());
@@ -138,6 +139,7 @@ class ExamPaperIngestServiceTest {
         assertEquals("SCM302_SU26_FE_553972", paper.getValue().getExamCode());
         assertEquals("SU26", paper.getValue().getTerm());
         assertEquals("webhook:eos-crawler", paper.getValue().getIngestSource());
+        assertEquals("HCM", paper.getValue().getCampus());
 
         ArgumentCaptor<ExamFeQuestionEntity> questions =
                 ArgumentCaptor.forClass(ExamFeQuestionEntity.class);
@@ -266,10 +268,14 @@ class ExamPaperIngestServiceTest {
         return ExamPaperEntity.draft(
                 UUID.randomUUID(), subjectId, ExamPaperType.FE, "SCM302_SU26_FE_553972",
                 "SU26", null, "SCM302 FE", null, 60, new BigDecimal("50.00"), 50,
-                fingerprint, "webhook:eos-crawler", "553972", 0, Instant.now());
+                fingerprint, "webhook:eos-crawler", "553972", 0, null, Instant.now());
     }
 
     private static IngestPaper fePaper(int questionCount) {
+        return fePaper(questionCount, null);
+    }
+
+    private static IngestPaper fePaper(int questionCount, String campus) {
         List<IngestQuestion> questions = new ArrayList<>();
         for (int i = 0; i < questionCount; i++) {
             questions.add(new IngestQuestion(
@@ -280,7 +286,7 @@ class ExamPaperIngestServiceTest {
         return new IngestPaper(
                 "SCM302_SU26_FE_553972", ExamPaperType.FE, "SCM302", "SU26", null,
                 "SCM302 FE", null, 60, new BigDecimal("50.00"), questionCount,
-                "eos-crawler", "553972", questions, List.of(), List.of(), null);
+                "eos-crawler", "553972", questions, List.of(), List.of(), campus);
     }
 
     private static IngestPaper pePaper() {

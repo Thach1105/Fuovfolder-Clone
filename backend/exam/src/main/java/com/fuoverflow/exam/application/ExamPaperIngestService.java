@@ -110,6 +110,7 @@ public class ExamPaperIngestService {
                 paper.externalPaperId(),
                 (int) paperRepository.countBySubjectIdAndPaperTypeAndDeletedAtIsNull(
                         subject.getId(), paper.paperType().dbValue()),
+                paper.campus(),
                 now));
 
         if (!created) {
@@ -163,6 +164,7 @@ public class ExamPaperIngestService {
         entity.setTitle(paper.title());
         entity.setTerm(paper.term());
         entity.setRetakeLabel(paper.retakeLabel());
+        entity.setCampus(paper.campus());
         entity.setDescription(paper.description());
         entity.setDurationMinutes(paper.durationMinutes());
         entity.setTotalMark(paper.totalMark());

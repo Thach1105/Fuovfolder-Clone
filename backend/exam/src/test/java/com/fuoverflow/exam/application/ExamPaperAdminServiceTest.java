@@ -343,7 +343,7 @@ class ExamPaperAdminServiceTest {
                 UUID.randomUUID(), subjectId, type, "MLN111_SU26_" + type.dbValue() + "_1",
                 "SU26", null, type.dbValue() + " paper", null, 60, null, 50,
                 UUID.randomUUID().toString().replace("-", "").repeat(2),
-                "webhook:eos-crawler", "1", 0, Instant.now());
+                "webhook:eos-crawler", "1", 0, null, Instant.now());
     }
 
     private static ExamPeResourceEntity resource(UUID itemId) {

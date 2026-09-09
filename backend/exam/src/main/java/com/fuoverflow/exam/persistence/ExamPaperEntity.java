@@ -38,6 +38,9 @@ public class ExamPaperEntity {
     @Column(name = "retake_label", length = 64)
     private String retakeLabel;
 
+    @Column(name = "campus", length = 64)
+    private String campus;
+
     @Column(name = "title", nullable = false, length = 500)
     private String title;
 
@@ -93,6 +96,7 @@ public class ExamPaperEntity {
     public String getExamCode() { return examCode; }
     public String getTerm() { return term; }
     public String getRetakeLabel() { return retakeLabel; }
+    public String getCampus() { return campus; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }
     public Integer getDurationMinutes() { return durationMinutes; }
@@ -113,6 +117,7 @@ public class ExamPaperEntity {
     public void setTitle(String title) { this.title = title; }
     public void setTerm(String term) { this.term = term; }
     public void setRetakeLabel(String retakeLabel) { this.retakeLabel = retakeLabel; }
+    public void setCampus(String campus) { this.campus = campus; }
     public void setDescription(String description) { this.description = description; }
     public void setDurationMinutes(Integer durationMinutes) { this.durationMinutes = durationMinutes; }
     public void setTotalMark(BigDecimal totalMark) { this.totalMark = totalMark; }
@@ -142,7 +147,7 @@ public class ExamPaperEntity {
             UUID id, UUID subjectId, ExamPaperType paperType, String examCode, String term,
             String retakeLabel, String title, String description, Integer durationMinutes,
             BigDecimal totalMark, Integer declaredQuestionCount, String fingerprint,
-            String ingestSource, String externalPaperId, int sortOrder, Instant now) {
+            String ingestSource, String externalPaperId, int sortOrder, String campus, Instant now) {
         ExamPaperEntity e = new ExamPaperEntity();
         e.id = id;
         e.subjectId = subjectId;
@@ -160,6 +165,7 @@ public class ExamPaperEntity {
         e.ingestSource = ingestSource;
         e.externalPaperId = externalPaperId;
         e.sortOrder = sortOrder;
+        e.campus = campus;
         e.viewCount = 0;
         e.lockVersion = 0;
         e.createdAt = now;
