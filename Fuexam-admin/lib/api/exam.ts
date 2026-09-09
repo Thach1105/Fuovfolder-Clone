@@ -4,6 +4,7 @@ export interface AdminSubjectLatestPaper {
   examCode: string;
   paperType: ExamPaperType;
   status: ExamPaperStatus;
+  term: string | null;
   createdAt: string;
 }
 
@@ -15,7 +16,6 @@ export interface AdminSubject {
   coverImageUrl: string | null;
   cardColor: string | null;
   categorySlug: string | null;
-  curriculumTerm: number | null;
   fePreviewImageCount: number;
   viewCount: number;
   active: boolean;
@@ -36,7 +36,6 @@ export interface AdminSubjectBody {
   coverImageUrl?: string;
   cardColor?: string;
   categorySlug?: string;
-  curriculumTerm?: number | null;
   fePreviewImageCount?: number;
   active?: boolean;
   sortOrder?: number;
