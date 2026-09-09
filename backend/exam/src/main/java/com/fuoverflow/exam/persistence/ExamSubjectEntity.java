@@ -33,6 +33,9 @@ public class ExamSubjectEntity {
     @Column(name = "category_slug", length = 64)
     private String categorySlug;
 
+    @Column(name = "curriculum_term")
+    private Integer curriculumTerm;
+
     @Column(name = "fe_preview_image_count", nullable = false)
     private int fePreviewImageCount;
 
@@ -65,6 +68,7 @@ public class ExamSubjectEntity {
     public String getCoverImageUrl() { return coverImageUrl; }
     public String getCardColor() { return cardColor; }
     public String getCategorySlug() { return categorySlug; }
+    public Integer getCurriculumTerm() { return curriculumTerm; }
     public int getFePreviewImageCount() { return fePreviewImageCount; }
     public long getViewCount() { return viewCount; }
     public boolean isActive() { return active; }
@@ -80,6 +84,7 @@ public class ExamSubjectEntity {
     public void setCoverImageUrl(String coverImageUrl) { this.coverImageUrl = coverImageUrl; }
     public void setCardColor(String cardColor) { this.cardColor = cardColor; }
     public void setCategorySlug(String categorySlug) { this.categorySlug = categorySlug; }
+    public void setCurriculumTerm(Integer curriculumTerm) { this.curriculumTerm = curriculumTerm; }
     public void setFePreviewImageCount(int fePreviewImageCount) { this.fePreviewImageCount = fePreviewImageCount; }
     public void setActive(boolean active) { this.active = active; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
@@ -88,7 +93,7 @@ public class ExamSubjectEntity {
 
     public static ExamSubjectEntity create(
             UUID id, String code, String title, String description,
-            String coverImageUrl, String cardColor, String categorySlug,
+            String coverImageUrl, String cardColor, String categorySlug, Integer curriculumTerm,
             int fePreviewImageCount, boolean active, int sortOrder, Instant now) {
         ExamSubjectEntity e = new ExamSubjectEntity();
         e.id = id;
@@ -98,6 +103,7 @@ public class ExamSubjectEntity {
         e.coverImageUrl = coverImageUrl;
         e.cardColor = cardColor;
         e.categorySlug = categorySlug;
+        e.curriculumTerm = curriculumTerm;
         e.fePreviewImageCount = fePreviewImageCount;
         e.viewCount = 0L;
         e.active = active;
