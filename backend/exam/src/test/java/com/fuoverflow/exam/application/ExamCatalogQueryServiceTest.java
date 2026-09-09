@@ -6,6 +6,7 @@ import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.exam.api.dto.PublicFeQuestionListResponse;
 import com.fuoverflow.exam.api.dto.PublicFeQuestionResponse;
 import com.fuoverflow.exam.api.dto.PublicPaperDetailResponse;
+import com.fuoverflow.exam.api.dto.PublicSubjectCardResponse;
 import com.fuoverflow.exam.api.dto.PublicSubjectDetailResponse;
 import com.fuoverflow.exam.persistence.ExamCommentRepository;
 import com.fuoverflow.exam.persistence.ExamFeQuestionEntity;
@@ -31,6 +32,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -301,6 +303,43 @@ class ExamCatalogQueryServiceTest {
         return ExamSubjectEntity.create(
                 subjectId, "MLN111", "Title", null, null, null, null, null,
                 previewImageCount, true, 0, Instant.now());
+    }
+
+    @Test
+    void listActive_includesCurriculumTermAndLatestPublishedPaper() {
+        ExamSubjectEntity subject = ExamSubjectEntity.create(
+                subjectId, "MLN111", "Title", null, null, null, null, 3,
+                2, true, 0, Instant.now());
+        when(subjectRepository.findByActiveTrueAndDeletedAtIsNullOrderBySortOrderAscTitleAsc())
+                .thenReturn(List.of(subject));
+        ExamPaperEntity published = publishedFePaper();
+        when(paperRepository.findFirstBySubjectIdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                subjectId, "published")).thenReturn(Optional.of(published));
+
+        List<PublicSubjectCardResponse> cards = service.listActive();
+
+        assertEquals(1, cards.size());
+        PublicSubjectCardResponse card = cards.get(0);
+        assertEquals(3, card.curriculumTerm());
+        assertEquals("FE", card.latestPaper().paperType());
+        assertEquals("MLN111_SU26_FE_1", card.latestPaper().examCode());
+    }
+
+    @Test
+    void listActive_hasNoLatestPaper_whenOnlyADraftExists() {
+        ExamSubjectEntity subject = ExamSubjectEntity.create(
+                subjectId, "MLN111", "Title", null, null, null, null, null,
+                2, true, 0, Instant.now());
+        when(subjectRepository.findByActiveTrueAndDeletedAtIsNullOrderBySortOrderAscTitleAsc())
+                .thenReturn(List.of(subject));
+        when(paperRepository.findFirstBySubjectIdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                subjectId, "published")).thenReturn(Optional.empty());
+
+        List<PublicSubjectCardResponse> cards = service.listActive();
+
+        assertEquals(1, cards.size());
+        assertNull(cards.get(0).curriculumTerm());
+        assertNull(cards.get(0).latestPaper());
     }
 
     private List<ExamFeQuestionEntity> questionsWithImages(int questionCount, int imagesPerQuestion) {
