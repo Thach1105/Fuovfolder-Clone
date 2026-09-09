@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuoverflow.common.exception.BadRequestException;
 import com.fuoverflow.exam.api.dto.webhook.PaperWebhookRequest;
 import com.fuoverflow.exam.api.dto.webhook.QuestionPayload;
+import com.fuoverflow.exam.domain.ExamPaperType;
+import com.fuoverflow.exam.domain.IngestPaper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -167,9 +169,25 @@ class EosPayloadAdapterTest {
                 """.formatted(PNG));
 
         assertEquals("SDN302", request.paper().subjectCode());
-        assertEquals("PE", request.paper().paperType());
+        // The exam code carries a PE type segment, but this adapter only ever produces
+        // question-based content, so it must still land as FE — anything else is rejected
+        // downstream as an empty PE paper (no images/resources).
+        assertEquals("FE", request.paper().paperType());
         assertEquals("SU26", request.paper().term());
         assertEquals("HCM", request.paper().campus());
+    }
+
+    @Test
+    void aPeLabeledDashCodeStillValidatesSuccessfullyAsFe() throws Exception {
+        PaperWebhookRequest request = adapt("""
+                {"ExamCode":"SDN302-PE-SU26-HCM",
+                 "GrammarQuestions":[{"QID":1,"Text":"x","ImageData":"%s"}]}
+                """.formatted(PNG));
+
+        IngestPaper ingested = new ExamWebhookPayloadValidator(5_242_880L, 200).validate(request);
+
+        assertEquals(ExamPaperType.FE, ingested.paperType());
+        assertEquals("HCM", ingested.campus());
     }
 
     @Test

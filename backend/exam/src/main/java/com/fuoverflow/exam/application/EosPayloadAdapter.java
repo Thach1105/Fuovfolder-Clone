@@ -54,9 +54,12 @@ public class EosPayloadAdapter {
 
         PaperPayload paper = new PaperPayload(
                 examCode,
-                // The table stores FE or PE only; a progress test is still a set of MCQs, so it
-                // lands as FE rather than being refused.
-                "PE".equals(parsed.paperType()) ? "PE" : "FE",
+                // This adapter only ever produces question-based content (readQuestions() never
+                // populates images/resources), so it always lands as FE — even when the exam code
+                // itself carries a PE (or PT/MID) type segment — because a PE paper without any
+                // image/resource would be rejected downstream as empty. Real PE content (images,
+                // downloadable resources) arrives through a different ingestion path.
+                "FE",
                 parsed.subjectCode(),
                 parsed.term(),
                 null,
