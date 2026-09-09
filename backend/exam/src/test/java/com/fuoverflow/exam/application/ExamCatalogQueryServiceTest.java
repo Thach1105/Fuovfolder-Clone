@@ -213,10 +213,10 @@ class ExamCatalogQueryServiceTest {
     @Test
     void relatedSubjectsExcludeTheCurrentOne() {
         ExamSubjectEntity subject = ExamSubjectEntity.create(
-                subjectId, "MLN111", "Title", null, null, null, "chinh-tri",
+                subjectId, "MLN111", "Title", null, null, null, "chinh-tri", null,
                 2, true, 0, Instant.now());
         ExamSubjectEntity sibling = ExamSubjectEntity.create(
-                UUID.randomUUID(), "MLN122", "Other", null, null, null, "chinh-tri",
+                UUID.randomUUID(), "MLN122", "Other", null, null, null, "chinh-tri", null,
                 2, true, 1, Instant.now());
         when(subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull("MLN111")).thenReturn(Optional.of(subject));
         when(subjectRepository.findTop6ByCategorySlugAndActiveTrueAndDeletedAtIsNullOrderBySortOrderAsc(
@@ -299,7 +299,7 @@ class ExamCatalogQueryServiceTest {
 
     private ExamSubjectEntity subject(int previewImageCount) {
         return ExamSubjectEntity.create(
-                subjectId, "MLN111", "Title", null, null, null, null,
+                subjectId, "MLN111", "Title", null, null, null, null, null,
                 previewImageCount, true, 0, Instant.now());
     }
 
