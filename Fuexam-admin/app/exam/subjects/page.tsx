@@ -12,16 +12,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, Folder, FileStack } from "lucide-react";
+import { formatDateTime } from "@/lib/format-datetime";
 import {
   type AdminSubject,
+  type AdminSubjectLatestPaper,
   createExamSubject,
   deleteExamSubject,
   listExamSubjects,
@@ -42,6 +46,82 @@ const EMPTY_FORM = {
   sortOrder: "0",
   fePreviewImageCount: "2",
 };
+
+type TermGroup = {
+  term: number | null;
+  label: string;
+  subjects: AdminSubject[];
+  feQuestionTotal: number;
+  paperTotal: number;
+  latestPaper: (AdminSubjectLatestPaper & { subjectCode: string }) | null;
+};
+
+/** Cycles through a fixed palette so each "Kỳ" badge gets a distinct, stable color. */
+const TERM_BADGE_COLORS = [
+  "bg-amber-500 text-amber-950",
+  "bg-sky-500 text-sky-950",
+  "bg-rose-500 text-rose-950",
+  "bg-emerald-500 text-emerald-950",
+  "bg-violet-500 text-violet-950",
+  "bg-cyan-500 text-cyan-950",
+  "bg-orange-500 text-orange-950",
+  "bg-lime-500 text-lime-950",
+  "bg-fuchsia-500 text-fuchsia-950",
+  "bg-teal-500 text-teal-950",
+];
+
+function termBadgeColor(term: number): string {
+  return TERM_BADGE_COLORS[term % TERM_BADGE_COLORS.length];
+}
+
+function groupSubjects(items: AdminSubject[]): TermGroup[] {
+  const byTerm = new Map<number | null, AdminSubject[]>();
+  for (const item of items) {
+    const key = item.curriculumTerm ?? null;
+    const bucket = byTerm.get(key);
+    if (bucket) {
+      bucket.push(item);
+    } else {
+      byTerm.set(key, [item]);
+    }
+  }
+
+  const terms = [...byTerm.keys()].sort((a, b) => {
+    if (a === null) return -1;
+    if (b === null) return 1;
+    return a - b;
+  });
+
+  return terms.map((term) => {
+    const subjects = byTerm.get(term)!;
+    const feQuestionTotal = subjects.reduce(
+      (sum, s) => sum + s.feQuestionCount + s.pePaperCount,
+      0,
+    );
+    const paperTotal = subjects.reduce(
+      (sum, s) => sum + s.fePaperCount + s.pePaperCountAllStatuses,
+      0,
+    );
+    const latestPaper = subjects.reduce<(AdminSubjectLatestPaper & { subjectCode: string }) | null>(
+      (latest, s) => {
+        if (!s.latestPaper) return latest;
+        if (!latest || s.latestPaper.createdAt > latest.createdAt) {
+          return { ...s.latestPaper, subjectCode: s.code };
+        }
+        return latest;
+      },
+      null,
+    );
+    return {
+      term,
+      label: term === null ? "Tổng hợp - Chưa rõ kỳ" : `Kỳ ${term}`,
+      subjects,
+      feQuestionTotal,
+      paperTotal,
+      latestPaper,
+    };
+  });
+}
 
 export default function AdminExamSubjectsPage() {
   const { user } = useAuth();
@@ -290,71 +370,115 @@ export default function AdminExamSubjectsPage() {
             {loading ? (
               <p className="p-4 text-sm text-muted-foreground">Đang tải...</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Mã</TableHead>
-                    <TableHead>FE</TableHead>
-                    <TableHead>PE</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead className="w-[160px] text-right">Hành động</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <span className="font-mono text-primary">{item.code}</span>
-                        <p className="max-w-[180px] truncate text-xs text-muted-foreground">
-                          {item.title}
-                        </p>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {item.feQuestionCount}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{item.pePaperCount}</TableCell>
-                      <TableCell className="text-xs">
-                        {item.active ? "Hiển thị" : "Ẩn"}
-                      </TableCell>
-                      <TableCell className="text-right align-top">
-                        <div className="flex flex-wrap justify-end gap-x-3 gap-y-1">
-                          <Link
-                            href={`/exam/subjects/${item.id}/papers`}
-                            className="text-sm text-sky-500 hover:underline"
-                          >
-                            Đề thi
-                          </Link>
-                          {canWrite && (
-                            <button
-                              type="button"
-                              className="text-sm text-primary hover:underline"
-                              onClick={() => startEdit(item)}
+              <Collapsible defaultOpen>
+                <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold">Danh sách môn thi theo kỳ</p>
+                    <p className="text-xs text-muted-foreground">
+                      {items.length} môn · nhóm theo kỳ học
+                    </p>
+                  </div>
+                  <CollapsibleTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm">
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent>
+                  <div className="divide-y divide-border">
+                    {groupSubjects(filteredItems).map((group) => (
+                      <div key={group.term ?? "none"} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start">
+                        <div className="flex shrink-0 items-center gap-2 sm:w-40">
+                          {group.term === null ? (
+                            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                              <FileStack className="h-4 w-4" />
+                            </span>
+                          ) : (
+                            <span
+                              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${termBadgeColor(group.term)}`}
                             >
-                              Sửa
-                            </button>
+                              {group.term}
+                            </span>
                           )}
-                          {canDelete && (
-                            <button
-                              type="button"
-                              className="text-sm text-destructive hover:underline"
-                              onClick={() => setDeleteId(item.id)}
-                            >
-                              Xóa
-                            </button>
+                          <span className="text-sm font-medium">{group.label}</span>
+                        </div>
+
+                        <div className="flex flex-1 flex-wrap gap-x-3 gap-y-1.5">
+                          {group.subjects.map((item) => (
+                            <span key={item.id} className="inline-flex items-center gap-1">
+                              <Folder className="h-3.5 w-3.5 text-muted-foreground" />
+                              <Link
+                                href={`/exam/subjects/${item.id}/papers`}
+                                className="font-mono text-sm text-sky-500 hover:underline"
+                                title={item.title}
+                              >
+                                {item.code}
+                              </Link>
+                              {canWrite && (
+                                <button
+                                  type="button"
+                                  className="text-xs text-muted-foreground hover:text-primary"
+                                  onClick={() => startEdit(item)}
+                                  aria-label={`Sửa ${item.code}`}
+                                >
+                                  ✎
+                                </button>
+                              )}
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  className="text-xs text-muted-foreground hover:text-destructive"
+                                  onClick={() => setDeleteId(item.id)}
+                                  aria-label={`Xóa ${item.code}`}
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </span>
+                          ))}
+                          {group.subjects.length === 0 && (
+                            <span className="text-xs text-muted-foreground">Không có môn phù hợp.</span>
                           )}
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredItems.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+
+                        <div className="flex shrink-0 gap-6 text-right sm:w-28">
+                          <div>
+                            <p className="text-sm font-semibold">{group.feQuestionTotal}</p>
+                            <p className="text-xs text-muted-foreground">Câu hỏi</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold">{group.paperTotal}</p>
+                            <p className="text-xs text-muted-foreground">Đề thi</p>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 sm:w-56 sm:text-right">
+                          {group.latestPaper ? (
+                            <div className="flex flex-col items-start gap-1 sm:items-end">
+                              <Badge variant={group.latestPaper.paperType === "FE" ? "secondary" : "outline"}>
+                                {group.latestPaper.paperType === "FE" ? "Đề Thi FE" : "Đề Thi PE"}
+                              </Badge>
+                              <p className="max-w-[200px] truncate text-xs" title={group.latestPaper.examCode}>
+                                {group.latestPaper.subjectCode} · {group.latestPaper.examCode}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatDateTime(group.latestPaper.createdAt)}
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">Chưa có đề nào</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {filteredItems.length === 0 && (
+                      <p className="px-4 py-6 text-center text-sm text-muted-foreground">
                         Không có môn thi nào.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                      </p>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             )}
           </div>
         </div>
