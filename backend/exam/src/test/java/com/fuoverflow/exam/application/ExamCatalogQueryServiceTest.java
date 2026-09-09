@@ -37,6 +37,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -326,7 +328,7 @@ class ExamCatalogQueryServiceTest {
     }
 
     @Test
-    void listActive_hasNoLatestPaper_whenOnlyADraftExists() {
+    void listActive_neverLeaksAnUnpublishedPaperAsLatestPaper() {
         ExamSubjectEntity subject = ExamSubjectEntity.create(
                 subjectId, "MLN111", "Title", null, null, null, null, null,
                 2, true, 0, Instant.now());
@@ -340,6 +342,7 @@ class ExamCatalogQueryServiceTest {
         assertEquals(1, cards.size());
         assertNull(cards.get(0).curriculumTerm());
         assertNull(cards.get(0).latestPaper());
+        verify(paperRepository, never()).findFirstBySubjectIdAndDeletedAtIsNullOrderByCreatedAtDesc(any());
     }
 
     private List<ExamFeQuestionEntity> questionsWithImages(int questionCount, int imagesPerQuestion) {
