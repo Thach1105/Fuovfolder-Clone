@@ -29,4 +29,7 @@ public interface ExamPaperRepository extends JpaRepository<ExamPaperEntity, UUID
     long countBySubjectIdAndPaperTypeAndDeletedAtIsNull(UUID subjectId, String paperType);
 
     Optional<ExamPaperEntity> findFirstBySubjectIdAndDeletedAtIsNullOrderByCreatedAtDesc(UUID subjectId);
+
+    Optional<ExamPaperEntity> findFirstBySubjectIdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+            UUID subjectId, String status);
 }
