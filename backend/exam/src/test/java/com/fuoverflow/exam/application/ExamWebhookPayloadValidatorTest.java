@@ -87,7 +87,7 @@ class ExamWebhookPayloadValidatorTest {
                 null, null, null, source(), List.of(),
                 List.of(new AssetPayload(0, "image/png", (long) PNG.length, null, PNG_BASE64)),
                 List.of(new ResourcePayload(0, "Starter", "a.zip", "application/zip",
-                        4823910L, "b".repeat(64), "https://cdn.example.com/a.zip"))));
+                        4823910L, "b".repeat(64), "https://cdn.example.com/a.zip")), null));
 
         IngestPaper paper = validator.validate(request);
 
@@ -102,7 +102,7 @@ class ExamWebhookPayloadValidatorTest {
         PaperWebhookRequest request = request(new PaperPayload(
                 "PRJ301_SU26_PE_1", "PE", "PRJ301", "SU26", null, "PE 1", null,
                 null, null, null, source(),
-                List.of(question("stem", 1)), List.of(asset(PNG)), List.of()));
+                List.of(question("stem", 1)), List.of(asset(PNG)), List.of(), null));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> validator.validate(request));
         assertEquals("WEBHOOK_PAPER_TYPE_MISMATCH", ex.code());
@@ -113,7 +113,7 @@ class ExamWebhookPayloadValidatorTest {
         PaperWebhookRequest request = request(new PaperPayload(
                 "SCM302_SU26_FE_553972", "FE", "MAE101", "SU26", null, "t", null,
                 60, new BigDecimal("50.00"), 1, source(),
-                List.of(question("stem", 1)), List.of(), List.of()));
+                List.of(question("stem", 1)), List.of(), List.of(), null));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> validator.validate(request));
         assertEquals("WEBHOOK_PAPER_TYPE_MISMATCH", ex.code());
@@ -124,7 +124,7 @@ class ExamWebhookPayloadValidatorTest {
         PaperWebhookRequest request = request(new PaperPayload(
                 "TEST_EOS_Client_278333", "FE", "TEST", null, null, "t", null,
                 20, new BigDecimal("28.50"), 1, source(),
-                List.of(question("stem", 1)), List.of(), List.of()));
+                List.of(question("stem", 1)), List.of(), List.of(), null));
 
         assertEquals("TEST", validator.validate(request).subjectCode());
     }
@@ -137,7 +137,7 @@ class ExamWebhookPayloadValidatorTest {
                 List.of(new QuestionPayload("1", 1, "stem", 1, 1, BigDecimal.ONE,
                         List.of(new AssetPayload(0, "image/png", 3L, "a".repeat(64), "not-base64!!")),
                         List.of())),
-                List.of(), List.of()));
+                List.of(), List.of(), null));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> validator.validate(request));
         assertEquals("WEBHOOK_IMAGE_INVALID_BASE64", ex.code());
@@ -150,7 +150,7 @@ class ExamWebhookPayloadValidatorTest {
                 60, new BigDecimal("50.00"), 1, source(),
                 List.of(new QuestionPayload("1", 1, "stem", 1, 1, BigDecimal.ONE,
                         List.of(asset("hello world".getBytes())), List.of())),
-                List.of(), List.of()));
+                List.of(), List.of(), null));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> validator.validate(request));
         assertEquals("WEBHOOK_IMAGE_TYPE_UNSUPPORTED", ex.code());
@@ -171,7 +171,7 @@ class ExamWebhookPayloadValidatorTest {
         PaperWebhookRequest request = request(new PaperPayload(
                 "SCM302_SU26_FE_553972", "FE", "SCM302", "SU26", null, "t", null,
                 60, new BigDecimal("50.00"), 2, source(),
-                List.of(question("a", 1), questionWithId("b")), List.of(), List.of()));
+                List.of(question("a", 1), questionWithId("b")), List.of(), List.of(), null));
 
         assertThrows(PayloadTooLargeException.class, () -> narrow.validate(request));
     }
@@ -185,7 +185,7 @@ class ExamWebhookPayloadValidatorTest {
                                 List.of(asset(PNG)), List.of()),
                         new QuestionPayload("b", null, "stem", 1, null, null,
                                 List.of(asset(PNG)), List.of())),
-                List.of(), List.of()));
+                List.of(), List.of(), null));
 
         IngestPaper paper = validator.validate(request);
 
@@ -200,7 +200,7 @@ class ExamWebhookPayloadValidatorTest {
                 60, new BigDecimal("50.00"), 1, source(),
                 List.of(new QuestionPayload("1", 1, "(Choose 1 answer)", 1, null, null,
                         List.of(), List.of())),
-                List.of(), List.of()));
+                List.of(), List.of(), null));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> validator.validate(request));
         assertEquals("WEBHOOK_QUESTION_EMPTY", ex.code());
@@ -212,10 +212,23 @@ class ExamWebhookPayloadValidatorTest {
                 "PRJ301_SU26_PE_1", "PE", "PRJ301", "SU26", null, "PE 1", null,
                 null, null, null, source(), List.of(), List.of(),
                 List.of(new ResourcePayload(0, null, "a.zip", "application/zip",
-                        10L, "short", "https://cdn.example.com/a.zip"))));
+                        10L, "short", "https://cdn.example.com/a.zip")), null));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> validator.validate(request));
         assertEquals("WEBHOOK_PAYLOAD_INVALID", ex.code());
+    }
+
+    @Test
+    void passesAnExplicitCampusThroughUnchanged() {
+        PaperWebhookRequest request = new PaperWebhookRequest("evt-1", "exam.paper.upserted", Instant.now(),
+                new PaperPayload("PRJ301_SU26_PE_1", "PE", "PRJ301", "SU26", null, "PE 1", "desc",
+                        null, null, null, source(), List.of(),
+                        List.of(new AssetPayload(0, "image/png", (long) PNG.length, null, PNG_BASE64)),
+                        List.of(), "hcm"));
+
+        IngestPaper paper = validator.validate(request);
+
+        assertEquals("HCM", paper.campus());
     }
 
     @Test
@@ -244,7 +257,7 @@ class ExamWebhookPayloadValidatorTest {
                 type, "FE".equals(type) ? "SCM302" : "PRJ301", "SU26", null,
                 "paper title", null, 60, new BigDecimal("50.00"),
                 questions.isEmpty() ? null : questions.size(),
-                source(), questions, images, resources);
+                source(), questions, images, resources, null);
     }
 
     private static PaperSourcePayload source() {

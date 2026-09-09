@@ -22,6 +22,7 @@ public record IngestPaper(
         String externalPaperId,
         List<IngestQuestion> questions,
         List<IngestAsset> images,
-        List<IngestResource> resources
+        List<IngestResource> resources,
+        String campus
 ) {
 }

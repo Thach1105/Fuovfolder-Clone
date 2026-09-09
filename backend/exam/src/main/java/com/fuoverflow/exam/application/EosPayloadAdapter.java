@@ -7,6 +7,7 @@ import com.fuoverflow.exam.api.dto.webhook.PaperPayload;
 import com.fuoverflow.exam.api.dto.webhook.PaperSourcePayload;
 import com.fuoverflow.exam.api.dto.webhook.PaperWebhookRequest;
 import com.fuoverflow.exam.api.dto.webhook.QuestionPayload;
+import com.fuoverflow.exam.support.ExamCodeParser;
 import com.fuoverflow.exam.support.Sha256;
 import org.springframework.stereotype.Component;
 
@@ -14,8 +15,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Turns a raw EOS exam delivery into the canonical webhook envelope.
@@ -34,9 +33,6 @@ public class EosPayloadAdapter {
     private static final List<String> FLAT_SECTIONS =
             List.of("GrammarQuestions", "FillBlankQuestions", "IndicateMQuestions");
 
-    private static final Pattern EXAM_CODE = Pattern.compile(
-            "^(?<subject>\\w+)_(?<term>[A-Z]{2}\\d{2})_(?<type>FE|PE|PT|MID)_(?<id>\\d+)$");
-
     /** {@code event_id} is varchar(120); a 16-hex digest plus separators leaves this much for the code. */
     private static final int MAX_EVENT_ID = 120;
     private static final int DIGEST_CHARS = 16;
@@ -54,29 +50,26 @@ public class EosPayloadAdapter {
                     "Không có câu hỏi nào mang ImageData nên đề sẽ rỗng.");
         }
 
-        Matcher matcher = EXAM_CODE.matcher(examCode);
-        boolean standard = matcher.matches();
-        String subjectCode = standard ? matcher.group("subject") : firstSegment(examCode);
-        String term = standard ? matcher.group("term") : null;
-        String externalPaperId = standard ? matcher.group("id") : null;
+        ExamCodeParser.Parsed parsed = ExamCodeParser.parse(examCode);
 
         PaperPayload paper = new PaperPayload(
                 examCode,
                 // The table stores FE or PE only; a progress test is still a set of MCQs, so it
                 // lands as FE rather than being refused.
-                standard && "PE".equals(matcher.group("type")) ? "PE" : "FE",
-                subjectCode,
-                term,
+                "PE".equals(parsed.paperType()) ? "PE" : "FE",
+                parsed.subjectCode(),
+                parsed.term(),
                 null,
                 examCode,
                 null,
                 integer(payload.get("Duration")),
                 decimal(payload.get("Mark")),
                 integer(payload.get("NoOfQuestion")),
-                new PaperSourcePayload("eos", externalPaperId, Instant.now()),
+                new PaperSourcePayload("eos", parsed.externalPaperId(), Instant.now()),
                 questions,
                 List.of(),
-                List.of());
+                List.of(),
+                parsed.campus());
 
         return new PaperWebhookRequest(
                 buildEventId(examCode, rawBody),
@@ -172,11 +165,6 @@ public class EosPayloadAdapter {
         }
         String value = node.asText();
         return value.isBlank() ? null : value;
-    }
-
-    private static String firstSegment(String examCode) {
-        int separator = examCode.indexOf('_');
-        return separator > 0 ? examCode.substring(0, separator) : examCode;
     }
 
     private static Integer integer(JsonNode node) {

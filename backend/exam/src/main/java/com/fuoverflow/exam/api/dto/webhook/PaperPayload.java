@@ -22,6 +22,7 @@ public record PaperPayload(
         PaperSourcePayload source,
         List<QuestionPayload> questions,
         List<AssetPayload> images,
-        List<ResourcePayload> resources
+        List<ResourcePayload> resources,
+        String campus
 ) {
 }

@@ -280,7 +280,7 @@ class ExamPaperIngestServiceTest {
         return new IngestPaper(
                 "SCM302_SU26_FE_553972", ExamPaperType.FE, "SCM302", "SU26", null,
                 "SCM302 FE", null, 60, new BigDecimal("50.00"), questionCount,
-                "eos-crawler", "553972", questions, List.of(), List.of());
+                "eos-crawler", "553972", questions, List.of(), List.of(), null);
     }
 
     private static IngestPaper pePaper() {
@@ -290,6 +290,6 @@ class ExamPaperIngestServiceTest {
                 List.of(),
                 List.of(new IngestAsset(0, "image/png", 10, "b".repeat(64), new byte[]{1})),
                 List.of(new IngestResource(0, "Starter", "PE01_starter.zip",
-                        "application/zip", 5, "c".repeat(64), "https://cdn.example.com/a.zip")));
+                        "application/zip", 5, "c".repeat(64), "https://cdn.example.com/a.zip")), null);
     }
 }

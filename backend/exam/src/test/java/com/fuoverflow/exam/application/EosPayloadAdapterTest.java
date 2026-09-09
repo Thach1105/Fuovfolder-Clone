@@ -159,6 +159,26 @@ class EosPayloadAdapterTest {
         assertEquals("777", request.paper().questions().get(0).externalId());
     }
 
+    @Test
+    void parsesTheNewDashShapeAndCapturesCampus() throws Exception {
+        PaperWebhookRequest request = adapt("""
+                {"ExamCode":"SDN302-PE-SU26-HCM",
+                 "GrammarQuestions":[{"QID":1,"Text":"x","ImageData":"%s"}]}
+                """.formatted(PNG));
+
+        assertEquals("SDN302", request.paper().subjectCode());
+        assertEquals("PE", request.paper().paperType());
+        assertEquals("SU26", request.paper().term());
+        assertEquals("HCM", request.paper().campus());
+    }
+
+    @Test
+    void oldUnderscoreShapeStillHasNoCampus() throws Exception {
+        PaperWebhookRequest request = adapt(onePaper("SCM302_SU26_FE_553972"));
+
+        assertNull(request.paper().campus());
+    }
+
     private PaperWebhookRequest adapt(String json) throws Exception {
         return adapter.adapt(objectMapper.readTree(json), json);
     }
