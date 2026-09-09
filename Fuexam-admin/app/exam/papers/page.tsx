@@ -6,6 +6,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Select,
   SelectContent,
@@ -41,6 +42,7 @@ import {
   publishExamPaper,
 } from "@/lib/api/exam";
 import { formatDateTime } from "@/lib/format-datetime";
+import { ChevronDown } from "lucide-react";
 
 const ALL = "all";
 
@@ -55,6 +57,33 @@ const EVENT_STATUS_LABELS: Record<AdminWebhookEvent["status"], string> = {
   done: "Xong",
   failed: "Thất bại",
 };
+
+type TermGroup = { term: string | null; label: string; papers: AdminPaper[] };
+
+function groupByTerm(papers: AdminPaper[]): TermGroup[] {
+  const byTerm = new Map<string | null, AdminPaper[]>();
+  for (const paper of papers) {
+    const key = paper.term ?? null;
+    const bucket = byTerm.get(key);
+    if (bucket) {
+      bucket.push(paper);
+    } else {
+      byTerm.set(key, [paper]);
+    }
+  }
+
+  const terms = [...byTerm.keys()].sort((a, b) => {
+    if (a === null) return -1;
+    if (b === null) return 1;
+    return a.localeCompare(b);
+  });
+
+  return terms.map((term) => ({
+    term,
+    label: term === null ? "Chưa rõ kỳ" : term,
+    papers: byTerm.get(term)!,
+  }));
+}
 
 function formatBytes(bytes: number | null) {
   if (!bytes || bytes <= 0) return "—";
@@ -75,6 +104,7 @@ export default function AdminExamPapersPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>(ALL);
   const [subjectFilter, setSubjectFilter] = useState<string>(ALL);
+  const [campusFilter, setCampusFilter] = useState<string>(ALL);
 
   const [content, setContent] = useState<AdminPaperContent | null>(null);
   const [contentLoading, setContentLoading] = useState(false);
@@ -140,6 +170,21 @@ export default function AdminExamPapersPage() {
   }, [subjects]);
 
   const draftCount = useMemo(() => papers.filter((p) => p.status === "draft").length, [papers]);
+
+  const campuses = useMemo(() => {
+    const set = new Set<string>();
+    papers.forEach((p) => {
+      if (p.campus) set.add(p.campus);
+    });
+    return [...set].sort();
+  }, [papers]);
+
+  const filteredPapers = useMemo(() => {
+    if (campusFilter === ALL) return papers;
+    return papers.filter((p) => p.campus === campusFilter);
+  }, [papers, campusFilter]);
+
+  const groups = useMemo(() => groupByTerm(filteredPapers), [filteredPapers]);
 
   async function openContent(paper: AdminPaper) {
     setContentLoading(true);
@@ -225,6 +270,21 @@ export default function AdminExamPapersPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="w-40">
+              <Select value={campusFilter} onValueChange={setCampusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Cơ sở" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Tất cả cơ sở</SelectItem>
+                  {campuses.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button variant="outline" onClick={loadPapers} disabled={loading}>
               Tải lại
             </Button>
@@ -232,87 +292,129 @@ export default function AdminExamPapersPage() {
 
           {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Mã đề</TableHead>
-                <TableHead>Môn</TableHead>
-                <TableHead>Loại</TableHead>
-                <TableHead>Kỳ</TableHead>
-                <TableHead className="text-right">Câu / Ảnh</TableHead>
-                <TableHead className="text-right">File</TableHead>
-                <TableHead>Nguồn</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead>Nhận lúc</TableHead>
-                <TableHead className="text-right">Hành động</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center text-muted-foreground">
-                    Đang tải…
-                  </TableCell>
-                </TableRow>
-              ) : papers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center text-muted-foreground">
-                    Chưa có đề nào khớp bộ lọc.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                papers.map((paper) => (
-                  <TableRow key={paper.id}>
-                    <TableCell className="font-mono text-xs">{paper.examCode}</TableCell>
-                    <TableCell>{subjectCode.get(paper.subjectId) ?? "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant={paper.paperType === "FE" ? "secondary" : "outline"}>
-                        {paper.paperType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{paper.term ?? "—"}</TableCell>
-                    <TableCell className="text-right">{paper.questionCount}</TableCell>
-                    <TableCell className="text-right">{paper.resourceCount}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {paper.ingestSource ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={paper.status === "draft" ? "outline" : "default"}>
-                        {STATUS_LABELS[paper.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {formatDateTime(paper.createdAt)}
-                    </TableCell>
-                    <TableCell className="space-x-2 text-right">
-                      <Button size="sm" variant="outline" onClick={() => openContent(paper)}>
-                        Xem
-                      </Button>
-                      {canPublish && paper.status === "draft" && (
-                        <Button
-                          size="sm"
-                          onClick={() => onPublish(paper)}
-                          disabled={busyId === paper.id}
-                        >
-                          Phát hành
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => setDeleteTarget(paper)}
-                          disabled={busyId === paper.id}
-                        >
-                          Xóa
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <div className="rounded-xl border border-border">
+            {loading ? (
+              <p className="p-4 text-sm text-muted-foreground">Đang tải…</p>
+            ) : filteredPapers.length === 0 ? (
+              <p className="p-4 text-center text-sm text-muted-foreground">
+                Chưa có đề nào khớp bộ lọc.
+              </p>
+            ) : (
+              <Collapsible defaultOpen>
+                <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold">Đề thi theo kỳ</p>
+                    <p className="text-xs text-muted-foreground">
+                      {filteredPapers.length} đề · nhóm theo kỳ học
+                    </p>
+                  </div>
+                  <CollapsibleTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm">
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent>
+                  <div className="divide-y divide-border">
+                    {groups.map((group) => (
+                      <Collapsible key={group.term ?? "none"} defaultOpen>
+                        <div className="flex items-center justify-between px-4 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold">{group.label}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {group.papers.length} đề
+                            </span>
+                          </div>
+                          <CollapsibleTrigger asChild>
+                            <Button type="button" variant="ghost" size="sm">
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </CollapsibleTrigger>
+                        </div>
+                        <CollapsibleContent>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Mã đề</TableHead>
+                                <TableHead>Môn</TableHead>
+                                <TableHead>Loại</TableHead>
+                                <TableHead>Cơ sở</TableHead>
+                                <TableHead className="text-right">Câu / Ảnh</TableHead>
+                                <TableHead className="text-right">File</TableHead>
+                                <TableHead>Nguồn</TableHead>
+                                <TableHead>Trạng thái</TableHead>
+                                <TableHead>Nhận lúc</TableHead>
+                                <TableHead className="text-right">Hành động</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {group.papers.map((paper) => (
+                                <TableRow key={paper.id}>
+                                  <TableCell className="font-mono text-xs">{paper.examCode}</TableCell>
+                                  <TableCell>{subjectCode.get(paper.subjectId) ?? "—"}</TableCell>
+                                  <TableCell>
+                                    <Badge variant={paper.paperType === "FE" ? "secondary" : "outline"}>
+                                      {paper.paperType}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    {paper.campus ? (
+                                      <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">
+                                        {paper.campus}
+                                      </span>
+                                    ) : (
+                                      "—"
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-right">{paper.questionCount}</TableCell>
+                                  <TableCell className="text-right">{paper.resourceCount}</TableCell>
+                                  <TableCell className="text-xs text-muted-foreground">
+                                    {paper.ingestSource ?? "—"}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant={paper.status === "draft" ? "outline" : "default"}>
+                                      {STATUS_LABELS[paper.status]}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-xs text-muted-foreground">
+                                    {formatDateTime(paper.createdAt)}
+                                  </TableCell>
+                                  <TableCell className="space-x-2 text-right">
+                                    <Button size="sm" variant="outline" onClick={() => openContent(paper)}>
+                                      Xem
+                                    </Button>
+                                    {canPublish && paper.status === "draft" && (
+                                      <Button
+                                        size="sm"
+                                        onClick={() => onPublish(paper)}
+                                        disabled={busyId === paper.id}
+                                      >
+                                        Phát hành
+                                      </Button>
+                                    )}
+                                    {canDelete && (
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => setDeleteTarget(paper)}
+                                        disabled={busyId === paper.id}
+                                      >
+                                        Xóa
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
         </TabsContent>
 
         {canReadWebhooks && (
