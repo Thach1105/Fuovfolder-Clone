@@ -6,7 +6,10 @@ import com.fuoverflow.exam.api.dto.AdminSubjectResponse;
 import com.fuoverflow.exam.api.dto.CreateSubjectRequest;
 import com.fuoverflow.exam.api.dto.UpdateSubjectRequest;
 import com.fuoverflow.exam.config.ExamProperties;
+import com.fuoverflow.exam.domain.ExamPaperType;
 import com.fuoverflow.exam.persistence.ExamFeQuestionRepository;
+import com.fuoverflow.exam.persistence.ExamPaperEntity;
+import com.fuoverflow.exam.persistence.ExamPaperRepository;
 import com.fuoverflow.exam.persistence.ExamPeItemRepository;
 import com.fuoverflow.exam.persistence.ExamSubjectEntity;
 import com.fuoverflow.exam.persistence.ExamSubjectRepository;
@@ -22,6 +25,7 @@ public class ExamSubjectAdminService {
     private final ExamSubjectRepository subjectRepository;
     private final ExamFeQuestionRepository feQuestionRepository;
     private final ExamPeItemRepository peItemRepository;
+    private final ExamPaperRepository paperRepository;
     private final ExamMediaService mediaService;
     private final ExamMediaUrlResolver urlResolver;
     private final ExamProperties properties;
@@ -30,12 +34,14 @@ public class ExamSubjectAdminService {
             ExamSubjectRepository subjectRepository,
             ExamFeQuestionRepository feQuestionRepository,
             ExamPeItemRepository peItemRepository,
+            ExamPaperRepository paperRepository,
             ExamMediaService mediaService,
             ExamMediaUrlResolver urlResolver,
             ExamProperties properties) {
         this.subjectRepository = subjectRepository;
         this.feQuestionRepository = feQuestionRepository;
         this.peItemRepository = peItemRepository;
+        this.paperRepository = paperRepository;
         this.mediaService = mediaService;
         this.urlResolver = urlResolver;
         this.properties = properties;
@@ -69,6 +75,7 @@ public class ExamSubjectAdminService {
                 cover,
                 blankToNull(request.cardColor()),
                 blankToNull(request.categorySlug()),
+                request.curriculumTerm(),
                 request.fePreviewImageCount() != null
                         ? request.fePreviewImageCount() : properties.defaultFePreviewImageCountOrDefault(),
                 request.active() == null || request.active(),
@@ -110,6 +117,9 @@ public class ExamSubjectAdminService {
         if (request.categorySlug() != null) {
             entity.setCategorySlug(blankToNull(request.categorySlug()));
         }
+        if (request.curriculumTerm() != null) {
+            entity.setCurriculumTerm(request.curriculumTerm());
+        }
         if (request.fePreviewImageCount() != null) {
             entity.setFePreviewImageCount(request.fePreviewImageCount());
         }
@@ -140,6 +150,14 @@ public class ExamSubjectAdminService {
     }
 
     private AdminSubjectResponse toAdmin(ExamSubjectEntity e) {
+        long fePaperCount = paperRepository.countBySubjectIdAndPaperTypeAndDeletedAtIsNull(
+                e.getId(), ExamPaperType.FE.dbValue());
+        long pePaperCount = paperRepository.countBySubjectIdAndPaperTypeAndDeletedAtIsNull(
+                e.getId(), ExamPaperType.PE.dbValue());
+        AdminSubjectResponse.LatestPaperSummary latestPaper = paperRepository
+                .findFirstBySubjectIdAndDeletedAtIsNullOrderByCreatedAtDesc(e.getId())
+                .map(ExamSubjectAdminService::toLatestPaperSummary)
+                .orElse(null);
         return new AdminSubjectResponse(
                 e.getId(),
                 e.getCode(),
@@ -148,14 +166,23 @@ public class ExamSubjectAdminService {
                 urlResolver.plain(e.getCoverImageUrl()),
                 e.getCardColor(),
                 e.getCategorySlug(),
+                e.getCurriculumTerm(),
                 e.getFePreviewImageCount(),
                 e.getViewCount(),
                 e.isActive(),
                 e.getSortOrder(),
                 (int) feQuestionRepository.countBySubjectIdAndDeletedAtIsNull(e.getId()),
                 (int) peItemRepository.countBySubjectIdAndDeletedAtIsNull(e.getId()),
+                (int) fePaperCount,
+                (int) pePaperCount,
+                latestPaper,
                 e.getCreatedAt(),
                 e.getUpdatedAt());
+    }
+
+    private static AdminSubjectResponse.LatestPaperSummary toLatestPaperSummary(ExamPaperEntity paper) {
+        return new AdminSubjectResponse.LatestPaperSummary(
+                paper.getExamCode(), paper.getPaperType(), paper.getStatus(), paper.getCreatedAt());
     }
 
     private static String normalizeCode(String code) {
