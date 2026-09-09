@@ -13,9 +13,8 @@ public record PublicSubjectCardResponse(
         long viewCount,
         int fePaperCount,
         int pePaperCount,
-        Integer curriculumTerm,
         LatestPaperSummary latestPaper
 ) {
-    public record LatestPaperSummary(String examCode, String paperType, Instant createdAt) {
+    public record LatestPaperSummary(String examCode, String paperType, String term, Instant createdAt) {
     }
 }

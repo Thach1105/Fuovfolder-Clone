@@ -11,7 +11,6 @@ public record AdminSubjectResponse(
         String coverImageUrl,
         String cardColor,
         String categorySlug,
-        Integer curriculumTerm,
         int fePreviewImageCount,
         long viewCount,
         boolean active,
@@ -25,6 +24,6 @@ public record AdminSubjectResponse(
         Instant updatedAt
 ) {
     /** The most recently created paper for this subject, in any status — a signal for admins that something needs review. */
-    public record LatestPaperSummary(String examCode, String paperType, String status, Instant createdAt) {
+    public record LatestPaperSummary(String examCode, String paperType, String status, String term, Instant createdAt) {
     }
 }

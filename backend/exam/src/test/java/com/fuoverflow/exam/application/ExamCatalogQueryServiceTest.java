@@ -217,10 +217,10 @@ class ExamCatalogQueryServiceTest {
     @Test
     void relatedSubjectsExcludeTheCurrentOne() {
         ExamSubjectEntity subject = ExamSubjectEntity.create(
-                subjectId, "MLN111", "Title", null, null, null, "chinh-tri", null,
+                subjectId, "MLN111", "Title", null, null, null, "chinh-tri",
                 2, true, 0, Instant.now());
         ExamSubjectEntity sibling = ExamSubjectEntity.create(
-                UUID.randomUUID(), "MLN122", "Other", null, null, null, "chinh-tri", null,
+                UUID.randomUUID(), "MLN122", "Other", null, null, null, "chinh-tri",
                 2, true, 1, Instant.now());
         when(subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull("MLN111")).thenReturn(Optional.of(subject));
         when(subjectRepository.findTop6ByCategorySlugAndActiveTrueAndDeletedAtIsNullOrderBySortOrderAsc(
@@ -303,14 +303,14 @@ class ExamCatalogQueryServiceTest {
 
     private ExamSubjectEntity subject(int previewImageCount) {
         return ExamSubjectEntity.create(
-                subjectId, "MLN111", "Title", null, null, null, null, null,
+                subjectId, "MLN111", "Title", null, null, null, null,
                 previewImageCount, true, 0, Instant.now());
     }
 
     @Test
-    void listActive_includesCurriculumTermAndLatestPublishedPaper() {
+    void listActive_includesLatestPublishedPaperTerm() {
         ExamSubjectEntity subject = ExamSubjectEntity.create(
-                subjectId, "MLN111", "Title", null, null, null, null, 3,
+                subjectId, "MLN111", "Title", null, null, null, null,
                 2, true, 0, Instant.now());
         when(subjectRepository.findByActiveTrueAndDeletedAtIsNullOrderBySortOrderAscTitleAsc())
                 .thenReturn(List.of(subject));
@@ -322,15 +322,15 @@ class ExamCatalogQueryServiceTest {
 
         assertEquals(1, cards.size());
         PublicSubjectCardResponse card = cards.get(0);
-        assertEquals(3, card.curriculumTerm());
         assertEquals("FE", card.latestPaper().paperType());
         assertEquals("MLN111_SU26_FE_1", card.latestPaper().examCode());
+        assertEquals("SU26", card.latestPaper().term());
     }
 
     @Test
     void listActive_neverLeaksAnUnpublishedPaperAsLatestPaper() {
         ExamSubjectEntity subject = ExamSubjectEntity.create(
-                subjectId, "MLN111", "Title", null, null, null, null, null,
+                subjectId, "MLN111", "Title", null, null, null, null,
                 2, true, 0, Instant.now());
         when(subjectRepository.findByActiveTrueAndDeletedAtIsNullOrderBySortOrderAscTitleAsc())
                 .thenReturn(List.of(subject));
@@ -340,7 +340,6 @@ class ExamCatalogQueryServiceTest {
         List<PublicSubjectCardResponse> cards = service.listActive();
 
         assertEquals(1, cards.size());
-        assertNull(cards.get(0).curriculumTerm());
         assertNull(cards.get(0).latestPaper());
         verify(paperRepository, never()).findFirstBySubjectIdAndDeletedAtIsNullOrderByCreatedAtDesc(any());
     }

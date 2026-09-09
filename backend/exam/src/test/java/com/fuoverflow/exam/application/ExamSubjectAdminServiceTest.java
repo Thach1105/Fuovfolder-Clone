@@ -2,8 +2,6 @@ package com.fuoverflow.exam.application;
 
 import com.fuoverflow.common.exception.NotFoundException;
 import com.fuoverflow.exam.api.dto.AdminSubjectResponse;
-import com.fuoverflow.exam.api.dto.CreateSubjectRequest;
-import com.fuoverflow.exam.api.dto.UpdateSubjectRequest;
 import com.fuoverflow.exam.config.ExamProperties;
 import com.fuoverflow.exam.domain.ExamPaperType;
 import com.fuoverflow.exam.persistence.ExamFeQuestionRepository;
@@ -63,55 +61,9 @@ class ExamSubjectAdminServiceTest {
     }
 
     @Test
-    void createStoresCurriculumTerm() {
-        when(subjectRepository.existsByCodeIgnoreCaseAndDeletedAtIsNull("PRF192")).thenReturn(false);
-
-        AdminSubjectResponse response = service.create(new CreateSubjectRequest(
-                "prf192", "PRF192", null, null, null, null, 1, null, null, null));
-
-        assertEquals(1, response.curriculumTerm());
-    }
-
-    @Test
-    void createWithoutCurriculumTermLeavesItUnassigned() {
-        when(subjectRepository.existsByCodeIgnoreCaseAndDeletedAtIsNull("PRF192")).thenReturn(false);
-
-        AdminSubjectResponse response = service.create(new CreateSubjectRequest(
-                "prf192", "PRF192", null, null, null, null, null, null, null, null));
-
-        assertNull(response.curriculumTerm(), "chưa gán kỳ phải là null, không phải 0");
-    }
-
-    @Test
-    void updateOverwritesCurriculumTermWhenProvided() {
-        ExamSubjectEntity existing = ExamSubjectEntity.create(
-                UUID.randomUUID(), "PRF192", "PRF192", null, null, null, null, null,
-                3, true, 0, Instant.now());
-        when(subjectRepository.findByIdAndDeletedAtIsNull(existing.getId())).thenReturn(Optional.of(existing));
-
-        AdminSubjectResponse response = service.update(existing.getId(), new UpdateSubjectRequest(
-                null, null, null, null, null, null, 2, null, null, null));
-
-        assertEquals(2, response.curriculumTerm());
-    }
-
-    @Test
-    void updateWithoutCurriculumTermKeepsThePreviousValue() {
-        ExamSubjectEntity existing = ExamSubjectEntity.create(
-                UUID.randomUUID(), "PRF192", "PRF192", null, null, null, null, 4,
-                3, true, 0, Instant.now());
-        when(subjectRepository.findByIdAndDeletedAtIsNull(existing.getId())).thenReturn(Optional.of(existing));
-
-        AdminSubjectResponse response = service.update(existing.getId(), new UpdateSubjectRequest(
-                null, "Đổi tên", null, null, null, null, null, null, null, null));
-
-        assertEquals(4, response.curriculumTerm(), "không gửi curriculumTerm thì phải giữ nguyên giá trị cũ");
-    }
-
-    @Test
     void listAllReportsPaperCountsAndLatestPaperRegardlessOfStatus() {
         ExamSubjectEntity subject = ExamSubjectEntity.create(
-                UUID.randomUUID(), "PRF192", "PRF192", null, null, null, null, 1,
+                UUID.randomUUID(), "PRF192", "PRF192", null, null, null, null,
                 3, true, 0, Instant.now());
         when(subjectRepository.findByDeletedAtIsNullOrderBySortOrderAscTitleAsc())
                 .thenReturn(List.of(subject));
@@ -132,13 +84,14 @@ class ExamSubjectAdminServiceTest {
         assertEquals(1, response.pePaperCountAllStatuses());
         assertEquals("PRF192_SU26_FE_1", response.latestPaper().examCode());
         assertEquals("draft", response.latestPaper().status());
+        assertEquals("SU26", response.latestPaper().term());
         assertTrue(response.latestPaper().createdAt().equals(Instant.parse("2026-09-01T00:00:00Z")));
     }
 
     @Test
     void listAllReportsNullLatestPaperWhenSubjectHasNoPapers() {
         ExamSubjectEntity subject = ExamSubjectEntity.create(
-                UUID.randomUUID(), "PRF192", "PRF192", null, null, null, null, null,
+                UUID.randomUUID(), "PRF192", "PRF192", null, null, null, null,
                 3, true, 0, Instant.now());
         when(subjectRepository.findByDeletedAtIsNullOrderBySortOrderAscTitleAsc())
                 .thenReturn(List.of(subject));
