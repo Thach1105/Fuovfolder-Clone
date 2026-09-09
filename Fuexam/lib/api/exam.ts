@@ -3,6 +3,12 @@ import { API_BASE, apiFetch } from "@/lib/api/client";
 
 export type ExamPaperType = "FE" | "PE";
 
+export interface PublicSubjectLatestPaper {
+  examCode: string;
+  paperType: ExamPaperType;
+  createdAt: string;
+}
+
 export interface PublicSubjectCard {
   id: string;
   code: string;
@@ -13,6 +19,8 @@ export interface PublicSubjectCard {
   viewCount: number;
   fePaperCount: number;
   pePaperCount: number;
+  curriculumTerm: number | null;
+  latestPaper: PublicSubjectLatestPaper | null;
 }
 
 export interface PublicPaperSummary {

@@ -1,5 +1,6 @@
 package com.fuoverflow.exam.api.dto;
 
+import java.time.Instant;
 import java.util.UUID;
 
 public record PublicSubjectCardResponse(
@@ -11,6 +12,10 @@ public record PublicSubjectCardResponse(
         String coverImageUrl,
         long viewCount,
         int fePaperCount,
-        int pePaperCount
+        int pePaperCount,
+        Integer curriculumTerm,
+        LatestPaperSummary latestPaper
 ) {
+    public record LatestPaperSummary(String examCode, String paperType, Instant createdAt) {
+    }
 }

@@ -170,6 +170,11 @@ public class ExamCatalogQueryService {
 
     private PublicSubjectCardResponse toCard(ExamSubjectEntity s) {
         String published = ExamPaperStatus.PUBLISHED.dbValue();
+        PublicSubjectCardResponse.LatestPaperSummary latestPaper = paperRepository
+                .findFirstBySubjectIdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(s.getId(), published)
+                .map(p -> new PublicSubjectCardResponse.LatestPaperSummary(
+                        p.getExamCode(), p.getPaperType(), p.getCreatedAt()))
+                .orElse(null);
         return new PublicSubjectCardResponse(
                 s.getId(),
                 s.getCode(),
@@ -181,7 +186,9 @@ public class ExamCatalogQueryService {
                 (int) paperRepository.countBySubjectIdAndPaperTypeAndStatusAndDeletedAtIsNull(
                         s.getId(), ExamPaperType.FE.dbValue(), published),
                 (int) paperRepository.countBySubjectIdAndPaperTypeAndStatusAndDeletedAtIsNull(
-                        s.getId(), ExamPaperType.PE.dbValue(), published));
+                        s.getId(), ExamPaperType.PE.dbValue(), published),
+                s.getCurriculumTerm(),
+                latestPaper);
     }
 
     private List<ExamPaperEntity> publishedPapers(UUID subjectId) {
