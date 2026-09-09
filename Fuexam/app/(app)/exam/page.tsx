@@ -12,7 +12,7 @@ import { formatDateTime } from "@/lib/format-datetime";
 import { type PublicSubjectCard, type PublicSubjectLatestPaper, listExamSubjects } from "@/lib/api/exam";
 
 type TermGroup = {
-  term: number | null;
+  term: string | null;
   label: string;
   subjects: PublicSubjectCard[];
   feTotal: number;
@@ -20,7 +20,7 @@ type TermGroup = {
   latestPaper: (PublicSubjectLatestPaper & { subjectCode: string }) | null;
 };
 
-/** Cycles through a fixed palette so each "Kỳ" badge gets a distinct, stable color. */
+/** Cycles through a fixed palette so each term badge gets a distinct, stable color. */
 const TERM_BADGE_COLORS = [
   "bg-amber-500 text-amber-950",
   "bg-sky-500 text-sky-950",
@@ -34,14 +34,18 @@ const TERM_BADGE_COLORS = [
   "bg-teal-500 text-teal-950",
 ];
 
-function termBadgeColor(term: number): string {
-  return TERM_BADGE_COLORS[term % TERM_BADGE_COLORS.length];
+function termBadgeColor(term: string): string {
+  let hash = 0;
+  for (let i = 0; i < term.length; i++) {
+    hash = (hash * 31 + term.charCodeAt(i)) % TERM_BADGE_COLORS.length;
+  }
+  return TERM_BADGE_COLORS[hash];
 }
 
 function groupSubjects(items: PublicSubjectCard[]): TermGroup[] {
-  const byTerm = new Map<number | null, PublicSubjectCard[]>();
+  const byTerm = new Map<string | null, PublicSubjectCard[]>();
   for (const item of items) {
-    const key = item.curriculumTerm ?? null;
+    const key = item.latestPaper?.term ?? null;
     const bucket = byTerm.get(key);
     if (bucket) {
       bucket.push(item);
@@ -53,7 +57,7 @@ function groupSubjects(items: PublicSubjectCard[]): TermGroup[] {
   const terms = [...byTerm.keys()].sort((a, b) => {
     if (a === null) return -1;
     if (b === null) return 1;
-    return a - b;
+    return a.localeCompare(b);
   });
 
   return terms.map((term) => {
@@ -72,7 +76,7 @@ function groupSubjects(items: PublicSubjectCard[]): TermGroup[] {
     );
     return {
       term,
-      label: term === null ? "Tổng hợp - Chưa rõ kỳ" : `Kỳ ${term}`,
+      label: term === null ? "Chưa rõ kỳ" : term,
       subjects,
       feTotal,
       peTotal,
@@ -159,7 +163,7 @@ export default function ExamPage() {
                 <div>
                   <p className="app-eyebrow">Danh sách môn</p>
                   <p className="font-mono text-xs text-muted-foreground">
-                    {filtered.length} môn · nhóm theo kỳ học
+                    {filtered.length} môn · nhóm theo kỳ thi gần nhất
                   </p>
                 </div>
                 <CollapsibleTrigger asChild>
@@ -192,7 +196,7 @@ export default function ExamPage() {
                             </span>
                           ) : (
                             <span
-                              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${termBadgeColor(group.term)}`}
+                              className={`flex h-8 items-center justify-center rounded-full px-2 text-xs font-bold ${termBadgeColor(group.term)}`}
                             >
                               {group.term}
                             </span>

@@ -152,7 +152,7 @@ public class ExamPaperIngestService {
                 .orElseGet(() -> {
                     log.info("Creating inactive exam subject {} from webhook ingest", subjectCode);
                     return subjectRepository.save(ExamSubjectEntity.create(
-                            UUID.randomUUID(), subjectCode, subjectCode, null, null, null, null, null,
+                            UUID.randomUUID(), subjectCode, subjectCode, null, null, null, null,
                             examProperties.defaultFePreviewImageCountOrDefault(), false, 0, now));
                 });
     }

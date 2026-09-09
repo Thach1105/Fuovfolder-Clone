@@ -13,13 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, Folder, FileStack } from "lucide-react";
 import { formatDateTime } from "@/lib/format-datetime";
@@ -35,8 +28,6 @@ import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { can } from "@/lib/auth/permissions";
 
-const UNASSIGNED_TERM = "unassigned";
-
 const EMPTY_FORM = {
   code: "",
   title: "",
@@ -44,14 +35,13 @@ const EMPTY_FORM = {
   coverImageUrl: "",
   cardColor: "",
   categorySlug: "on-thi",
-  curriculumTerm: UNASSIGNED_TERM,
   active: true,
   sortOrder: "0",
   fePreviewImageCount: "2",
 };
 
 type TermGroup = {
-  term: number | null;
+  term: string | null;
   label: string;
   subjects: AdminSubject[];
   feQuestionTotal: number;
@@ -59,7 +49,7 @@ type TermGroup = {
   latestPaper: (AdminSubjectLatestPaper & { subjectCode: string }) | null;
 };
 
-/** Cycles through a fixed palette so each "Kỳ" badge gets a distinct, stable color. */
+/** Cycles through a fixed palette so each term badge gets a distinct, stable color. */
 const TERM_BADGE_COLORS = [
   "bg-amber-500 text-amber-950",
   "bg-sky-500 text-sky-950",
@@ -73,14 +63,18 @@ const TERM_BADGE_COLORS = [
   "bg-teal-500 text-teal-950",
 ];
 
-function termBadgeColor(term: number): string {
-  return TERM_BADGE_COLORS[term % TERM_BADGE_COLORS.length];
+function termBadgeColor(term: string): string {
+  let hash = 0;
+  for (let i = 0; i < term.length; i++) {
+    hash = (hash * 31 + term.charCodeAt(i)) % TERM_BADGE_COLORS.length;
+  }
+  return TERM_BADGE_COLORS[hash];
 }
 
 function groupSubjects(items: AdminSubject[]): TermGroup[] {
-  const byTerm = new Map<number | null, AdminSubject[]>();
+  const byTerm = new Map<string | null, AdminSubject[]>();
   for (const item of items) {
-    const key = item.curriculumTerm ?? null;
+    const key = item.latestPaper?.term ?? null;
     const bucket = byTerm.get(key);
     if (bucket) {
       bucket.push(item);
@@ -92,7 +86,7 @@ function groupSubjects(items: AdminSubject[]): TermGroup[] {
   const terms = [...byTerm.keys()].sort((a, b) => {
     if (a === null) return -1;
     if (b === null) return 1;
-    return a - b;
+    return a.localeCompare(b);
   });
 
   return terms.map((term) => {
@@ -117,7 +111,7 @@ function groupSubjects(items: AdminSubject[]): TermGroup[] {
     );
     return {
       term,
-      label: term === null ? "Tổng hợp - Chưa rõ kỳ" : `Kỳ ${term}`,
+      label: term === null ? "Chưa rõ kỳ" : term,
       subjects,
       feQuestionTotal,
       paperTotal,
@@ -170,7 +164,6 @@ export default function AdminExamSubjectsPage() {
       coverImageUrl: item.coverImageUrl ?? "",
       cardColor: item.cardColor ?? "",
       categorySlug: item.categorySlug ?? "",
-      curriculumTerm: item.curriculumTerm != null ? String(item.curriculumTerm) : UNASSIGNED_TERM,
       active: item.active,
       sortOrder: String(item.sortOrder),
       fePreviewImageCount: String(item.fePreviewImageCount),
@@ -188,8 +181,6 @@ export default function AdminExamSubjectsPage() {
       coverImageUrl: form.coverImageUrl || undefined,
       cardColor: form.cardColor.trim() || undefined,
       categorySlug: form.categorySlug.trim() || undefined,
-      curriculumTerm:
-        form.curriculumTerm === UNASSIGNED_TERM ? undefined : Number.parseInt(form.curriculumTerm, 10),
       active: form.active,
       sortOrder: Number.parseInt(form.sortOrder, 10) || 0,
       fePreviewImageCount: Number.parseInt(form.fePreviewImageCount, 10) || 2,
@@ -239,8 +230,7 @@ export default function AdminExamSubjectsPage() {
     );
   }, [items, search]);
 
-  const editingItem = editingId ? items.find((i) => i.id === editingId) ?? null : null;
-  const clearTermDisabled = editingItem != null && editingItem.curriculumTerm != null;
+  const groups = useMemo(() => groupSubjects(filteredItems), [filteredItems]);
 
   return (
     <AdminShell
@@ -328,27 +318,6 @@ export default function AdminExamSubjectsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="curriculumTerm">Kỳ học</Label>
-                    <Select
-                      value={form.curriculumTerm}
-                      onValueChange={(v) => setForm({ ...form, curriculumTerm: v })}
-                    >
-                      <SelectTrigger id="curriculumTerm">
-                        <SelectValue placeholder="Chưa rõ kỳ" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={UNASSIGNED_TERM} disabled={clearTermDisabled}>
-                          Chưa rõ kỳ{clearTermDisabled ? " (không thể bỏ gán)" : ""}
-                        </SelectItem>
-                        {Array.from({ length: 10 }, (_, i) => i).map((term) => (
-                          <SelectItem key={term} value={String(term)}>
-                            Kỳ {term}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="sort">Thứ tự</Label>
                     <Input
                       id="sort"
@@ -405,7 +374,7 @@ export default function AdminExamSubjectsPage() {
                   <div>
                     <p className="text-sm font-semibold">Danh sách môn thi theo kỳ</p>
                     <p className="text-xs text-muted-foreground">
-                      {items.length} môn · nhóm theo kỳ học
+                      {items.length} môn · nhóm theo kỳ thi gần nhất
                     </p>
                   </div>
                   <CollapsibleTrigger asChild>
@@ -416,7 +385,7 @@ export default function AdminExamSubjectsPage() {
                 </div>
                 <CollapsibleContent>
                   <div className="divide-y divide-border">
-                    {groupSubjects(filteredItems).map((group) => (
+                    {groups.map((group) => (
                       <div key={group.term ?? "none"} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start">
                         <div className="flex shrink-0 items-center gap-2 sm:w-40">
                           {group.term === null ? (
@@ -425,7 +394,7 @@ export default function AdminExamSubjectsPage() {
                             </span>
                           ) : (
                             <span
-                              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${termBadgeColor(group.term)}`}
+                              className={`flex h-8 items-center justify-center rounded-full px-2 text-xs font-bold ${termBadgeColor(group.term)}`}
                             >
                               {group.term}
                             </span>

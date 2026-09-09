@@ -6,6 +6,7 @@ export type ExamPaperType = "FE" | "PE";
 export interface PublicSubjectLatestPaper {
   examCode: string;
   paperType: ExamPaperType;
+  term: string | null;
   createdAt: string;
 }
 
@@ -19,7 +20,6 @@ export interface PublicSubjectCard {
   viewCount: number;
   fePaperCount: number;
   pePaperCount: number;
-  curriculumTerm: number | null;
   latestPaper: PublicSubjectLatestPaper | null;
 }
 

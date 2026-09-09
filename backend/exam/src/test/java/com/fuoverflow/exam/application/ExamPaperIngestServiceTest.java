@@ -260,7 +260,7 @@ class ExamPaperIngestServiceTest {
 
     private ExamSubjectEntity subject() {
         return ExamSubjectEntity.create(
-                subjectId, "SCM302", "Supply Chain", null, null, null, null, null,
+                subjectId, "SCM302", "Supply Chain", null, null, null, null,
                 2, true, 0, Instant.now());
     }
 

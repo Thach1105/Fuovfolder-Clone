@@ -75,7 +75,6 @@ public class ExamSubjectAdminService {
                 cover,
                 blankToNull(request.cardColor()),
                 blankToNull(request.categorySlug()),
-                request.curriculumTerm(),
                 request.fePreviewImageCount() != null
                         ? request.fePreviewImageCount() : properties.defaultFePreviewImageCountOrDefault(),
                 request.active() == null || request.active(),
@@ -116,9 +115,6 @@ public class ExamSubjectAdminService {
         }
         if (request.categorySlug() != null) {
             entity.setCategorySlug(blankToNull(request.categorySlug()));
-        }
-        if (request.curriculumTerm() != null) {
-            entity.setCurriculumTerm(request.curriculumTerm());
         }
         if (request.fePreviewImageCount() != null) {
             entity.setFePreviewImageCount(request.fePreviewImageCount());
@@ -166,7 +162,6 @@ public class ExamSubjectAdminService {
                 urlResolver.plain(e.getCoverImageUrl()),
                 e.getCardColor(),
                 e.getCategorySlug(),
-                e.getCurriculumTerm(),
                 e.getFePreviewImageCount(),
                 e.getViewCount(),
                 e.isActive(),
@@ -182,7 +177,7 @@ public class ExamSubjectAdminService {
 
     private static AdminSubjectResponse.LatestPaperSummary toLatestPaperSummary(ExamPaperEntity paper) {
         return new AdminSubjectResponse.LatestPaperSummary(
-                paper.getExamCode(), paper.getPaperType(), paper.getStatus(), paper.getCreatedAt());
+                paper.getExamCode(), paper.getPaperType(), paper.getStatus(), paper.getTerm(), paper.getCreatedAt());
     }
 
     private static String normalizeCode(String code) {

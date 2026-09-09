@@ -173,7 +173,7 @@ public class ExamCatalogQueryService {
         PublicSubjectCardResponse.LatestPaperSummary latestPaper = paperRepository
                 .findFirstBySubjectIdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(s.getId(), published)
                 .map(p -> new PublicSubjectCardResponse.LatestPaperSummary(
-                        p.getExamCode(), p.getPaperType(), p.getCreatedAt()))
+                        p.getExamCode(), p.getPaperType(), p.getTerm(), p.getCreatedAt()))
                 .orElse(null);
         return new PublicSubjectCardResponse(
                 s.getId(),
@@ -187,7 +187,6 @@ public class ExamCatalogQueryService {
                         s.getId(), ExamPaperType.FE.dbValue(), published),
                 (int) paperRepository.countBySubjectIdAndPaperTypeAndStatusAndDeletedAtIsNull(
                         s.getId(), ExamPaperType.PE.dbValue(), published),
-                s.getCurriculumTerm(),
                 latestPaper);
     }
 
