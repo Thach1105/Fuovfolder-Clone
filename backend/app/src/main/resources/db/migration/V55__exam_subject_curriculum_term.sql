@@ -5,7 +5,7 @@
 -- code alone (course numbering does not match FPT's curriculum term order),
 -- so it is deliberately never backfilled.
 ALTER TABLE exam_subjects
-    ADD COLUMN curriculum_term smallint NULL;
+    ADD COLUMN curriculum_term integer NULL;
 
 ALTER TABLE exam_subjects
     ADD CONSTRAINT exam_subjects_curriculum_term_range
