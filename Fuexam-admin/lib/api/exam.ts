@@ -1,5 +1,12 @@
 import { API_BASE, apiFetch } from "@/lib/api/client";
 
+export interface AdminSubjectLatestPaper {
+  examCode: string;
+  paperType: ExamPaperType;
+  status: ExamPaperStatus;
+  createdAt: string;
+}
+
 export interface AdminSubject {
   id: string;
   code: string;
@@ -8,12 +15,16 @@ export interface AdminSubject {
   coverImageUrl: string | null;
   cardColor: string | null;
   categorySlug: string | null;
+  curriculumTerm: number | null;
   fePreviewImageCount: number;
   viewCount: number;
   active: boolean;
   sortOrder: number;
   feQuestionCount: number;
   pePaperCount: number;
+  fePaperCount: number;
+  pePaperCountAllStatuses: number;
+  latestPaper: AdminSubjectLatestPaper | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,6 +36,7 @@ export interface AdminSubjectBody {
   coverImageUrl?: string;
   cardColor?: string;
   categorySlug?: string;
+  curriculumTerm?: number | null;
   fePreviewImageCount?: number;
   active?: boolean;
   sortOrder?: number;
