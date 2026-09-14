@@ -98,6 +98,7 @@ fuexam:
       max-image-bytes: ${EXAM_WEBHOOK_MAX_IMAGE_BYTES:5242880}
       max-resource-bytes: ${EXAM_WEBHOOK_MAX_RESOURCE_BYTES:52428800}
       max-questions: ${EXAM_WEBHOOK_MAX_QUESTIONS:200}
+      max-papers-per-batch: ${EXAM_WEBHOOK_MAX_PAPERS_PER_BATCH:50}
       max-attempts: ${EXAM_WEBHOOK_MAX_ATTEMPTS:5}
       signature-tolerance-seconds: ${EXAM_WEBHOOK_SIGNATURE_TOLERANCE:300}
       poll-interval-ms: ${EXAM_WEBHOOK_POLL_INTERVAL_MS:30000}

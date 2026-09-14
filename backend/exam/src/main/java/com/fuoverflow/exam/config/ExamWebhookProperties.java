@@ -20,7 +20,8 @@ public record ExamWebhookProperties(
         Integer maxQuestions,
         Integer maxAttempts,
         Integer signatureToleranceSeconds,
-        Long pollIntervalMs
+        Long pollIntervalMs,
+        Integer maxPapersPerBatch
 ) {
     public Map<String, String> clientsOrEmpty() {
         return clients == null ? Map.of() : clients;
@@ -53,5 +54,9 @@ public record ExamWebhookProperties(
     public int signatureToleranceSecondsOrDefault() {
         return signatureToleranceSeconds != null && signatureToleranceSeconds > 0
                 ? signatureToleranceSeconds : 300;
+    }
+
+    public int maxPapersPerBatchOrDefault() {
+        return maxPapersPerBatch != null && maxPapersPerBatch > 0 ? maxPapersPerBatch : 50;
     }
 }

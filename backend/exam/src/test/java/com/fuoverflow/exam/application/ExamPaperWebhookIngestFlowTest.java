@@ -79,7 +79,7 @@ class ExamPaperWebhookIngestFlowTest {
     void setUp() throws Exception {
         ExamWebhookProperties webhookProperties = new ExamWebhookProperties(
                 Map.of("eos-crawler", SECRET), List.of("cdn.example.com"),
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
         ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         ExamWebhookPayloadValidator validator = new ExamWebhookPayloadValidator(5_242_880L, 200);
 

@@ -173,7 +173,7 @@ class ExamWebhookReceiptServiceTest {
 
     private static ExamWebhookProperties properties(Long maxPayloadBytes) {
         return new ExamWebhookProperties(Map.of("eos-crawler", SECRET),
-                List.of("cdn.example.com"), maxPayloadBytes, null, null, null, null, null, null);
+                List.of("cdn.example.com"), maxPayloadBytes, null, null, null, null, null, null, null);
     }
 
     private static String validBody() {
