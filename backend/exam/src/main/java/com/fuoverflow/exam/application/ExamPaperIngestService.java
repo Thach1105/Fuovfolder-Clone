@@ -31,13 +31,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Turns a validated {@link IngestPaper} into a draft paper plus its FE questions or PE content.
+ * Turns a validated {@link IngestPaper} into a published paper plus its FE questions or PE content.
  *
  * <p>Two rules drive the shape of this class. First, a redelivery must not duplicate: a paper is
- * identified by content fingerprint, falling back to exam code, and an existing draft is rebuilt in
- * place while an already-published paper is left untouched. Second, a partial build must not
- * survive: every object key written during a run is tracked, and a failure deletes them along with
- * a draft this run created, so a retry starts from a clean slate instead of accumulating orphans.
+ * identified by content fingerprint, falling back to exam code, and an existing paper is rebuilt in
+ * place — published or not, because the sender is the source of truth and a correction has to be
+ * able to land. Second, a partial build must not survive: every object key written during a run is
+ * tracked, and a failure deletes them along with a paper this run created, so a retry starts from a
+ * clean slate instead of accumulating orphans.
  */
 @Service
 public class ExamPaperIngestService {
@@ -87,11 +88,6 @@ public class ExamPaperIngestService {
                 .findByFingerprintAndDeletedAtIsNull(fingerprint)
                 .or(() -> paperRepository.findByExamCodeIgnoreCaseAndDeletedAtIsNull(paper.examCode()));
 
-        if (existing.isPresent() && existing.get().isPublished()) {
-            log.info("Exam paper {} already published; ingest skipped", paper.examCode());
-            return new IngestOutcome(existing.get().getId(), Outcome.SKIPPED_PUBLISHED);
-        }
-
         boolean created = existing.isEmpty();
         ExamPaperEntity entity = existing.orElseGet(() -> ExamPaperEntity.draft(
                 UUID.randomUUID(),
@@ -135,6 +131,11 @@ public class ExamPaperIngestService {
                 paperRepository.delete(entity);
             }
             throw e;
+        }
+
+        if (hasContent(paper)) {
+            entity.publish(now);
+            paperRepository.save(entity);
         }
 
         return new IngestOutcome(entity.getId(), created ? Outcome.CREATED : Outcome.UPDATED);
@@ -281,6 +282,18 @@ public class ExamPaperIngestService {
 
     // --- cleanup --------------------------------------------------------------
 
+    /**
+     * The EXAM_PAPER_EMPTY rule {@code ExamPaperAdminService.publish} enforces, read off the payload
+     * the content was just built from instead of a repository round trip. The validator already
+     * rejects an empty paper, so this is a guard: a paper that somehow has nothing stays a draft and
+     * shows up in the admin queue rather than going live blank.
+     */
+    private static boolean hasContent(IngestPaper paper) {
+        return paper.paperType() == ExamPaperType.FE
+                ? !paper.questions().isEmpty()
+                : !paper.images().isEmpty() || !paper.resources().isEmpty();
+    }
+
     private void rollbackStoredObjects(List<String> imageKeys, List<String> blurKeys,
                                        List<String> resourceKeys) {
         try {
@@ -293,7 +306,7 @@ public class ExamPaperIngestService {
     }
 
     public enum Outcome {
-        CREATED, UPDATED, SKIPPED_PUBLISHED
+        CREATED, UPDATED
     }
 
     public record IngestOutcome(UUID paperId, Outcome outcome) {

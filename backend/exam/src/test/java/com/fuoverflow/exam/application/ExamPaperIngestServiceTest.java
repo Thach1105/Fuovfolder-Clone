@@ -133,13 +133,14 @@ class ExamPaperIngestServiceTest {
         assertNotNull(outcome.paperId());
 
         ArgumentCaptor<ExamPaperEntity> paper = ArgumentCaptor.forClass(ExamPaperEntity.class);
-        verify(paperRepository).save(paper.capture());
-        assertEquals("draft", paper.getValue().getStatus());
-        assertEquals("FE", paper.getValue().getPaperType());
-        assertEquals("SCM302_SU26_FE_553972", paper.getValue().getExamCode());
-        assertEquals("SU26", paper.getValue().getTerm());
-        assertEquals("webhook:eos-crawler", paper.getValue().getIngestSource());
-        assertEquals("HCM", paper.getValue().getCampus());
+        verify(paperRepository, times(2)).save(paper.capture());
+        ExamPaperEntity persisted = paper.getAllValues().get(1);
+        assertEquals("published", persisted.getStatus());
+        assertEquals("FE", persisted.getPaperType());
+        assertEquals("SCM302_SU26_FE_553972", persisted.getExamCode());
+        assertEquals("SU26", persisted.getTerm());
+        assertEquals("webhook:eos-crawler", persisted.getIngestSource());
+        assertEquals("HCM", persisted.getCampus());
 
         ArgumentCaptor<ExamFeQuestionEntity> questions =
                 ArgumentCaptor.forClass(ExamFeQuestionEntity.class);
@@ -195,7 +196,23 @@ class ExamPaperIngestServiceTest {
     }
 
     @Test
-    void skipsAPaperThatIsAlreadyPublished() {
+    void publishesAPaperOnceItsContentIsBuilt() {
+        stubSubject();
+
+        ExamPaperIngestService.IngestOutcome outcome =
+                service.ingest(fePaper(1), "webhook:eos-crawler");
+
+        assertEquals(ExamPaperIngestService.Outcome.CREATED, outcome.outcome());
+        ArgumentCaptor<ExamPaperEntity> saved = ArgumentCaptor.forClass(ExamPaperEntity.class);
+        verify(paperRepository, times(2)).save(saved.capture());
+        ExamPaperEntity persisted = saved.getAllValues().get(1);
+        assertTrue(persisted.isPublished(),
+                "a webhook paper goes live without an admin step");
+        assertNotNull(persisted.getPublishedAt());
+    }
+
+    @Test
+    void rebuildsAPaperThatIsAlreadyPublishedAndKeepsItPublished() {
         stubSubject();
         IngestPaper incoming = fePaper(1);
         ExamPaperEntity published = draftPaper(ExamPaperFingerprint.of(incoming));
@@ -203,12 +220,14 @@ class ExamPaperIngestServiceTest {
         when(paperRepository.findByFingerprintAndDeletedAtIsNull(published.getFingerprint()))
                 .thenReturn(Optional.of(published));
 
-        ExamPaperIngestService.IngestOutcome outcome = service.ingest(incoming, "webhook:eos-crawler");
+        ExamPaperIngestService.IngestOutcome outcome =
+                service.ingest(incoming, "webhook:eos-crawler");
 
-        assertEquals(ExamPaperIngestService.Outcome.SKIPPED_PUBLISHED, outcome.outcome());
+        assertEquals(ExamPaperIngestService.Outcome.UPDATED, outcome.outcome());
         assertEquals(published.getId(), outcome.paperId());
-        verify(feQuestionRepository, never()).save(any());
-        verify(ingestStorage, never()).storeImage(any(), anyString(), any(), anyBoolean());
+        assertTrue(published.isPublished());
+        // The sender is the source of truth, so its correction must actually replace the content.
+        verify(feQuestionRepository).save(any());
     }
 
     @Test

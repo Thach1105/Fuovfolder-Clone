@@ -4,6 +4,10 @@ Date: 2026-08-31
 Status: approved
 Module: `backend/exam` (+ migrations in `backend/app`)
 
+Superseded in part (2026-09-14): one paper per call, and the `draft` → admin-publish lifecycle,
+are replaced by `2026-09-14-exam-webhook-batch-autopublish-design.md`. The rest of this document
+still describes the system.
+
 ## Problem
 
 Exam papers (FE/PE) can only be created by hand through the admin UI today. A third party

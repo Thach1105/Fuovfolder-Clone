@@ -152,7 +152,8 @@ class ExamPaperWebhookIngestFlowTest {
 
         ArgumentCaptor<ExamPaperEntity> paper = ArgumentCaptor.forClass(ExamPaperEntity.class);
         verify(capturedPapers, atLeastOnce()).save(paper.capture());
-        assertEquals("draft", paper.getValue().getStatus());
+        assertEquals("published", paper.getValue().getStatus(),
+                "a webhook paper goes live without an admin step");
         assertEquals("SCM302_SU26_FE_553972", paper.getValue().getExamCode());
         assertEquals("SU26", paper.getValue().getTerm());
         assertEquals(60, paper.getValue().getDurationMinutes());
@@ -233,7 +234,8 @@ class ExamPaperWebhookIngestFlowTest {
         assertEquals("SCM302_SU26_FE_553972", paper.getValue().getExamCode());
         assertEquals("SU26", paper.getValue().getTerm());
         assertEquals("FE", paper.getValue().getPaperType());
-        assertEquals("draft", paper.getValue().getStatus());
+        assertEquals("published", paper.getValue().getStatus(),
+                "a webhook paper goes live without an admin step");
         assertEquals(60, paper.getValue().getDurationMinutes());
 
         verify(feQuestionRepository, times(3)).save(any());
