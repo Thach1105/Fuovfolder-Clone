@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Ingest endpoint for third-party exam paper deliveries. Authenticated by the HMAC signature in
  * {@code X-Exam-Signature}, not by a session, so it is {@code permitAll} in the security config.
+ * <p>{@code 202} means at least one paper was newly queued, {@code 200} that every paper was
+ * already known; a delivery where nothing at all landed fails with the first paper's error.
  */
 @RestController
 @RequestMapping("/api/v1/exam/webhook")
