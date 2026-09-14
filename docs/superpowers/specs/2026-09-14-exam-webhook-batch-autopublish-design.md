@@ -116,6 +116,11 @@ A batch mixing duplicates with rejections is therefore a `200` carrying per-pape
 `400`: the delivery did reach a known state for every paper, and the sender reads `results` to
 see which ones need fixing.
 
+When *every* paper is rejected there is no results array to return — the first rejection is
+rethrown unchanged and rendered by the shared error advice. A single-paper delivery therefore
+keeps exactly today's failure behaviour, including the `413` that an over-long question list
+raises rather than a `400`.
+
 `WebhookReceiptResponse` is replaced by this shape for every body, single or batch. A one-paper
 delivery therefore returns a one-element `results` array. This is a visible response change for
 existing senders; the status codes they branch on (`200`/`202`) do not change.

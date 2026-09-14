@@ -3,7 +3,7 @@ package com.fuoverflow.exam.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fuoverflow.common.storage.ObjectStorage;
-import com.fuoverflow.exam.api.dto.webhook.WebhookReceiptResponse;
+import com.fuoverflow.exam.api.dto.webhook.WebhookPaperReceipt;
 import com.fuoverflow.exam.config.ExamProperties;
 import com.fuoverflow.exam.config.ExamWebhookProperties;
 import com.fuoverflow.exam.persistence.ExamFeQuestionEntity;
@@ -135,7 +135,7 @@ class ExamPaperWebhookIngestFlowTest {
 
     @Test
     void ingestsThreeRealQuestionsIntoADraftPaperWithBlurredSidecars() {
-        WebhookReceiptResponse receipt = receiptService.receive("eos-crawler", body, headerFor(body));
+        WebhookPaperReceipt receipt = receiptService.receive("eos-crawler", body, headerFor(body)).results().get(0);
         worker.processPending();
 
         assertFalse(receipt.duplicate());
@@ -177,10 +177,10 @@ class ExamPaperWebhookIngestFlowTest {
     @Test
     void replayingTheSameBodyDoesNotCreateASecondPaper() {
         String header = headerFor(body);
-        WebhookReceiptResponse first = receiptService.receive("eos-crawler", body, header);
+        WebhookPaperReceipt first = receiptService.receive("eos-crawler", body, header).results().get(0);
         worker.processPending();
 
-        WebhookReceiptResponse second = receiptService.receive("eos-crawler", body, headerFor(body));
+        WebhookPaperReceipt second = receiptService.receive("eos-crawler", body, headerFor(body)).results().get(0);
 
         assertTrue(second.duplicate());
         assertEquals(first.receiptId(), second.receiptId());
@@ -191,7 +191,7 @@ class ExamPaperWebhookIngestFlowTest {
 
     @Test
     void storedPayloadLosesTheImageBytesOnceProcessed() {
-        WebhookReceiptResponse receipt = receiptService.receive("eos-crawler", body, headerFor(body));
+        WebhookPaperReceipt receipt = receiptService.receive("eos-crawler", body, headerFor(body)).results().get(0);
         worker.processPending();
 
         String payload = stored.get(receipt.receiptId()).getPayloadJson();
@@ -220,7 +220,7 @@ class ExamPaperWebhookIngestFlowTest {
                 getClass().getResource("/fixtures/eos-raw-paper.json").toURI()),
                 StandardCharsets.UTF_8);
 
-        WebhookReceiptResponse receipt = receiptService.receive("eos-crawler", eos, headerFor(eos));
+        WebhookPaperReceipt receipt = receiptService.receive("eos-crawler", eos, headerFor(eos)).results().get(0);
         worker.processPending();
 
         assertFalse(receipt.duplicate());
@@ -247,7 +247,7 @@ class ExamPaperWebhookIngestFlowTest {
                 getClass().getResource("/fixtures/eos-raw-paper.json").toURI()),
                 StandardCharsets.UTF_8);
 
-        WebhookReceiptResponse receipt = receiptService.receive("eos-crawler", eos, headerFor(eos));
+        WebhookPaperReceipt receipt = receiptService.receive("eos-crawler", eos, headerFor(eos)).results().get(0);
         worker.processPending();
 
         String payload = stored.get(receipt.receiptId()).getPayloadJson();
@@ -262,9 +262,9 @@ class ExamPaperWebhookIngestFlowTest {
                 getClass().getResource("/fixtures/eos-raw-paper.json").toURI()),
                 StandardCharsets.UTF_8);
 
-        WebhookReceiptResponse first = receiptService.receive("eos-crawler", eos, headerFor(eos));
+        WebhookPaperReceipt first = receiptService.receive("eos-crawler", eos, headerFor(eos)).results().get(0);
         worker.processPending();
-        WebhookReceiptResponse second = receiptService.receive("eos-crawler", eos, headerFor(eos));
+        WebhookPaperReceipt second = receiptService.receive("eos-crawler", eos, headerFor(eos)).results().get(0);
 
         assertTrue(second.duplicate(), "cùng một file phải cho cùng eventId");
         assertEquals(first.receiptId(), second.receiptId());
