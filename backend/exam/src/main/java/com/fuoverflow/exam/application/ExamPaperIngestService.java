@@ -109,9 +109,14 @@ public class ExamPaperIngestService {
                 paper.campus(),
                 now));
 
+        List<String> staleQuestionImageKeys = new ArrayList<>();
+        List<String> staleQuestionBlurKeys = new ArrayList<>();
+        List<String> stalePeImageKeys = new ArrayList<>();
+        List<String> staleResourceKeys = new ArrayList<>();
         if (!created) {
             applyMetadata(entity, paper, fingerprint, ingestSource, now);
-            clearExistingContent(entity, now);
+            clearExistingContent(entity, now,
+                    staleQuestionImageKeys, staleQuestionBlurKeys, stalePeImageKeys, staleResourceKeys);
         }
 
         List<String> storedImageKeys = new ArrayList<>();
@@ -137,6 +142,13 @@ public class ExamPaperIngestService {
             entity.publish(now);
             paperRepository.save(entity);
         }
+
+        // Only reached once the rebuild above has fully succeeded. The @Transactional rollback on a
+        // thrown exception restores the old question/item rows, but it cannot restore object-store
+        // bytes already deleted — so the previous delivery's media is deleted here, last, instead of
+        // up front in clearExistingContent. A paper that is already live must never lose its working
+        // images to a rebuild that fails partway through.
+        deleteStaleMedia(staleQuestionImageKeys, staleQuestionBlurKeys, stalePeImageKeys, staleResourceKeys);
 
         return new IngestOutcome(entity.getId(), created ? Outcome.CREATED : Outcome.UPDATED);
     }
@@ -177,14 +189,22 @@ public class ExamPaperIngestService {
     }
 
     /**
-     * Wipes what the previous delivery built. Without this an update would leave the old questions
-     * in place next to the new ones, which reads as a duplicated paper to a member.
+     * Soft-deletes what the previous delivery built so the rebuild below does not leave the old
+     * questions in place next to the new ones, which would read as a duplicated paper to a member.
+     *
+     * <p>The object keys those rows point at are only collected here, not deleted: deleting them
+     * now would be irreversible before we know the rebuild will succeed, and for an already
+     * published paper that would mean permanently losing live images to a rebuild that later fails.
+     * The caller deletes the collected keys once the rebuild is done.
      */
-    private void clearExistingContent(ExamPaperEntity entity, Instant now) {
+    private void clearExistingContent(ExamPaperEntity entity, Instant now,
+                                      List<String> staleQuestionImageKeys, List<String> staleQuestionBlurKeys,
+                                      List<String> stalePeImageKeys, List<String> staleResourceKeys) {
         for (ExamFeQuestionEntity question :
                 feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(entity.getId())) {
-            mediaService.deletePairedAll(
-                    ExamJsonUtil.deserialize(objectMapper, question.getQuestionImageUrls()),
+            staleQuestionImageKeys.addAll(
+                    ExamJsonUtil.deserialize(objectMapper, question.getQuestionImageUrls()));
+            staleQuestionBlurKeys.addAll(
                     ExamJsonUtil.deserialize(objectMapper, question.getQuestionBlurUrls()));
             question.setDeletedAt(now);
             question.setUpdatedAt(now);
@@ -193,11 +213,10 @@ public class ExamPaperIngestService {
 
         for (ExamPeItemEntity item :
                 peItemRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(entity.getId())) {
-            mediaService.deleteStoredReferences(
-                    ExamJsonUtil.deserialize(objectMapper, item.getExamImageUrls()));
+            stalePeImageKeys.addAll(ExamJsonUtil.deserialize(objectMapper, item.getExamImageUrls()));
             for (ExamPeResourceEntity resource :
                     peResourceRepository.findByPeItemIdAndDeletedAtIsNullOrderBySortOrderAsc(item.getId())) {
-                mediaService.deleteStoredReference(resource.getObjectKey());
+                staleResourceKeys.add(resource.getObjectKey());
                 resource.setDeletedAt(now);
                 peResourceRepository.save(resource);
             }
@@ -302,6 +321,22 @@ public class ExamPaperIngestService {
         } catch (RuntimeException cleanupFailure) {
             // Never mask the original failure with a cleanup problem; the orphan is logged instead.
             log.warn("Failed to clean up partially ingested objects: {}", cleanupFailure.getMessage());
+        }
+    }
+
+    /**
+     * Deletes the media a superseded delivery owned, called only after the rebuild has fully
+     * succeeded — see {@link #clearExistingContent} for why this cannot happen any earlier.
+     */
+    private void deleteStaleMedia(List<String> questionImageKeys, List<String> questionBlurKeys,
+                                  List<String> peImageKeys, List<String> resourceKeys) {
+        try {
+            mediaService.deletePairedAll(questionImageKeys, questionBlurKeys);
+            mediaService.deleteStoredReferences(peImageKeys);
+            mediaService.deleteStoredReferences(resourceKeys);
+        } catch (RuntimeException cleanupFailure) {
+            // Never mask a successful ingest with a cleanup problem; the orphan is logged instead.
+            log.warn("Failed to clean up superseded exam media: {}", cleanupFailure.getMessage());
         }
     }
 

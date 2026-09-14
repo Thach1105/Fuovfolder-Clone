@@ -123,7 +123,7 @@ class ExamPaperIngestServiceTest {
     }
 
     @Test
-    void createsADraftPaperWithOnePostPerQuestion() {
+    void createsAPublishedPaperWithOnePostPerQuestion() {
         stubSubject();
 
         ExamPaperIngestService.IngestOutcome outcome =
@@ -216,7 +216,14 @@ class ExamPaperIngestServiceTest {
         stubSubject();
         IngestPaper incoming = fePaper(1);
         ExamPaperEntity published = draftPaper(ExamPaperFingerprint.of(incoming));
-        published.publish(Instant.now());
+        Instant publishedBefore = Instant.now().minusSeconds(3600);
+        published.publish(publishedBefore);
+
+        ExamFeQuestionEntity stale = ExamFeQuestionEntity.create(
+                UUID.randomUUID(), subjectId, "old", "[\"exam/fe/old.png\"]",
+                "[\"exam/fe/old-blur.jpg\"]", 0, Instant.now(), published.getId());
+        when(feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(published.getId()))
+                .thenReturn(new ArrayList<>(List.of(stale)));
         when(paperRepository.findByFingerprintAndDeletedAtIsNull(published.getFingerprint()))
                 .thenReturn(Optional.of(published));
 
@@ -225,9 +232,14 @@ class ExamPaperIngestServiceTest {
 
         assertEquals(ExamPaperIngestService.Outcome.UPDATED, outcome.outcome());
         assertEquals(published.getId(), outcome.paperId());
-        assertTrue(published.isPublished());
+        assertNotNull(stale.getDeletedAt(), "the replaced question must be soft-deleted");
+        assertTrue(published.getPublishedAt().isAfter(publishedBefore),
+                "the guard must not skip republishing on a redelivery");
         // The sender is the source of truth, so its correction must actually replace the content.
-        verify(feQuestionRepository).save(any());
+        // (1 stale question soft-deleted by clearExistingContent + 1 new question rebuilt.)
+        verify(feQuestionRepository, times(2)).save(any());
+        verify(mediaService).deletePairedAll(
+                eq(List.of("exam/fe/old.png")), eq(List.of("exam/fe/old-blur.jpg")));
     }
 
     @Test
@@ -244,6 +256,35 @@ class ExamPaperIngestServiceTest {
         verify(mediaService).deletePairedAll(
                 eq(List.of("exam/fe/first.png")), eq(List.of("exam/fe/first-blur.jpg")));
         verify(paperRepository).delete(any(ExamPaperEntity.class));
+    }
+
+    @Test
+    void keepsThePreviousMediaWhenARebuildOfAPublishedPaperFailsPartway() {
+        stubSubject();
+        IngestPaper incoming = fePaper(2);
+        ExamPaperEntity published = draftPaper(ExamPaperFingerprint.of(incoming));
+        published.publish(Instant.now());
+        when(paperRepository.findByFingerprintAndDeletedAtIsNull(published.getFingerprint()))
+                .thenReturn(Optional.of(published));
+
+        ExamFeQuestionEntity stale = ExamFeQuestionEntity.create(
+                UUID.randomUUID(), subjectId, "old", "[\"exam/fe/old.png\"]",
+                "[\"exam/fe/old-blur.jpg\"]", 0, Instant.now(), published.getId());
+        when(feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(published.getId()))
+                .thenReturn(new ArrayList<>(List.of(stale)));
+
+        // doReturn/doThrow, not when(...): the latter would invoke the stub installed in setUp
+        // with null arguments while building the matcher.
+        doReturn(new ExamIngestStorage.StoredImage("exam/fe/first.png", "exam/fe/first-blur.jpg"))
+                .doThrow(new RuntimeException("disk full"))
+                .when(ingestStorage).storeImage(any(), anyString(), any(), anyBoolean());
+
+        assertThrows(RuntimeException.class, () -> service.ingest(incoming, "webhook:eos-crawler"));
+
+        // The old rows are restored by the real @Transactional rollback; here we only guard that
+        // this service never asked to delete their still-live media before that point.
+        verify(mediaService, never()).deletePairedAll(
+                eq(List.of("exam/fe/old.png")), eq(List.of("exam/fe/old-blur.jpg")));
     }
 
     @Test

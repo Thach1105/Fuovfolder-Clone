@@ -134,7 +134,7 @@ class ExamPaperWebhookIngestFlowTest {
     }
 
     @Test
-    void ingestsThreeRealQuestionsIntoADraftPaperWithBlurredSidecars() {
+    void ingestsThreeRealQuestionsIntoAPublishedPaperWithBlurredSidecars() {
         WebhookPaperReceipt receipt = receiptService.receive("eos-crawler", body, headerFor(body)).results().get(0);
         worker.processPending();
 
