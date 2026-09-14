@@ -163,7 +163,7 @@ public class ExamPaperIngestService {
     private ExamSubjectEntity resolveOrCreateSubject(String subjectCode, Instant now) {
         return subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull(subjectCode)
                 .orElseGet(() -> {
-                    log.info("Creating inactive exam subject {} from webhook ingest", subjectCode);
+                    log.info("Creating active exam subject {} from webhook ingest", subjectCode);
                     return subjectRepository.save(ExamSubjectEntity.create(
                             UUID.randomUUID(), subjectCode, subjectCode, null, null, null, null,
                             examProperties.defaultFePreviewImageCountOrDefault(), true, 0, now));
