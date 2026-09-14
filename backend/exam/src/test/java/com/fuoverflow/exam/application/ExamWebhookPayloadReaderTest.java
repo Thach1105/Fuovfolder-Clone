@@ -206,6 +206,21 @@ class ExamWebhookPayloadReaderTest {
     }
 
     @Test
+    void anExplicitNullPapersIsReadAsASinglePaperNotABatch() {
+        String body = """
+                {"eventId":"evt-1","paper":{"examCode":"SCM302_SU26_FE_1","paperType":"FE",
+                 "subjectCode":"SCM302","title":"canonical","questions":[{"externalId":"1",
+                 "questionText":"stem","images":[{"sortOrder":0,"mimeType":"image/png",
+                 "contentBase64":"%s"}]}]},"papers":null}
+                """.formatted(PNG);
+
+        List<ExamWebhookPayloadReader.DeliveredPaper> delivered = reader.readAll(body, 50);
+
+        assertEquals(1, delivered.size());
+        assertEquals("SCM302_SU26_FE_1", delivered.get(0).request().paper().examCode());
+    }
+
+    @Test
     void rejectsABatchWithNoEventIdOrAnOverlongOne() {
         String missing = BATCH.formatted(PNG, PNG).replace("\"eventId\":\"evt-b\",", "");
         String overlong = BATCH.formatted(PNG, PNG)

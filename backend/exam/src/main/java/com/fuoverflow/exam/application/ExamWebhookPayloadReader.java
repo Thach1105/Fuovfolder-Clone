@@ -72,7 +72,7 @@ public class ExamWebhookPayloadReader {
             throw new BadRequestException("WEBHOOK_PAYLOAD_AMBIGUOUS",
                     "Body chỉ được có \"paper\" hoặc \"papers\", không được có cả hai.");
         }
-        if (tree.has("papers")) {
+        if (tree.hasNonNull("papers")) {
             return readBatch(tree, maxPapers);
         }
         return List.of(new DeliveredPaper(read(rawBody), rawBody));

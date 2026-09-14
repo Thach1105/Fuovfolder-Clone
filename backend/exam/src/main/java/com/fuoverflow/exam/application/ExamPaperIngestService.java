@@ -1,6 +1,7 @@
 package com.fuoverflow.exam.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fuoverflow.common.exception.BadRequestException;
 import com.fuoverflow.exam.config.ExamProperties;
 import com.fuoverflow.exam.domain.ExamPaperType;
 import com.fuoverflow.exam.domain.IngestAsset;
@@ -23,6 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -114,6 +117,7 @@ public class ExamPaperIngestService {
         List<String> stalePeImageKeys = new ArrayList<>();
         List<String> staleResourceKeys = new ArrayList<>();
         if (!created) {
+            assertSameSubjectAndType(entity, subject, paper);
             applyMetadata(entity, paper, fingerprint, ingestSource, now);
             clearExistingContent(entity, now,
                     staleQuestionImageKeys, staleQuestionBlurKeys, stalePeImageKeys, staleResourceKeys);
@@ -143,12 +147,15 @@ public class ExamPaperIngestService {
             paperRepository.save(entity);
         }
 
-        // Only reached once the rebuild above has fully succeeded. The @Transactional rollback on a
-        // thrown exception restores the old question/item rows, but it cannot restore object-store
-        // bytes already deleted — so the previous delivery's media is deleted here, last, instead of
-        // up front in clearExistingContent. A paper that is already live must never lose its working
-        // images to a rebuild that fails partway through.
-        deleteStaleMedia(staleQuestionImageKeys, staleQuestionBlurKeys, stalePeImageKeys, staleResourceKeys);
+        // Reached once the rebuild above has fully succeeded, but the delete must still wait for this
+        // transaction to actually commit: a thrown exception rolls back and restores the old
+        // question/item rows, and so does an optimistic-lock failure or a dropped connection at flush
+        // time — none of which can restore object-store bytes already deleted. So the previous
+        // delivery's media is scheduled here, last, and only removed once the commit that keeps the
+        // new rows around has actually happened. A paper that is already live must never lose its
+        // working images to a rebuild whose commit never lands.
+        scheduleStaleMediaDeletion(
+                staleQuestionImageKeys, staleQuestionBlurKeys, stalePeImageKeys, staleResourceKeys);
 
         return new IngestOutcome(entity.getId(), created ? Outcome.CREATED : Outcome.UPDATED);
     }
@@ -171,6 +178,25 @@ public class ExamPaperIngestService {
     }
 
     // --- rebuild --------------------------------------------------------------
+
+    /**
+     * A redelivery is matched by content fingerprint (or exam code) alone, so it never carries the
+     * matched paper's id back to the sender for confirmation. If the incoming subject or paper type
+     * disagrees with what is already on file, silently moving the paper would also leave its
+     * {@code sortOrder} stale (computed against the old subject/type at creation) — and since the
+     * exam code itself encodes both subject and type, a mismatch means the sender contradicted
+     * itself between deliveries rather than that the paper genuinely moved. Reject instead of
+     * migrating.
+     */
+    private static void assertSameSubjectAndType(
+            ExamPaperEntity entity, ExamSubjectEntity subject, IngestPaper paper) {
+        if (!entity.getSubjectId().equals(subject.getId())
+                || !entity.getPaperType().equals(paper.paperType().dbValue())) {
+            throw new BadRequestException("EXAM_PAPER_IDENTITY_MISMATCH",
+                    "Mã đề \"" + paper.examCode() + "\" đã thuộc một môn học hoặc loại đề khác trong hệ "
+                            + "thống; không thể ghi đè bằng dữ liệu môn học/loại đề khác.");
+        }
+    }
 
     private void applyMetadata(ExamPaperEntity entity, IngestPaper paper,
                                String fingerprint, String ingestSource, Instant now) {
@@ -322,6 +348,27 @@ public class ExamPaperIngestService {
             // Never mask the original failure with a cleanup problem; the orphan is logged instead.
             log.warn("Failed to clean up partially ingested objects: {}", cleanupFailure.getMessage());
         }
+    }
+
+    /**
+     * Defers the stale-media delete to this transaction's {@code afterCommit}, so a rollback (thrown
+     * exception, optimistic-lock failure, dropped connection) never runs it — see
+     * {@link #clearExistingContent} for why the delete cannot happen any earlier than this either.
+     * A caller with no active transaction (a direct unit-test invocation, or any future
+     * non-transactional caller) has nothing to defer to, so it falls back to deleting inline.
+     */
+    private void scheduleStaleMediaDeletion(List<String> questionImageKeys, List<String> questionBlurKeys,
+                                            List<String> peImageKeys, List<String> resourceKeys) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deleteStaleMedia(questionImageKeys, questionBlurKeys, peImageKeys, resourceKeys);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deleteStaleMedia(questionImageKeys, questionBlurKeys, peImageKeys, resourceKeys);
+            }
+        });
     }
 
     /**
