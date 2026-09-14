@@ -156,9 +156,9 @@ public class ExamPaperIngestService {
     // --- subject --------------------------------------------------------------
 
     /**
-     * A code we have never seen becomes a subject with the code as its title and {@code active =
-     * false}: the paper still lands for review, but an unnamed placeholder card never shows up in
-     * the public catalog before an admin fills in the real title.
+     * A code we have never seen becomes a subject titled with the code itself, and active: the paper
+     * the delivery carries is published immediately, and an inactive subject would keep it out of
+     * the public catalog anyway. An admin replaces the placeholder title when they get to it.
      */
     private ExamSubjectEntity resolveOrCreateSubject(String subjectCode, Instant now) {
         return subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull(subjectCode)
@@ -166,7 +166,7 @@ public class ExamPaperIngestService {
                     log.info("Creating inactive exam subject {} from webhook ingest", subjectCode);
                     return subjectRepository.save(ExamSubjectEntity.create(
                             UUID.randomUUID(), subjectCode, subjectCode, null, null, null, null,
-                            examProperties.defaultFePreviewImageCountOrDefault(), false, 0, now));
+                            examProperties.defaultFePreviewImageCountOrDefault(), true, 0, now));
                 });
     }
 

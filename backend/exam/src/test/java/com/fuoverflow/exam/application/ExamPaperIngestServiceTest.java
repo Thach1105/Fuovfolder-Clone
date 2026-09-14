@@ -99,7 +99,7 @@ class ExamPaperIngestServiceTest {
     }
 
     @Test
-    void createsAnInactiveSubjectWhenTheCodeIsUnknown() {
+    void createsAnUnseenSubjectWithProperDefaults() {
         when(subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull("SCM302"))
                 .thenReturn(Optional.empty());
 
@@ -107,9 +107,24 @@ class ExamPaperIngestServiceTest {
 
         ArgumentCaptor<ExamSubjectEntity> saved = ArgumentCaptor.forClass(ExamSubjectEntity.class);
         verify(subjectRepository).save(saved.capture());
-        assertFalse(saved.getValue().isActive(), "a subject with no title must not reach the catalog");
+        assertTrue(saved.getValue().isActive(), "new subjects must be active so their published papers are reachable");
         assertEquals("SCM302", saved.getValue().getCode());
         assertEquals(2, saved.getValue().getFePreviewImageCount());
+    }
+
+    @Test
+    void createsAnUnseenSubjectAsActiveSoThePublishedPaperIsReachable() {
+        when(subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull("SCM302"))
+                .thenReturn(Optional.empty());
+        when(subjectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.ingest(fePaper(1), "webhook:eos-crawler");
+
+        ArgumentCaptor<ExamSubjectEntity> saved = ArgumentCaptor.forClass(ExamSubjectEntity.class);
+        verify(subjectRepository).save(saved.capture());
+        assertEquals("SCM302", saved.getValue().getCode());
+        assertTrue(saved.getValue().isActive(),
+                "an inactive subject would hide the paper we just published");
     }
 
     @Test

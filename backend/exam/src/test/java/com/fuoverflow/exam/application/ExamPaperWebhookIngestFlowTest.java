@@ -148,7 +148,7 @@ class ExamPaperWebhookIngestFlowTest {
         ArgumentCaptor<ExamSubjectEntity> subject = ArgumentCaptor.forClass(ExamSubjectEntity.class);
         verify(subjectRepository).save(subject.capture());
         assertEquals("SCM302", subject.getValue().getCode());
-        assertFalse(subject.getValue().isActive());
+        assertTrue(subject.getValue().isActive(), "webhook-discovered subjects are active so their papers are public");
 
         ArgumentCaptor<ExamPaperEntity> paper = ArgumentCaptor.forClass(ExamPaperEntity.class);
         verify(capturedPapers, atLeastOnce()).save(paper.capture());
