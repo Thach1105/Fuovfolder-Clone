@@ -149,7 +149,7 @@ class ExamWebhookIngestWorkerTest {
     private ExamWebhookIngestWorker newWorker(int maxAttempts) {
         ExamWebhookProperties properties = new ExamWebhookProperties(
                 Map.of("eos-crawler", "s3cr3t"), List.of("cdn.example.com"),
-                null, null, null, null, maxAttempts, null, null);
+                null, null, null, null, maxAttempts, null, null, null);
         ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         return new ExamWebhookIngestWorker(
                 eventRepository,

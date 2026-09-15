@@ -1,7 +1,7 @@
 package com.fuoverflow.exam.api;
 
 import com.fuoverflow.common.web.ApiResponse;
-import com.fuoverflow.exam.api.dto.webhook.WebhookReceiptResponse;
+import com.fuoverflow.exam.api.dto.webhook.WebhookBatchReceiptResponse;
 import com.fuoverflow.exam.application.ExamWebhookReceiptService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Ingest endpoint for third-party exam paper deliveries. Authenticated by the HMAC signature in
  * {@code X-Exam-Signature}, not by a session, so it is {@code permitAll} in the security config.
+ * <p>{@code 202} means at least one paper was newly queued, {@code 200} that every paper was
+ * already known; a delivery where nothing at all landed fails with the first paper's error.
  */
 @RestController
 @RequestMapping("/api/v1/exam/webhook")
@@ -29,12 +31,12 @@ public class ExamWebhookController {
      * Spring bind and re-serialise it would change the message being verified.
      */
     @PostMapping("/papers")
-    public ResponseEntity<ApiResponse<WebhookReceiptResponse>> receivePaper(
+    public ResponseEntity<ApiResponse<WebhookBatchReceiptResponse>> receivePaper(
             @RequestHeader(value = "X-Exam-Client", required = false) String clientId,
             @RequestHeader(value = "X-Exam-Signature", required = false) String signature,
             @RequestBody(required = false) String rawBody) {
-        WebhookReceiptResponse receipt = receiptService.receive(clientId, rawBody, signature);
-        HttpStatus status = receipt.duplicate() ? HttpStatus.OK : HttpStatus.ACCEPTED;
+        WebhookBatchReceiptResponse receipt = receiptService.receive(clientId, rawBody, signature);
+        HttpStatus status = receipt.accepted() > 0 ? HttpStatus.ACCEPTED : HttpStatus.OK;
         return ResponseEntity.status(status).body(ApiResponse.ok(receipt));
     }
 }

@@ -1,6 +1,7 @@
 package com.fuoverflow.exam.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fuoverflow.common.exception.BadRequestException;
 import com.fuoverflow.exam.config.ExamProperties;
 import com.fuoverflow.exam.domain.ExamPaperType;
 import com.fuoverflow.exam.domain.IngestAsset;
@@ -23,6 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -31,13 +34,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Turns a validated {@link IngestPaper} into a draft paper plus its FE questions or PE content.
+ * Turns a validated {@link IngestPaper} into a published paper plus its FE questions or PE content.
  *
  * <p>Two rules drive the shape of this class. First, a redelivery must not duplicate: a paper is
- * identified by content fingerprint, falling back to exam code, and an existing draft is rebuilt in
- * place while an already-published paper is left untouched. Second, a partial build must not
- * survive: every object key written during a run is tracked, and a failure deletes them along with
- * a draft this run created, so a retry starts from a clean slate instead of accumulating orphans.
+ * identified by content fingerprint, falling back to exam code, and an existing paper is rebuilt in
+ * place — published or not, because the sender is the source of truth and a correction has to be
+ * able to land. Second, a partial build must not survive: every object key written during a run is
+ * tracked, and a failure deletes them along with a paper this run created, so a retry starts from a
+ * clean slate instead of accumulating orphans.
  */
 @Service
 public class ExamPaperIngestService {
@@ -87,11 +91,6 @@ public class ExamPaperIngestService {
                 .findByFingerprintAndDeletedAtIsNull(fingerprint)
                 .or(() -> paperRepository.findByExamCodeIgnoreCaseAndDeletedAtIsNull(paper.examCode()));
 
-        if (existing.isPresent() && existing.get().isPublished()) {
-            log.info("Exam paper {} already published; ingest skipped", paper.examCode());
-            return new IngestOutcome(existing.get().getId(), Outcome.SKIPPED_PUBLISHED);
-        }
-
         boolean created = existing.isEmpty();
         ExamPaperEntity entity = existing.orElseGet(() -> ExamPaperEntity.draft(
                 UUID.randomUUID(),
@@ -113,9 +112,15 @@ public class ExamPaperIngestService {
                 paper.campus(),
                 now));
 
+        List<String> staleQuestionImageKeys = new ArrayList<>();
+        List<String> staleQuestionBlurKeys = new ArrayList<>();
+        List<String> stalePeImageKeys = new ArrayList<>();
+        List<String> staleResourceKeys = new ArrayList<>();
         if (!created) {
+            assertSameSubjectAndType(entity, subject, paper);
             applyMetadata(entity, paper, fingerprint, ingestSource, now);
-            clearExistingContent(entity, now);
+            clearExistingContent(entity, now,
+                    staleQuestionImageKeys, staleQuestionBlurKeys, stalePeImageKeys, staleResourceKeys);
         }
 
         List<String> storedImageKeys = new ArrayList<>();
@@ -137,27 +142,61 @@ public class ExamPaperIngestService {
             throw e;
         }
 
+        if (hasContent(paper)) {
+            entity.publish(now);
+            paperRepository.save(entity);
+        }
+
+        // Reached once the rebuild above has fully succeeded, but the delete must still wait for this
+        // transaction to actually commit: a thrown exception rolls back and restores the old
+        // question/item rows, and so does an optimistic-lock failure or a dropped connection at flush
+        // time — none of which can restore object-store bytes already deleted. So the previous
+        // delivery's media is scheduled here, last, and only removed once the commit that keeps the
+        // new rows around has actually happened. A paper that is already live must never lose its
+        // working images to a rebuild whose commit never lands.
+        scheduleStaleMediaDeletion(
+                staleQuestionImageKeys, staleQuestionBlurKeys, stalePeImageKeys, staleResourceKeys);
+
         return new IngestOutcome(entity.getId(), created ? Outcome.CREATED : Outcome.UPDATED);
     }
 
     // --- subject --------------------------------------------------------------
 
     /**
-     * A code we have never seen becomes a subject with the code as its title and {@code active =
-     * false}: the paper still lands for review, but an unnamed placeholder card never shows up in
-     * the public catalog before an admin fills in the real title.
+     * A code we have never seen becomes a subject titled with the code itself, and active: the paper
+     * the delivery carries is published immediately, and an inactive subject would keep it out of
+     * the public catalog anyway. An admin replaces the placeholder title when they get to it.
      */
     private ExamSubjectEntity resolveOrCreateSubject(String subjectCode, Instant now) {
         return subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull(subjectCode)
                 .orElseGet(() -> {
-                    log.info("Creating inactive exam subject {} from webhook ingest", subjectCode);
+                    log.info("Creating active exam subject {} from webhook ingest", subjectCode);
                     return subjectRepository.save(ExamSubjectEntity.create(
                             UUID.randomUUID(), subjectCode, subjectCode, null, null, null, null,
-                            examProperties.defaultFePreviewImageCountOrDefault(), false, 0, now));
+                            examProperties.defaultFePreviewImageCountOrDefault(), true, 0, now));
                 });
     }
 
     // --- rebuild --------------------------------------------------------------
+
+    /**
+     * A redelivery is matched by content fingerprint (or exam code) alone, so it never carries the
+     * matched paper's id back to the sender for confirmation. If the incoming subject or paper type
+     * disagrees with what is already on file, silently moving the paper would also leave its
+     * {@code sortOrder} stale (computed against the old subject/type at creation) — and since the
+     * exam code itself encodes both subject and type, a mismatch means the sender contradicted
+     * itself between deliveries rather than that the paper genuinely moved. Reject instead of
+     * migrating.
+     */
+    private static void assertSameSubjectAndType(
+            ExamPaperEntity entity, ExamSubjectEntity subject, IngestPaper paper) {
+        if (!entity.getSubjectId().equals(subject.getId())
+                || !entity.getPaperType().equals(paper.paperType().dbValue())) {
+            throw new BadRequestException("EXAM_PAPER_IDENTITY_MISMATCH",
+                    "Mã đề \"" + paper.examCode() + "\" đã thuộc một môn học hoặc loại đề khác trong hệ "
+                            + "thống; không thể ghi đè bằng dữ liệu môn học/loại đề khác.");
+        }
+    }
 
     private void applyMetadata(ExamPaperEntity entity, IngestPaper paper,
                                String fingerprint, String ingestSource, Instant now) {
@@ -176,14 +215,22 @@ public class ExamPaperIngestService {
     }
 
     /**
-     * Wipes what the previous delivery built. Without this an update would leave the old questions
-     * in place next to the new ones, which reads as a duplicated paper to a member.
+     * Soft-deletes what the previous delivery built so the rebuild below does not leave the old
+     * questions in place next to the new ones, which would read as a duplicated paper to a member.
+     *
+     * <p>The object keys those rows point at are only collected here, not deleted: deleting them
+     * now would be irreversible before we know the rebuild will succeed, and for an already
+     * published paper that would mean permanently losing live images to a rebuild that later fails.
+     * The caller deletes the collected keys once the rebuild is done.
      */
-    private void clearExistingContent(ExamPaperEntity entity, Instant now) {
+    private void clearExistingContent(ExamPaperEntity entity, Instant now,
+                                      List<String> staleQuestionImageKeys, List<String> staleQuestionBlurKeys,
+                                      List<String> stalePeImageKeys, List<String> staleResourceKeys) {
         for (ExamFeQuestionEntity question :
                 feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(entity.getId())) {
-            mediaService.deletePairedAll(
-                    ExamJsonUtil.deserialize(objectMapper, question.getQuestionImageUrls()),
+            staleQuestionImageKeys.addAll(
+                    ExamJsonUtil.deserialize(objectMapper, question.getQuestionImageUrls()));
+            staleQuestionBlurKeys.addAll(
                     ExamJsonUtil.deserialize(objectMapper, question.getQuestionBlurUrls()));
             question.setDeletedAt(now);
             question.setUpdatedAt(now);
@@ -192,11 +239,10 @@ public class ExamPaperIngestService {
 
         for (ExamPeItemEntity item :
                 peItemRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(entity.getId())) {
-            mediaService.deleteStoredReferences(
-                    ExamJsonUtil.deserialize(objectMapper, item.getExamImageUrls()));
+            stalePeImageKeys.addAll(ExamJsonUtil.deserialize(objectMapper, item.getExamImageUrls()));
             for (ExamPeResourceEntity resource :
                     peResourceRepository.findByPeItemIdAndDeletedAtIsNullOrderBySortOrderAsc(item.getId())) {
-                mediaService.deleteStoredReference(resource.getObjectKey());
+                staleResourceKeys.add(resource.getObjectKey());
                 resource.setDeletedAt(now);
                 peResourceRepository.save(resource);
             }
@@ -281,6 +327,18 @@ public class ExamPaperIngestService {
 
     // --- cleanup --------------------------------------------------------------
 
+    /**
+     * The EXAM_PAPER_EMPTY rule {@code ExamPaperAdminService.publish} enforces, read off the payload
+     * the content was just built from instead of a repository round trip. The validator already
+     * rejects an empty paper, so this is a guard: a paper that somehow has nothing stays a draft and
+     * shows up in the admin queue rather than going live blank.
+     */
+    private static boolean hasContent(IngestPaper paper) {
+        return paper.paperType() == ExamPaperType.FE
+                ? !paper.questions().isEmpty()
+                : !paper.images().isEmpty() || !paper.resources().isEmpty();
+    }
+
     private void rollbackStoredObjects(List<String> imageKeys, List<String> blurKeys,
                                        List<String> resourceKeys) {
         try {
@@ -292,8 +350,45 @@ public class ExamPaperIngestService {
         }
     }
 
+    /**
+     * Defers the stale-media delete to this transaction's {@code afterCommit}, so a rollback (thrown
+     * exception, optimistic-lock failure, dropped connection) never runs it — see
+     * {@link #clearExistingContent} for why the delete cannot happen any earlier than this either.
+     * A caller with no active transaction (a direct unit-test invocation, or any future
+     * non-transactional caller) has nothing to defer to, so it falls back to deleting inline.
+     */
+    private void scheduleStaleMediaDeletion(List<String> questionImageKeys, List<String> questionBlurKeys,
+                                            List<String> peImageKeys, List<String> resourceKeys) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deleteStaleMedia(questionImageKeys, questionBlurKeys, peImageKeys, resourceKeys);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deleteStaleMedia(questionImageKeys, questionBlurKeys, peImageKeys, resourceKeys);
+            }
+        });
+    }
+
+    /**
+     * Deletes the media a superseded delivery owned, called only after the rebuild has fully
+     * succeeded — see {@link #clearExistingContent} for why this cannot happen any earlier.
+     */
+    private void deleteStaleMedia(List<String> questionImageKeys, List<String> questionBlurKeys,
+                                  List<String> peImageKeys, List<String> resourceKeys) {
+        try {
+            mediaService.deletePairedAll(questionImageKeys, questionBlurKeys);
+            mediaService.deleteStoredReferences(peImageKeys);
+            mediaService.deleteStoredReferences(resourceKeys);
+        } catch (RuntimeException cleanupFailure) {
+            // Never mask a successful ingest with a cleanup problem; the orphan is logged instead.
+            log.warn("Failed to clean up superseded exam media: {}", cleanupFailure.getMessage());
+        }
+    }
+
     public enum Outcome {
-        CREATED, UPDATED, SKIPPED_PUBLISHED
+        CREATED, UPDATED
     }
 
     public record IngestOutcome(UUID paperId, Outcome outcome) {

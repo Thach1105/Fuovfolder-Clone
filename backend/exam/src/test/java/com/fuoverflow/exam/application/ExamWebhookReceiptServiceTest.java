@@ -5,7 +5,8 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fuoverflow.common.exception.BadRequestException;
 import com.fuoverflow.common.exception.PayloadTooLargeException;
 import com.fuoverflow.common.exception.UnauthorizedException;
-import com.fuoverflow.exam.api.dto.webhook.WebhookReceiptResponse;
+import com.fuoverflow.exam.api.dto.webhook.WebhookBatchReceiptResponse;
+import com.fuoverflow.exam.api.dto.webhook.WebhookPaperReceipt;
 import com.fuoverflow.exam.config.ExamWebhookProperties;
 import com.fuoverflow.exam.persistence.ExamWebhookEventEntity;
 import com.fuoverflow.exam.persistence.ExamWebhookEventRepository;
@@ -24,10 +25,14 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -57,7 +62,7 @@ class ExamWebhookReceiptServiceTest {
                 .thenReturn(Optional.empty());
         when(eventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        WebhookReceiptResponse response = service.receive("eos-crawler", body, header);
+        WebhookPaperReceipt response = service.receive("eos-crawler", body, header).results().get(0);
 
         assertFalse(response.duplicate());
         assertEquals("queued", response.status());
@@ -80,7 +85,7 @@ class ExamWebhookReceiptServiceTest {
         when(eventRepository.findByClientIdAndEventId("eos-crawler", "evt-1"))
                 .thenReturn(Optional.of(existing));
 
-        WebhookReceiptResponse response = service.receive("eos-crawler", body, header);
+        WebhookPaperReceipt response = service.receive("eos-crawler", body, header).results().get(0);
 
         assertTrue(response.duplicate());
         assertEquals(existing.getId(), response.receiptId());
@@ -98,7 +103,7 @@ class ExamWebhookReceiptServiceTest {
         when(eventRepository.findByClientIdAndEventId("eos-crawler", "evt-1"))
                 .thenReturn(Optional.of(existing));
 
-        assertEquals("done", service.receive("eos-crawler", body, header).status());
+        assertEquals("done", service.receive("eos-crawler", body, header).results().get(0).status());
     }
 
     @Test
@@ -157,7 +162,116 @@ class ExamWebhookReceiptServiceTest {
                 .thenReturn(Optional.empty());
         when(eventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        assertFalse(service.receive("eos-crawler", extra, headerFor(extra)).duplicate());
+        assertFalse(service.receive("eos-crawler", extra, headerFor(extra)).results().get(0).duplicate());
+    }
+
+    @Test
+    void storesOneRowPerPaperOfABatchUnderDerivedEventIds() {
+        String batch = batchBody();
+        when(eventRepository.findByClientIdAndEventId(eq("eos-crawler"), anyString()))
+                .thenReturn(Optional.empty());
+        when(eventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        WebhookBatchReceiptResponse response =
+                service.receive("eos-crawler", batch, headerFor(batch));
+
+        assertEquals(2, response.accepted());
+        assertEquals(0, response.duplicate());
+        assertEquals(0, response.rejected());
+        assertEquals(2, response.results().size());
+        assertEquals(0, response.results().get(0).index());
+        assertEquals("SCM302_SU26_FE_1", response.results().get(0).examCode());
+        assertEquals("queued", response.results().get(1).status());
+
+        ArgumentCaptor<ExamWebhookEventEntity> saved =
+                ArgumentCaptor.forClass(ExamWebhookEventEntity.class);
+        verify(eventRepository, times(2)).save(saved.capture());
+        assertEquals("evt-b#0", saved.getAllValues().get(0).getEventId());
+        assertEquals("evt-b#1", saved.getAllValues().get(1).getEventId());
+        assertTrue(saved.getAllValues().get(0).getPayloadJson().contains("SCM302_SU26_FE_1"));
+        assertFalse(saved.getAllValues().get(0).getPayloadJson().contains("PRF192_SU26_FE_2"));
+    }
+
+    @Test
+    void oneInvalidPaperDoesNotBlockItsSiblings() {
+        String batch = """
+                {"eventId":"evt-b","eventType":"exam.paper.upserted",
+                 "sentAt":"2026-09-14T03:54:59Z",
+                 "papers":[
+                   {"examCode":"SCM302_SU26_FE_1","paperType":"FE","subjectCode":"SCM302",
+                    "title":"first","questions":[{"externalId":"1","questionText":"stem",
+                    "images":[{"sortOrder":0,"mimeType":"image/png","sizeBytes":70,
+                    "sha256":"%s","contentBase64":"%s"}]}]},
+                   {"examCode":"PRF192_SU26_FE_2","paperType":"FE","subjectCode":"PRF192",
+                    "title":"second","questions":[]}]}
+                """.formatted("a".repeat(64), PNG_BASE64);
+        when(eventRepository.findByClientIdAndEventId(eq("eos-crawler"), anyString()))
+                .thenReturn(Optional.empty());
+        when(eventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        WebhookBatchReceiptResponse response =
+                service.receive("eos-crawler", batch, headerFor(batch));
+
+        assertEquals(1, response.accepted());
+        assertEquals(1, response.rejected());
+        assertEquals("WEBHOOK_FE_QUESTIONS_REQUIRED", response.results().get(1).errorCode());
+        assertNull(response.results().get(1).receiptId());
+        assertEquals("rejected", response.results().get(1).status());
+        verify(eventRepository, times(1)).save(any());
+    }
+
+    @Test
+    void rethrowsTheFirstRejectionWhenNoPaperIsAccepted() {
+        String noQuestions = """
+                {"eventId":"evt-9","eventType":"exam.paper.upserted",
+                 "sentAt":"2026-08-31T03:54:59Z",
+                 "papers":[{"examCode":"TEST_EOS_Client_1","paperType":"FE","subjectCode":"TEST",
+                 "title":"t","questions":[]}]}
+                """;
+        when(eventRepository.findByClientIdAndEventId("eos-crawler", "evt-9#0"))
+                .thenReturn(Optional.empty());
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> service.receive("eos-crawler", noQuestions, headerFor(noQuestions)));
+
+        assertEquals("WEBHOOK_FE_QUESTIONS_REQUIRED", ex.code());
+        verify(eventRepository, never()).save(any());
+    }
+
+    @Test
+    void aBatchOfOnlyDuplicatesIsStillASuccessfulReceipt() {
+        String batch = batchBody();
+        ExamWebhookEventEntity existing = ExamWebhookEventEntity.received(
+                UUID.randomUUID(), "eos-crawler", "evt-b#0", "exam.paper.upserted",
+                "{}", "b".repeat(64), true, Instant.now());
+        when(eventRepository.findByClientIdAndEventId("eos-crawler", "evt-b#0"))
+                .thenReturn(Optional.of(existing));
+        when(eventRepository.findByClientIdAndEventId("eos-crawler", "evt-b#1"))
+                .thenReturn(Optional.of(existing));
+
+        WebhookBatchReceiptResponse response =
+                service.receive("eos-crawler", batch, headerFor(batch));
+
+        assertEquals(0, response.accepted());
+        assertEquals(2, response.duplicate());
+        assertTrue(response.results().get(0).duplicate());
+        verify(eventRepository, never()).save(any());
+    }
+
+    private static String batchBody() {
+        return """
+                {"eventId":"evt-b","eventType":"exam.paper.upserted",
+                 "sentAt":"2026-09-14T03:54:59Z",
+                 "papers":[
+                   {"examCode":"SCM302_SU26_FE_1","paperType":"FE","subjectCode":"SCM302",
+                    "title":"first","questions":[{"externalId":"1","questionText":"stem",
+                    "images":[{"sortOrder":0,"mimeType":"image/png","sizeBytes":70,
+                    "sha256":"%s","contentBase64":"%s"}]}]},
+                   {"examCode":"PRF192_SU26_FE_2","paperType":"FE","subjectCode":"PRF192",
+                    "title":"second","questions":[{"externalId":"2","questionText":"stem",
+                    "images":[{"sortOrder":0,"mimeType":"image/png","sizeBytes":70,
+                    "sha256":"%s","contentBase64":"%s"}]}]}]}
+                """.formatted("a".repeat(64), PNG_BASE64, "b".repeat(64), PNG_BASE64);
     }
 
     private ExamWebhookReceiptService serviceWith(ExamWebhookProperties properties) {
@@ -173,7 +287,7 @@ class ExamWebhookReceiptServiceTest {
 
     private static ExamWebhookProperties properties(Long maxPayloadBytes) {
         return new ExamWebhookProperties(Map.of("eos-crawler", SECRET),
-                List.of("cdn.example.com"), maxPayloadBytes, null, null, null, null, null, null);
+                List.of("cdn.example.com"), maxPayloadBytes, null, null, null, null, null, null, null);
     }
 
     private static String validBody() {

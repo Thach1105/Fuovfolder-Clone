@@ -126,7 +126,7 @@ class ExamResourceFetcherTest {
 
     private ExamResourceFetcher fetcher(List<String> hosts, Long maxBytes, boolean allowPlainHttp) {
         ExamWebhookProperties properties = new ExamWebhookProperties(
-                Map.of(), hosts, null, null, maxBytes, null, null, null, null);
+                Map.of(), hosts, null, null, maxBytes, null, null, null, null, null);
         return new ExamResourceFetcher(properties, allowPlainHttp);
     }
 

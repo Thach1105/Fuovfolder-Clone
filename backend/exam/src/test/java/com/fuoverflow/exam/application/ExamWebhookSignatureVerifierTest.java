@@ -19,7 +19,7 @@ class ExamWebhookSignatureVerifierTest {
 
     private final ExamWebhookSignatureVerifier verifier = new ExamWebhookSignatureVerifier(
             new ExamWebhookProperties(Map.of("eos-crawler", SECRET),
-                    List.of("cdn.example.com"), null, null, null, null, null, null, null));
+                    List.of("cdn.example.com"), null, null, null, null, null, null, null, null));
 
     @Test
     void acceptsAFreshValidSignature() {

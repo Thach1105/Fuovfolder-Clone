@@ -1,6 +1,7 @@
 package com.fuoverflow.exam.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fuoverflow.common.exception.BadRequestException;
 import com.fuoverflow.exam.config.ExamProperties;
 import com.fuoverflow.exam.domain.ExamPaperType;
 import com.fuoverflow.exam.domain.IngestAsset;
@@ -27,6 +28,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -99,7 +102,7 @@ class ExamPaperIngestServiceTest {
     }
 
     @Test
-    void createsAnInactiveSubjectWhenTheCodeIsUnknown() {
+    void createsAnUnseenSubjectWithProperDefaults() {
         when(subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull("SCM302"))
                 .thenReturn(Optional.empty());
 
@@ -107,9 +110,24 @@ class ExamPaperIngestServiceTest {
 
         ArgumentCaptor<ExamSubjectEntity> saved = ArgumentCaptor.forClass(ExamSubjectEntity.class);
         verify(subjectRepository).save(saved.capture());
-        assertFalse(saved.getValue().isActive(), "a subject with no title must not reach the catalog");
+        assertTrue(saved.getValue().isActive(), "new subjects must be active so their published papers are reachable");
         assertEquals("SCM302", saved.getValue().getCode());
         assertEquals(2, saved.getValue().getFePreviewImageCount());
+    }
+
+    @Test
+    void createsAnUnseenSubjectAsActiveSoThePublishedPaperIsReachable() {
+        when(subjectRepository.findByCodeIgnoreCaseAndDeletedAtIsNull("SCM302"))
+                .thenReturn(Optional.empty());
+        when(subjectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.ingest(fePaper(1), "webhook:eos-crawler");
+
+        ArgumentCaptor<ExamSubjectEntity> saved = ArgumentCaptor.forClass(ExamSubjectEntity.class);
+        verify(subjectRepository).save(saved.capture());
+        assertEquals("SCM302", saved.getValue().getCode());
+        assertTrue(saved.getValue().isActive(),
+                "an inactive subject would hide the paper we just published");
     }
 
     @Test
@@ -123,7 +141,7 @@ class ExamPaperIngestServiceTest {
     }
 
     @Test
-    void createsADraftPaperWithOnePostPerQuestion() {
+    void createsAPublishedPaperWithOnePostPerQuestion() {
         stubSubject();
 
         ExamPaperIngestService.IngestOutcome outcome =
@@ -133,13 +151,14 @@ class ExamPaperIngestServiceTest {
         assertNotNull(outcome.paperId());
 
         ArgumentCaptor<ExamPaperEntity> paper = ArgumentCaptor.forClass(ExamPaperEntity.class);
-        verify(paperRepository).save(paper.capture());
-        assertEquals("draft", paper.getValue().getStatus());
-        assertEquals("FE", paper.getValue().getPaperType());
-        assertEquals("SCM302_SU26_FE_553972", paper.getValue().getExamCode());
-        assertEquals("SU26", paper.getValue().getTerm());
-        assertEquals("webhook:eos-crawler", paper.getValue().getIngestSource());
-        assertEquals("HCM", paper.getValue().getCampus());
+        verify(paperRepository, times(2)).save(paper.capture());
+        ExamPaperEntity persisted = paper.getAllValues().get(1);
+        assertEquals("published", persisted.getStatus());
+        assertEquals("FE", persisted.getPaperType());
+        assertEquals("SCM302_SU26_FE_553972", persisted.getExamCode());
+        assertEquals("SU26", persisted.getTerm());
+        assertEquals("webhook:eos-crawler", persisted.getIngestSource());
+        assertEquals("HCM", persisted.getCampus());
 
         ArgumentCaptor<ExamFeQuestionEntity> questions =
                 ArgumentCaptor.forClass(ExamFeQuestionEntity.class);
@@ -195,20 +214,50 @@ class ExamPaperIngestServiceTest {
     }
 
     @Test
-    void skipsAPaperThatIsAlreadyPublished() {
+    void publishesAPaperOnceItsContentIsBuilt() {
+        stubSubject();
+
+        ExamPaperIngestService.IngestOutcome outcome =
+                service.ingest(fePaper(1), "webhook:eos-crawler");
+
+        assertEquals(ExamPaperIngestService.Outcome.CREATED, outcome.outcome());
+        ArgumentCaptor<ExamPaperEntity> saved = ArgumentCaptor.forClass(ExamPaperEntity.class);
+        verify(paperRepository, times(2)).save(saved.capture());
+        ExamPaperEntity persisted = saved.getAllValues().get(1);
+        assertTrue(persisted.isPublished(),
+                "a webhook paper goes live without an admin step");
+        assertNotNull(persisted.getPublishedAt());
+    }
+
+    @Test
+    void rebuildsAPaperThatIsAlreadyPublishedAndKeepsItPublished() {
         stubSubject();
         IngestPaper incoming = fePaper(1);
         ExamPaperEntity published = draftPaper(ExamPaperFingerprint.of(incoming));
-        published.publish(Instant.now());
+        Instant publishedBefore = Instant.now().minusSeconds(3600);
+        published.publish(publishedBefore);
+
+        ExamFeQuestionEntity stale = ExamFeQuestionEntity.create(
+                UUID.randomUUID(), subjectId, "old", "[\"exam/fe/old.png\"]",
+                "[\"exam/fe/old-blur.jpg\"]", 0, Instant.now(), published.getId());
+        when(feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(published.getId()))
+                .thenReturn(new ArrayList<>(List.of(stale)));
         when(paperRepository.findByFingerprintAndDeletedAtIsNull(published.getFingerprint()))
                 .thenReturn(Optional.of(published));
 
-        ExamPaperIngestService.IngestOutcome outcome = service.ingest(incoming, "webhook:eos-crawler");
+        ExamPaperIngestService.IngestOutcome outcome =
+                service.ingest(incoming, "webhook:eos-crawler");
 
-        assertEquals(ExamPaperIngestService.Outcome.SKIPPED_PUBLISHED, outcome.outcome());
+        assertEquals(ExamPaperIngestService.Outcome.UPDATED, outcome.outcome());
         assertEquals(published.getId(), outcome.paperId());
-        verify(feQuestionRepository, never()).save(any());
-        verify(ingestStorage, never()).storeImage(any(), anyString(), any(), anyBoolean());
+        assertNotNull(stale.getDeletedAt(), "the replaced question must be soft-deleted");
+        assertTrue(published.getPublishedAt().isAfter(publishedBefore),
+                "the guard must not skip republishing on a redelivery");
+        // The sender is the source of truth, so its correction must actually replace the content.
+        // (1 stale question soft-deleted by clearExistingContent + 1 new question rebuilt.)
+        verify(feQuestionRepository, times(2)).save(any());
+        verify(mediaService).deletePairedAll(
+                eq(List.of("exam/fe/old.png")), eq(List.of("exam/fe/old-blur.jpg")));
     }
 
     @Test
@@ -225,6 +274,109 @@ class ExamPaperIngestServiceTest {
         verify(mediaService).deletePairedAll(
                 eq(List.of("exam/fe/first.png")), eq(List.of("exam/fe/first-blur.jpg")));
         verify(paperRepository).delete(any(ExamPaperEntity.class));
+    }
+
+    @Test
+    void keepsThePreviousMediaWhenARebuildOfAPublishedPaperFailsPartway() {
+        stubSubject();
+        IngestPaper incoming = fePaper(2);
+        ExamPaperEntity published = draftPaper(ExamPaperFingerprint.of(incoming));
+        published.publish(Instant.now());
+        when(paperRepository.findByFingerprintAndDeletedAtIsNull(published.getFingerprint()))
+                .thenReturn(Optional.of(published));
+
+        ExamFeQuestionEntity stale = ExamFeQuestionEntity.create(
+                UUID.randomUUID(), subjectId, "old", "[\"exam/fe/old.png\"]",
+                "[\"exam/fe/old-blur.jpg\"]", 0, Instant.now(), published.getId());
+        when(feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(published.getId()))
+                .thenReturn(new ArrayList<>(List.of(stale)));
+
+        // doReturn/doThrow, not when(...): the latter would invoke the stub installed in setUp
+        // with null arguments while building the matcher.
+        doReturn(new ExamIngestStorage.StoredImage("exam/fe/first.png", "exam/fe/first-blur.jpg"))
+                .doThrow(new RuntimeException("disk full"))
+                .when(ingestStorage).storeImage(any(), anyString(), any(), anyBoolean());
+
+        assertThrows(RuntimeException.class, () -> service.ingest(incoming, "webhook:eos-crawler"));
+
+        // The old rows are restored by the real @Transactional rollback; here we only guard that
+        // this service never asked to delete their still-live media before that point.
+        verify(mediaService, never()).deletePairedAll(
+                eq(List.of("exam/fe/old.png")), eq(List.of("exam/fe/old-blur.jpg")));
+    }
+
+    @Test
+    void rejectsARedeliveryWhoseSubjectDiffersFromTheMatchedPaper() {
+        stubSubject(); // resolves incoming subjectCode "SCM302" to this.subjectId
+        IngestPaper incoming = fePaper(1);
+        // The matched paper (same fingerprint) belongs to a different subject than the one the
+        // incoming payload resolves to — as if the exam code was redelivered under a new subjectCode.
+        ExamPaperEntity existing = ExamPaperEntity.draft(
+                UUID.randomUUID(), UUID.randomUUID(), ExamPaperType.FE, "SCM302_SU26_FE_553972",
+                "SU26", null, "SCM302 FE", null, 60, new BigDecimal("50.00"), 50,
+                ExamPaperFingerprint.of(incoming), "webhook:eos-crawler", "553972", 0, null, Instant.now());
+        when(paperRepository.findByFingerprintAndDeletedAtIsNull(existing.getFingerprint()))
+                .thenReturn(Optional.of(existing));
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> service.ingest(incoming, "webhook:eos-crawler"));
+
+        assertEquals("EXAM_PAPER_IDENTITY_MISMATCH", ex.code());
+        assertEquals("SCM302 FE", existing.getTitle(), "the existing paper's content must stay untouched");
+        verify(feQuestionRepository, never()).save(any());
+        verify(paperRepository, never()).save(any());
+        verify(mediaService, never()).deletePairedAll(any(), any());
+    }
+
+    @Test
+    void rejectsARedeliveryWhosePaperTypeDiffersFromTheMatchedPaper() {
+        stubSubject();
+        IngestPaper incoming = fePaper(1);
+        // Same subject, but the matched paper is PE while the incoming payload is FE.
+        ExamPaperEntity existing = ExamPaperEntity.draft(
+                UUID.randomUUID(), subjectId, ExamPaperType.PE, "SCM302_SU26_FE_553972",
+                "SU26", null, "SCM302 FE", null, 60, new BigDecimal("50.00"), 50,
+                ExamPaperFingerprint.of(incoming), "webhook:eos-crawler", "553972", 0, null, Instant.now());
+        when(paperRepository.findByFingerprintAndDeletedAtIsNull(existing.getFingerprint()))
+                .thenReturn(Optional.of(existing));
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> service.ingest(incoming, "webhook:eos-crawler"));
+
+        assertEquals("EXAM_PAPER_IDENTITY_MISMATCH", ex.code());
+        verify(paperRepository, never()).save(any());
+    }
+
+    @Test
+    void deletesStaleMediaOnlyAfterCommitWhenATransactionIsActive() {
+        stubSubject();
+        IngestPaper incoming = fePaper(1);
+        ExamPaperEntity existing = draftPaper(ExamPaperFingerprint.of(incoming));
+        when(paperRepository.findByFingerprintAndDeletedAtIsNull(existing.getFingerprint()))
+                .thenReturn(Optional.of(existing));
+
+        ExamFeQuestionEntity stale = ExamFeQuestionEntity.create(
+                UUID.randomUUID(), subjectId, "old", "[\"exam/fe/old.png\"]",
+                "[\"exam/fe/old-blur.jpg\"]", 0, Instant.now(), existing.getId());
+        when(feQuestionRepository.findByPaperIdAndDeletedAtIsNullOrderBySortOrderAsc(existing.getId()))
+                .thenReturn(new ArrayList<>(List.of(stale)));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.ingest(incoming, "webhook:eos-crawler");
+
+            // Not yet: nothing has committed, so the old media must still be intact.
+            verify(mediaService, never()).deletePairedAll(any(), any());
+
+            for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+                synchronization.afterCommit();
+            }
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        verify(mediaService).deletePairedAll(
+                eq(List.of("exam/fe/old.png")), eq(List.of("exam/fe/old-blur.jpg")));
     }
 
     @Test

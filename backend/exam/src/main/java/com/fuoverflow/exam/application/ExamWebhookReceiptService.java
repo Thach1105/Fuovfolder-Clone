@@ -1,9 +1,10 @@
 package com.fuoverflow.exam.application;
 
-import com.fuoverflow.common.exception.BadRequestException;
+import com.fuoverflow.common.exception.ApiException;
 import com.fuoverflow.common.exception.PayloadTooLargeException;
 import com.fuoverflow.exam.api.dto.webhook.PaperWebhookRequest;
-import com.fuoverflow.exam.api.dto.webhook.WebhookReceiptResponse;
+import com.fuoverflow.exam.api.dto.webhook.WebhookBatchReceiptResponse;
+import com.fuoverflow.exam.api.dto.webhook.WebhookPaperReceipt;
 import com.fuoverflow.exam.config.ExamWebhookProperties;
 import com.fuoverflow.exam.persistence.ExamWebhookEventEntity;
 import com.fuoverflow.exam.persistence.ExamWebhookEventRepository;
@@ -15,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,8 +30,8 @@ import java.util.UUID;
  * sender can act on instead of a queued row that fails silently later.
  *
  * <p>Both accepted body shapes — the canonical envelope and a raw EOS exam file — come in through
- * {@link ExamWebhookPayloadReader}, so the stored row is always the sender's original bytes while
- * everything downstream sees one shape.
+ * {@link ExamWebhookPayloadReader}, which also splits a {@code papers[]} batch, so one request
+ * becomes one queued row per paper and everything downstream still sees a single paper.
  */
 @Service
 public class ExamWebhookReceiptService {
@@ -54,7 +57,7 @@ public class ExamWebhookReceiptService {
     }
 
     @Transactional
-    public WebhookReceiptResponse receive(String clientId, String rawBody, String signatureHeader) {
+    public WebhookBatchReceiptResponse receive(String clientId, String rawBody, String signatureHeader) {
         long size = rawBody == null ? 0 : rawBody.getBytes(StandardCharsets.UTF_8).length;
         if (size > properties.maxPayloadBytesOrDefault()) {
             throw new PayloadTooLargeException("WEBHOOK_TOO_LARGE",
@@ -63,35 +66,72 @@ public class ExamWebhookReceiptService {
 
         signatureVerifier.verify(clientId, rawBody, signatureHeader);
 
-        PaperWebhookRequest request = payloadReader.read(rawBody);
+        List<ExamWebhookPayloadReader.DeliveredPaper> delivered =
+                payloadReader.readAll(rawBody, properties.maxPapersPerBatchOrDefault());
         String normalizedClientId = clientId.trim();
-        String eventId = request.eventId() == null ? null : request.eventId().trim();
 
-        Optional<ExamWebhookEventEntity> existing = eventId == null
-                ? Optional.empty()
-                : eventRepository.findByClientIdAndEventId(normalizedClientId, eventId);
-        if (existing.isPresent()) {
-            ExamWebhookEventEntity event = existing.get();
-            log.info("Exam paper webhook duplicate: client={} eventId={} status={}",
-                    normalizedClientId, eventId, event.getStatus());
-            return new WebhookReceiptResponse(event.getId(), wireStatus(event.getStatus()), true);
+        List<WebhookPaperReceipt> results = new ArrayList<>(delivered.size());
+        int accepted = 0;
+        int duplicates = 0;
+        int rejected = 0;
+        ApiException firstRejection = null;
+
+        for (int index = 0; index < delivered.size(); index++) {
+            PaperWebhookRequest request = delivered.get(index).request();
+            String examCode = request.paper() == null ? null : request.paper().examCode();
+            String eventId = request.eventId() == null ? null : request.eventId().trim();
+
+            Optional<ExamWebhookEventEntity> existing = eventId == null
+                    ? Optional.empty()
+                    : eventRepository.findByClientIdAndEventId(normalizedClientId, eventId);
+            if (existing.isPresent()) {
+                ExamWebhookEventEntity event = existing.get();
+                log.info("Exam paper webhook duplicate: client={} eventId={} status={}",
+                        normalizedClientId, eventId, event.getStatus());
+                results.add(new WebhookPaperReceipt(index, examCode, event.getId(),
+                        wireStatus(event.getStatus()), true, null, null));
+                duplicates++;
+                continue;
+            }
+
+            try {
+                payloadValidator.validate(request);
+            } catch (ApiException e) {
+                log.warn("Exam paper webhook paper {} rejected: {} {}", index, e.code(), e.getMessage());
+                results.add(new WebhookPaperReceipt(index, examCode, null, "rejected", false,
+                        e.code(), e.getMessage()));
+                rejected++;
+                if (firstRejection == null) {
+                    firstRejection = e;
+                }
+                continue;
+            }
+
+            String payloadJson = delivered.get(index).payloadJson();
+            ExamWebhookEventEntity saved = eventRepository.save(ExamWebhookEventEntity.received(
+                    UUID.randomUUID(),
+                    normalizedClientId,
+                    eventId,
+                    request.eventType() == null ? "exam.paper.upserted" : request.eventType().trim(),
+                    payloadJson,
+                    Sha256.hexUtf8(payloadJson),
+                    true,
+                    Instant.now()));
+            log.info("Exam paper webhook queued: client={} eventId={} receiptId={}",
+                    normalizedClientId, eventId, saved.getId());
+            results.add(new WebhookPaperReceipt(index, examCode, saved.getId(), "queued", false,
+                    null, null));
+            accepted++;
         }
 
-        payloadValidator.validate(request);
-
-        ExamWebhookEventEntity event = ExamWebhookEventEntity.received(
-                UUID.randomUUID(),
-                normalizedClientId,
-                eventId,
-                request.eventType() == null ? "exam.paper.upserted" : request.eventType().trim(),
-                rawBody,
-                Sha256.hexUtf8(rawBody),
-                true,
-                Instant.now());
-        ExamWebhookEventEntity saved = eventRepository.save(event);
-        log.info("Exam paper webhook queued: client={} eventId={} receiptId={} bytes={}",
-                normalizedClientId, eventId, saved.getId(), size);
-        return new WebhookReceiptResponse(saved.getId(), "queued", false);
+        if (accepted == 0 && duplicates == 0) {
+            // Nothing landed: a sender of a single paper must still see the exact failure it
+            // sees today rather than a 200 carrying an error buried in a results array.
+            throw firstRejection;
+        }
+        log.info("Exam paper webhook received: client={} accepted={} duplicate={} rejected={} bytes={}",
+                normalizedClientId, accepted, duplicates, rejected, size);
+        return new WebhookBatchReceiptResponse(accepted, duplicates, rejected, results);
     }
 
     private static String wireStatus(String storedStatus) {

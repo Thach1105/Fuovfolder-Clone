@@ -3,7 +3,7 @@ package com.fuoverflow.exam.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fuoverflow.common.storage.ObjectStorage;
-import com.fuoverflow.exam.api.dto.webhook.WebhookReceiptResponse;
+import com.fuoverflow.exam.api.dto.webhook.WebhookPaperReceipt;
 import com.fuoverflow.exam.config.ExamProperties;
 import com.fuoverflow.exam.config.ExamWebhookProperties;
 import com.fuoverflow.exam.persistence.ExamFeQuestionEntity;
@@ -79,7 +79,7 @@ class ExamPaperWebhookIngestFlowTest {
     void setUp() throws Exception {
         ExamWebhookProperties webhookProperties = new ExamWebhookProperties(
                 Map.of("eos-crawler", SECRET), List.of("cdn.example.com"),
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
         ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         ExamWebhookPayloadValidator validator = new ExamWebhookPayloadValidator(5_242_880L, 200);
 
@@ -134,8 +134,8 @@ class ExamPaperWebhookIngestFlowTest {
     }
 
     @Test
-    void ingestsThreeRealQuestionsIntoADraftPaperWithBlurredSidecars() {
-        WebhookReceiptResponse receipt = receiptService.receive("eos-crawler", body, headerFor(body));
+    void ingestsThreeRealQuestionsIntoAPublishedPaperWithBlurredSidecars() {
+        WebhookPaperReceipt receipt = receiptService.receive("eos-crawler", body, headerFor(body)).results().get(0);
         worker.processPending();
 
         assertFalse(receipt.duplicate());
@@ -148,11 +148,12 @@ class ExamPaperWebhookIngestFlowTest {
         ArgumentCaptor<ExamSubjectEntity> subject = ArgumentCaptor.forClass(ExamSubjectEntity.class);
         verify(subjectRepository).save(subject.capture());
         assertEquals("SCM302", subject.getValue().getCode());
-        assertFalse(subject.getValue().isActive());
+        assertTrue(subject.getValue().isActive(), "webhook-discovered subjects are active so their papers are public");
 
         ArgumentCaptor<ExamPaperEntity> paper = ArgumentCaptor.forClass(ExamPaperEntity.class);
         verify(capturedPapers, atLeastOnce()).save(paper.capture());
-        assertEquals("draft", paper.getValue().getStatus());
+        assertEquals("published", paper.getValue().getStatus(),
+                "a webhook paper goes live without an admin step");
         assertEquals("SCM302_SU26_FE_553972", paper.getValue().getExamCode());
         assertEquals("SU26", paper.getValue().getTerm());
         assertEquals(60, paper.getValue().getDurationMinutes());
@@ -177,10 +178,10 @@ class ExamPaperWebhookIngestFlowTest {
     @Test
     void replayingTheSameBodyDoesNotCreateASecondPaper() {
         String header = headerFor(body);
-        WebhookReceiptResponse first = receiptService.receive("eos-crawler", body, header);
+        WebhookPaperReceipt first = receiptService.receive("eos-crawler", body, header).results().get(0);
         worker.processPending();
 
-        WebhookReceiptResponse second = receiptService.receive("eos-crawler", body, headerFor(body));
+        WebhookPaperReceipt second = receiptService.receive("eos-crawler", body, headerFor(body)).results().get(0);
 
         assertTrue(second.duplicate());
         assertEquals(first.receiptId(), second.receiptId());
@@ -191,7 +192,7 @@ class ExamPaperWebhookIngestFlowTest {
 
     @Test
     void storedPayloadLosesTheImageBytesOnceProcessed() {
-        WebhookReceiptResponse receipt = receiptService.receive("eos-crawler", body, headerFor(body));
+        WebhookPaperReceipt receipt = receiptService.receive("eos-crawler", body, headerFor(body)).results().get(0);
         worker.processPending();
 
         String payload = stored.get(receipt.receiptId()).getPayloadJson();
@@ -220,7 +221,7 @@ class ExamPaperWebhookIngestFlowTest {
                 getClass().getResource("/fixtures/eos-raw-paper.json").toURI()),
                 StandardCharsets.UTF_8);
 
-        WebhookReceiptResponse receipt = receiptService.receive("eos-crawler", eos, headerFor(eos));
+        WebhookPaperReceipt receipt = receiptService.receive("eos-crawler", eos, headerFor(eos)).results().get(0);
         worker.processPending();
 
         assertFalse(receipt.duplicate());
@@ -233,7 +234,8 @@ class ExamPaperWebhookIngestFlowTest {
         assertEquals("SCM302_SU26_FE_553972", paper.getValue().getExamCode());
         assertEquals("SU26", paper.getValue().getTerm());
         assertEquals("FE", paper.getValue().getPaperType());
-        assertEquals("draft", paper.getValue().getStatus());
+        assertEquals("published", paper.getValue().getStatus(),
+                "a webhook paper goes live without an admin step");
         assertEquals(60, paper.getValue().getDurationMinutes());
 
         verify(feQuestionRepository, times(3)).save(any());
@@ -247,7 +249,7 @@ class ExamPaperWebhookIngestFlowTest {
                 getClass().getResource("/fixtures/eos-raw-paper.json").toURI()),
                 StandardCharsets.UTF_8);
 
-        WebhookReceiptResponse receipt = receiptService.receive("eos-crawler", eos, headerFor(eos));
+        WebhookPaperReceipt receipt = receiptService.receive("eos-crawler", eos, headerFor(eos)).results().get(0);
         worker.processPending();
 
         String payload = stored.get(receipt.receiptId()).getPayloadJson();
@@ -262,9 +264,9 @@ class ExamPaperWebhookIngestFlowTest {
                 getClass().getResource("/fixtures/eos-raw-paper.json").toURI()),
                 StandardCharsets.UTF_8);
 
-        WebhookReceiptResponse first = receiptService.receive("eos-crawler", eos, headerFor(eos));
+        WebhookPaperReceipt first = receiptService.receive("eos-crawler", eos, headerFor(eos)).results().get(0);
         worker.processPending();
-        WebhookReceiptResponse second = receiptService.receive("eos-crawler", eos, headerFor(eos));
+        WebhookPaperReceipt second = receiptService.receive("eos-crawler", eos, headerFor(eos)).results().get(0);
 
         assertTrue(second.duplicate(), "cùng một file phải cho cùng eventId");
         assertEquals(first.receiptId(), second.receiptId());
