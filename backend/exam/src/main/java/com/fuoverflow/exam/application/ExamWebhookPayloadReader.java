@@ -47,6 +47,9 @@ public class ExamWebhookPayloadReader {
         if (tree.hasNonNull("paper")) {
             return readCanonical(rawBody);
         }
+        if (tree.hasNonNull("testName") && (tree.has("paperImage") || tree.has("givenMaterials"))) {
+            return readCanonical(PePayloadAdapter.adapt(tree, objectMapper).toString());
+        }
         if (looksLikeEos(tree)) {
             return eosAdapter.adapt(tree, rawBody);
         }
@@ -75,7 +78,8 @@ public class ExamWebhookPayloadReader {
         if (tree.hasNonNull("papers")) {
             return readBatch(tree, maxPapers);
         }
-        return List.of(new DeliveredPaper(read(rawBody), rawBody));
+        PaperWebhookRequest request = read(rawBody);
+        return List.of(new DeliveredPaper(request, tree.hasNonNull("testName") ? writeRequest(request) : rawBody));
     }
 
     private List<DeliveredPaper> readBatch(JsonNode tree, int maxPapers) {
@@ -100,6 +104,14 @@ public class ExamWebhookPayloadReader {
 
         List<DeliveredPaper> delivered = new ArrayList<>(papers.size());
         for (int index = 0; index < papers.size(); index++) {
+            JsonNode item = papers.get(index);
+            if (looksLikeEos(item) || item.hasNonNull("testName") || item.hasNonNull("paper")) {
+                PaperWebhookRequest adapted = read(item.toString());
+                PaperWebhookRequest request = new PaperWebhookRequest(eventId + "#" + index,
+                        adapted.eventType(), adapted.sentAt(), adapted.paper());
+                delivered.add(new DeliveredPaper(request, writeRequest(request)));
+                continue;
+            }
             ObjectNode envelope = objectMapper.createObjectNode();
             envelope.put("eventId", eventId + "#" + index);
             if (tree.hasNonNull("eventType")) {
@@ -122,6 +134,11 @@ public class ExamWebhookPayloadReader {
         } catch (Exception e) {
             throw new BadRequestException("WEBHOOK_PAYLOAD_INVALID", "Không đọc được body.");
         }
+    }
+
+    private String writeRequest(PaperWebhookRequest request) {
+        try { return objectMapper.writeValueAsString(request); }
+        catch (Exception e) { throw new BadRequestException("WEBHOOK_PAYLOAD_INVALID", "Không chuẩn hóa được body."); }
     }
 
     /** True for a payload carrying an exam code and at least one question-bearing section. */

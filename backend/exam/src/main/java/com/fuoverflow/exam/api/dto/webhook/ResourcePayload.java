@@ -8,6 +8,11 @@ public record ResourcePayload(
         String mimeType,
         Long sizeBytes,
         String sha256,
-        String sourceUrl
+        String sourceUrl,
+        String contentBase64
 ) {
+    public ResourcePayload(Integer sortOrder, String folderLabel, String filename, String mimeType,
+            Long sizeBytes, String sha256, String sourceUrl) {
+        this(sortOrder, folderLabel, filename, mimeType, sizeBytes, sha256, sourceUrl, null);
+    }
 }

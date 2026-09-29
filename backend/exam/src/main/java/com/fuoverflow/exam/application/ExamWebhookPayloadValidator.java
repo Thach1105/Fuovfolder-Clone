@@ -47,11 +47,13 @@ public class ExamWebhookPayloadValidator {
 
     private final long maxImageBytes;
     private final int maxQuestions;
+    private long maxResourceBytes = 52_428_800L;
 
     // @Autowired disambiguates: the second constructor exists for tests that pin the limits.
     @Autowired
     public ExamWebhookPayloadValidator(ExamWebhookProperties properties) {
         this(properties.maxImageBytesOrDefault(), properties.maxQuestionsOrDefault());
+        this.maxResourceBytes = properties.maxResourceBytesOrDefault();
     }
 
     ExamWebhookPayloadValidator(long maxImageBytes, int maxQuestions) {
@@ -242,11 +244,38 @@ public class ExamWebhookPayloadValidator {
         List<IngestResource> result = new ArrayList<>(resources.size());
         int position = 0;
         for (ResourcePayload resource : resources) {
+            if (resource == null) throw invalid("Resource không được null.");
             String filename = trimmed(resource.filename());
             if (filename == null) {
                 throw invalid("Resource thứ " + (position + 1) + " thiếu filename.");
             }
             String sourceUrl = trimmed(resource.sourceUrl());
+            if (!isBlank(resource.contentBase64())) {
+                if (sourceUrl != null) throw invalid("Resource chỉ được có sourceUrl hoặc contentBase64.");
+                byte[] content;
+                try {
+                    if (resource.contentBase64().length() > ((maxResourceBytes + 2) / 3) * 4) {
+                        throw tooLarge("ZIP vượt giới hạn dung lượng.");
+                    }
+                    content = Base64.getDecoder().decode(resource.contentBase64());
+                } catch (IllegalArgumentException e) {
+                    throw new BadRequestException("WEBHOOK_RESOURCE_INVALID_BASE64", "ZIP không phải Base64 hợp lệ.");
+                }
+                if (content.length > maxResourceBytes) throw tooLarge("ZIP vượt giới hạn dung lượng.");
+                if (!filename.toLowerCase(java.util.Locale.ROOT).endsWith(".zip") || content.length < 4
+                        || content[0] != 0x50 || content[1] != 0x4b
+                        || !((content[2] == 3 && content[3] == 4) || (content[2] == 5 && content[3] == 6))) {
+                    throw new BadRequestException("WEBHOOK_RESOURCE_INVALID_ZIP", "Tài nguyên inline phải là file ZIP.");
+                }
+                String hash = Sha256.hex(content);
+                if (!isBlank(resource.sha256()) && !hash.equalsIgnoreCase(resource.sha256())) {
+                    throw new BadRequestException("WEBHOOK_RESOURCE_HASH_MISMATCH", "ZIP có sha256 không khớp.");
+                }
+                result.add(new IngestResource(resource.sortOrder() != null ? resource.sortOrder() : position,
+                        trimmed(resource.folderLabel()), filename, "application/zip", content.length, hash, null, content));
+                position++;
+                continue;
+            }
             if (sourceUrl == null) {
                 throw invalid("Resource " + filename + " thiếu sourceUrl.");
             }

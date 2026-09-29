@@ -9,6 +9,7 @@ import com.fuoverflow.membership.api.dto.MembershipRoleOptionResponse;
 import com.fuoverflow.membership.api.dto.UpdateMembershipPlanRequest;
 import com.fuoverflow.membership.persistence.MembershipPlanEntity;
 import com.fuoverflow.membership.persistence.MembershipPlanRepository;
+import com.fuoverflow.membership.persistence.MembershipRepository;
 import com.fuoverflow.membership.support.MembershipFeatures;
 import com.fuoverflow.user.domain.RoleType;
 import com.fuoverflow.user.persistence.RoleEntity;
@@ -27,10 +28,15 @@ public class MembershipPlanAdminService {
 
     private final MembershipPlanRepository planRepository;
     private final RoleRepository roleRepository;
+    private final MembershipRepository membershipRepository;
+    private final MembershipRoleSyncService roleSyncService;
 
-    public MembershipPlanAdminService(MembershipPlanRepository planRepository, RoleRepository roleRepository) {
+    public MembershipPlanAdminService(MembershipPlanRepository planRepository, RoleRepository roleRepository,
+            MembershipRepository membershipRepository, MembershipRoleSyncService roleSyncService) {
         this.planRepository = planRepository;
         this.roleRepository = roleRepository;
+        this.membershipRepository = membershipRepository;
+        this.roleSyncService = roleSyncService;
     }
 
     @Transactional(readOnly = true)
@@ -82,6 +88,7 @@ public class MembershipPlanAdminService {
     @Transactional
     public AdminMembershipPlanResponse updatePlan(UUID planId, UpdateMembershipPlanRequest request) {
         MembershipPlanEntity plan = requirePlan(planId);
+        String previousRole = MembershipFeatures.roleSlug(plan.getFeaturesJson());
         validateRoleSlug(request.roleSlug());
         String billingInterval = normalizeBillingInterval(request.billingInterval());
         String status = normalizeStatus(request.status());
@@ -94,6 +101,10 @@ public class MembershipPlanAdminService {
                 request.roleSlug().trim(), request.durationDays()));
         plan.setImageUrl(blankToNull(request.imageUrl()));
         planRepository.save(plan);
+        if (!java.util.Objects.equals(previousRole, request.roleSlug().trim())) {
+            membershipRepository.findActiveUserIdsByPlanId(planId)
+                    .forEach(roleSyncService::syncActiveMembershipRoles);
+        }
         return toResponse(plan);
     }
 

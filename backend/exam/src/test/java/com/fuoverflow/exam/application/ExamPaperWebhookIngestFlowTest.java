@@ -191,6 +191,27 @@ class ExamPaperWebhookIngestFlowTest {
     }
 
     @Test
+    void peInlineZipFlowsThroughWorkerWithoutRemoteDownload() {
+        String pe = """
+                {"testName":"PE_PRO192_SU26_3_190626","paperNo":1,"numberOfPage":0,"paperImage":[],
+                 "givenMaterials":[{"questionNo":1,"given":"UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA=="}]}
+                """;
+        var receipt = receiptService.receive("eos-crawler", pe, headerFor(pe)).results().getFirst();
+        worker.processPending();
+        var event = stored.get(receipt.receiptId());
+        assertEquals("done", event.getStatus());
+        var item = ArgumentCaptor.forClass(com.fuoverflow.exam.persistence.ExamPeItemEntity.class);
+        verify(peItemRepository).save(item.capture());
+        assertEquals(event.getPaperId(), item.getValue().getPaperId());
+        var resource = ArgumentCaptor.forClass(com.fuoverflow.exam.persistence.ExamPeResourceEntity.class);
+        verify(peResourceRepository).save(resource.capture());
+        assertEquals(22, resource.getValue().getSizeBytes());
+        assertEquals("application/zip", resource.getValue().getMimeType());
+        verify(objectStorage).storeBytes(any(), anyString(), org.mockito.ArgumentMatchers.eq("application/zip"));
+        assertFalse(event.getPayloadJson().contains("UEsFBg"));
+    }
+
+    @Test
     void storedPayloadLosesTheImageBytesOnceProcessed() {
         WebhookPaperReceipt receipt = receiptService.receive("eos-crawler", body, headerFor(body)).results().get(0);
         worker.processPending();

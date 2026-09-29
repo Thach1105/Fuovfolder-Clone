@@ -8,6 +8,11 @@ public record IngestResource(
         String mimeType,
         long sizeBytes,
         String sha256,
-        String sourceUrl
+        String sourceUrl,
+        byte[] content
 ) {
+    public IngestResource(int sortOrder, String folderLabel, String filename, String mimeType,
+            long sizeBytes, String sha256, String sourceUrl) {
+        this(sortOrder, folderLabel, filename, mimeType, sizeBytes, sha256, sourceUrl, null);
+    }
 }

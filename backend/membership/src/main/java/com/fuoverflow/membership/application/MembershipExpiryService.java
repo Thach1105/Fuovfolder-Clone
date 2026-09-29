@@ -70,6 +70,7 @@ public class MembershipExpiryService {
             membership.setStatus("expired");
             membership.setUpdatedAt(now);
             membershipRepository.save(membership);
+            roleSyncService.syncActiveMembershipRoles(membership.getUserId());
             permissionResolver.bumpVersion(membership.getUserId());
             return true;
         });

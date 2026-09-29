@@ -345,7 +345,7 @@ export default function AdminMembershipPlansPage() {
                     </div>
                     <div>
                       <dt>Thời hạn</dt>
-                      <dd className="text-foreground">{plan.durationDays} ngày</dd>
+                      <dd className="text-foreground">{plan.billingInterval === "lifetime" ? "Trọn đời" : `${plan.durationDays} ngày`}</dd>
                     </div>
                     <div>
                       <dt>Vai trò</dt>
