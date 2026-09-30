@@ -137,8 +137,8 @@ export default function MembershipPage() {
           </p>
           {status?.active && (
             <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-sm text-emerald-700">
-              Gói hiện tại: <strong>{status.planName}</strong> - hết hạn {" "}
-              {status.expiresAt ? new Date(status.expiresAt).toLocaleDateString("vi-VN") : "không rõ"}
+              Gói hiện tại: <strong>{status.planName}</strong> - {" "}
+              {status.expiresAt ? `hết hạn ${new Date(status.expiresAt).toLocaleDateString("vi-VN")}` : "Trọn đời"}
             </p>
           )}
         </div>
@@ -186,7 +186,7 @@ export default function MembershipPage() {
                     <span className="text-sm font-normal text-muted-foreground">Fuexam Point</span>
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {plan.durationDays} ngày - Role {plan.roleSlug}
+                    {plan.billingInterval === "lifetime" ? "Trọn đời" : `${plan.durationDays} ngày`} - Role {plan.roleSlug}
                   </p>
                   {plan.description && <p className="mt-4 text-sm text-muted-foreground">{plan.description}</p>}
                   <Button
@@ -227,7 +227,7 @@ export default function MembershipPage() {
             <AlertDialogTitle>Xác nhận mua membership?</AlertDialogTitle>
             <AlertDialogDescription>
               {confirmPlan
-                ? `Bạn sẽ mua gói ${confirmPlan.name} với giá ${confirmPlan.pricePoints.toLocaleString("vi-VN")} Fuexam Point trong ${confirmPlan.durationDays} ngày.`
+                ? `Bạn sẽ mua gói ${confirmPlan.name} với giá ${confirmPlan.pricePoints.toLocaleString("vi-VN")} Fuexam Point ${confirmPlan.billingInterval === "lifetime" ? "trọn đời" : `trong ${confirmPlan.durationDays} ngày`}.`
                 : "Vui lòng kiểm tra lại gói trước khi xác nhận."}
             </AlertDialogDescription>
           </AlertDialogHeader>

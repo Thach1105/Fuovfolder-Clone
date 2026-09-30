@@ -13,7 +13,7 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, UU
     @Query("""
             SELECT m FROM MembershipEntity m
             WHERE m.userId = :userId AND m.status = 'active'
-              AND m.currentPeriodEnd > :now
+              AND (m.currentPeriodEnd IS NULL OR m.currentPeriodEnd > :now)
             ORDER BY m.currentPeriodEnd DESC
             """)
     List<MembershipEntity> findActiveByUserId(@Param("userId") UUID userId, @Param("now") Instant now);
@@ -26,6 +26,9 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, UU
             ORDER BY m.currentPeriodEnd ASC
             """)
     List<MembershipEntity> findExpiredActive(@Param("now") Instant now);
+
+    @Query("SELECT DISTINCT m.userId FROM MembershipEntity m WHERE m.planId = :planId AND m.status = 'active'")
+    List<UUID> findActiveUserIdsByPlanId(@Param("planId") UUID planId);
 
     Optional<MembershipEntity> findTopByUserIdAndStatusOrderByCurrentPeriodEndDesc(UUID userId, String status);
 }

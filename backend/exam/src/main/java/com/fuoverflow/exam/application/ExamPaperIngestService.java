@@ -307,7 +307,7 @@ public class ExamPaperIngestService {
         peItemRepository.save(item);
 
         for (IngestResource resource : paper.resources()) {
-            byte[] content = resourceFetcher.fetch(resource);
+            byte[] content = resource.content() != null ? resource.content() : resourceFetcher.fetch(resource);
             String objectKey = ingestStorage.storeResource(
                     content, resource.mimeType(), resource.filename());
             storedResourceKeys.add(objectKey);

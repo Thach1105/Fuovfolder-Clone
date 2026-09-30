@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.Set;
+import java.util.HashSet;
 
 @Service
 public class MembershipRoleSyncService {
@@ -37,15 +39,20 @@ public class MembershipRoleSyncService {
     public void syncActiveMembershipRoles(UUID userId) {
         Instant now = Instant.now();
         List<MembershipEntity> active = membershipRepository.findActiveByUserId(userId, now);
-        revokeMembershipRoles(userId);
+        Set<String> desiredRoles = new HashSet<>();
         for (MembershipEntity membership : active) {
             planRepository.findById(membership.getPlanId()).ifPresent(plan -> {
                 String roleSlug = MembershipFeatures.roleSlug(plan.getFeaturesJson());
                 if (roleSlug != null && !roleSlug.isBlank()) {
-                    roleAssignmentService.assignGlobalRole(userId, roleSlug, null);
+                    desiredRoles.add(roleSlug);
                 }
             });
         }
+        roleRepository.findAllByOrderByRoleTypeAscSlugAsc().stream()
+                .filter(role -> role.getRoleType() == RoleType.MEMBERSHIP)
+                .filter(role -> !desiredRoles.contains(role.getSlug()))
+                .forEach(role -> roleAssignmentService.revokeGlobalRole(userId, role.getSlug()));
+        desiredRoles.forEach(role -> roleAssignmentService.assignGlobalRole(userId, role, null));
     }
 
     @Transactional
@@ -57,17 +64,11 @@ public class MembershipRoleSyncService {
 
     @Transactional
     public void onMembershipActivated(UUID userId, MembershipPlanEntity plan) {
-        String roleSlug = MembershipFeatures.roleSlug(plan.getFeaturesJson());
-        if (roleSlug != null && !roleSlug.isBlank()) {
-            roleAssignmentService.assignGlobalRole(userId, roleSlug, null);
-        }
+        syncActiveMembershipRoles(userId);
     }
 
     @Transactional
     public void onMembershipExpired(UUID userId, MembershipPlanEntity plan) {
-        String roleSlug = MembershipFeatures.roleSlug(plan.getFeaturesJson());
-        if (roleSlug != null && !roleSlug.isBlank()) {
-            roleAssignmentService.revokeGlobalRole(userId, roleSlug);
-        }
+        syncActiveMembershipRoles(userId);
     }
 }

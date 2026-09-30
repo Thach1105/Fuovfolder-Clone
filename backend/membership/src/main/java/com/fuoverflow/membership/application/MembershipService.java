@@ -90,10 +90,13 @@ public class MembershipService {
             price = voucherResult.finalPoints();
         }
 
-        walletService.debit(userId, price, "Membership: " + plan.getName(), SOURCE_MEMBERSHIP, plan.getId());
+        if (price > 0) {
+            walletService.debit(userId, price, "Membership: " + plan.getName(), SOURCE_MEMBERSHIP, membershipId);
+        }
 
         int durationDays = MembershipFeatures.durationDays(plan.getFeaturesJson(), 30);
-        Instant endsAt = now.plus(durationDays, ChronoUnit.DAYS);
+        Instant endsAt = "lifetime".equals(plan.getBillingInterval())
+                ? null : now.plus(durationDays, ChronoUnit.DAYS);
         MembershipEntity membership = MembershipEntity.create(membershipId, userId, plan.getId(), now, endsAt, now);
         membershipRepository.save(membership);
         roleSyncService.onMembershipActivated(userId, plan);
