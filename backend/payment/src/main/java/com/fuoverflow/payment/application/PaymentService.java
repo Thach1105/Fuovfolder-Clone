@@ -71,6 +71,7 @@ public class PaymentService {
 
     @Transactional
     public PayOSPaymentLinkResponse createPaymentLink(UUID tierId, String returnUrl, String cancelUrl, UUID userId) {
+        ensureDepositsAvailable();
         DepositTierEntity tier = tierRepo.findById(tierId)
                 .filter(DepositTierEntity::isActive)
                 .orElseThrow(() -> new NotFoundException("DEPOSIT_TIER_NOT_FOUND", "Deposit tier not found: " + tierId));
@@ -108,6 +109,7 @@ public class PaymentService {
      */
     @Transactional
     public PayOSPaymentLinkResponse createCustomPaymentLink(int amountVnd, String returnUrl, String cancelUrl, UUID userId) {
+        ensureDepositsAvailable();
         if (amountVnd < MIN_CUSTOM_DEPOSIT_VND) {
             throw new IllegalArgumentException("Số tiền nạp tối thiểu là 10.000đ");
         }
@@ -301,7 +303,7 @@ public class PaymentService {
                     .map(PaymentEntity::getPaidAt)
                     .findFirst().orElse(null);
 
-            boolean canResume = "pending".equals(o.getStatus())
+            boolean canResume = !paymentProperties.maintenanceEnabled() && "pending".equals(o.getStatus())
                     && o.getCheckoutUrl() != null
                     && o.getExpiredAt() != null
                     && Instant.now().isBefore(o.getExpiredAt());
@@ -326,6 +328,7 @@ public class PaymentService {
 
     @Transactional
     public DepositResumeResponse getResumeInfo(UUID orderId, UUID userId) {
+        ensureDepositsAvailable();
         OrderEntity order = orderRepo.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found"));
 
@@ -354,5 +357,11 @@ public class PaymentService {
 
         long remainingSeconds = Duration.between(Instant.now(), order.getExpiredAt()).getSeconds();
         return DepositResumeResponse.resumable(order.getCheckoutUrl(), order.getExpiredAt(), remainingSeconds);
+    }
+
+    private void ensureDepositsAvailable() {
+        if (paymentProperties.maintenanceEnabled()) {
+            throw new DepositMaintenanceException();
+        }
     }
 }

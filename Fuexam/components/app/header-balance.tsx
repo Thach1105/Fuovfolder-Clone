@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getPointsBalance, POINTS_BALANCE_REFRESH_EVENT } from "@/lib/api/points";
+import { DEPOSIT_MAINTENANCE_ENABLED, DEPOSIT_MAINTENANCE_MESSAGE } from "@/lib/constants/deposit-maintenance";
 
 export function HeaderBalance() {
   const { user } = useAuth();
@@ -72,8 +73,11 @@ export function HeaderBalance() {
           </div>
         </div>
         <div className="space-y-2 p-4">
+          {DEPOSIT_MAINTENANCE_ENABLED && (
+            <p role="status" className="text-sm text-muted-foreground">{DEPOSIT_MAINTENANCE_MESSAGE}</p>
+          )}
           <Button asChild className="w-full rounded-full bg-foreground text-background hover:bg-foreground/90" onClick={() => setOpen(false)}>
-            <Link href="/deposit">Nạp tiền ngay</Link>
+            <Link href="/deposit">{DEPOSIT_MAINTENANCE_ENABLED ? "Xem thông báo bảo trì" : "Nạp tiền ngay"}</Link>
           </Button>
           <Button asChild variant="outline" className="w-full rounded-full" onClick={() => setOpen(false)}>
             <Link href="/me/points">Xem lịch sử ví</Link>
