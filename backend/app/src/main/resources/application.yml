@@ -188,6 +188,7 @@ payos:
   checksum-key: ${PAYOS_CHECKSUM_KEY:}
 
 payment:
+  maintenance-enabled: ${PAYMENT_MAINTENANCE_ENABLED:true}
   link-expiry-minutes: 30
 
 app:

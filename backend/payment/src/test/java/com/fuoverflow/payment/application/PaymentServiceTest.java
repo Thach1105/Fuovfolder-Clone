@@ -82,8 +82,28 @@ class PaymentServiceTest {
 
     @BeforeEach
     void setUp() {
-        paymentProperties = new PaymentProperties(30);
+        paymentProperties = new PaymentProperties(30, false);
         paymentService = new PaymentService(orderRepo, paymentRepo, payOS, pointsWalletService, tierRepo, paymentProperties, eventPublisher, userDisplayNameLookup);
+    }
+
+    @Test
+    void maintenance_shouldBlockCreationAndResumeBeforeAnySideEffects() {
+        PaymentService maintenanceService = new PaymentService(orderRepo, paymentRepo, payOS,
+                pointsWalletService, tierRepo, new PaymentProperties(30, null), eventPublisher, userDisplayNameLookup);
+        UUID userId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> maintenanceService.createPaymentLink(UUID.randomUUID(), "return", "cancel", userId))
+                .isInstanceOfSatisfying(DepositMaintenanceException.class, ex -> {
+                    assertThat(ex.code()).isEqualTo("DEPOSIT_MAINTENANCE");
+                    assertThat(ex.status()).isEqualTo(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE);
+                    assertThat(ex.getMessage()).contains("Tính năng nạp tiền tạm thời được bảo trì");
+                });
+        assertThatThrownBy(() -> maintenanceService.createCustomPaymentLink(10000, "return", "cancel", userId))
+                .isInstanceOf(DepositMaintenanceException.class);
+        assertThatThrownBy(() -> maintenanceService.getResumeInfo(UUID.randomUUID(), userId))
+                .isInstanceOf(DepositMaintenanceException.class);
+        org.mockito.Mockito.verifyNoInteractions(orderRepo, paymentRepo, payOS, pointsWalletService,
+                tierRepo, eventPublisher, userDisplayNameLookup);
     }
 
     @Test

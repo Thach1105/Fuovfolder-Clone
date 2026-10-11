@@ -36,6 +36,7 @@ import { DEPOSIT_STATUS_CONFIG, toFilterOptions } from "@/lib/constants/status-l
 import { formatVnd } from "@/lib/format-currency";
 import { formatDateShort } from "@/lib/format-datetime";
 import { formatPointsShort } from "@/lib/format-points";
+import { DEPOSIT_MAINTENANCE_ENABLED, DEPOSIT_MAINTENANCE_MESSAGE } from "@/lib/constants/deposit-maintenance";
 
 type PendingDeposit =
   | { type: "tier"; tier: DepositTier }
@@ -86,6 +87,7 @@ export default function DepositPage() {
   }, [pendingDeposit]);
 
   useEffect(() => {
+    if (DEPOSIT_MAINTENANCE_ENABLED) return;
     listDepositTiers()
       .then(setTiers)
       .catch((err) => {
@@ -104,6 +106,7 @@ export default function DepositPage() {
   }, [activeTab, historyPage, statusFilter]);
 
   async function handleResume(item: DepositHistoryItem) {
+    if (DEPOSIT_MAINTENANCE_ENABLED) return;
     setResumingId(item.orderId);
     try {
       const res = await resumeDeposit(item.orderId);
@@ -125,6 +128,7 @@ export default function DepositPage() {
   }
 
   function requestTierDeposit(tier: DepositTier) {
+    if (DEPOSIT_MAINTENANCE_ENABLED) return;
     if (!user) {
       requireLogin();
       return;
@@ -134,6 +138,7 @@ export default function DepositPage() {
   }
 
   function requestCustomDeposit() {
+    if (DEPOSIT_MAINTENANCE_ENABLED) return;
     if (!user) {
       requireLogin();
       return;
@@ -147,6 +152,7 @@ export default function DepositPage() {
   }
 
   async function confirmDeposit() {
+    if (DEPOSIT_MAINTENANCE_ENABLED) return;
     if (!pendingDeposit) return;
     setError(null);
     try {
@@ -191,9 +197,17 @@ export default function DepositPage() {
         <div className="mb-8 text-center">
           <h1 className="font-display text-4xl tracking-tight">Nạp Fuexam Point</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Nhập số tiền tùy ý hoặc chọn mệnh giá có sẵn. Thanh toán qua PayOS và nhận Fuexam Point tương ứng.
+            {DEPOSIT_MAINTENANCE_ENABLED ? "Dịch vụ nạp tiền đang được cập nhật." : "Nhập số tiền tùy ý hoặc chọn mệnh giá có sẵn. Thanh toán qua PayOS và nhận Fuexam Point tương ứng."}
           </p>
         </div>
+
+        {DEPOSIT_MAINTENANCE_ENABLED && (
+          <div role="status" className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6">
+            <h2 className="text-lg font-semibold">Nạp tiền tạm thời bảo trì</h2>
+            <p className="mt-2 text-sm text-muted-foreground">{DEPOSIT_MAINTENANCE_MESSAGE}</p>
+            <p className="mt-2 text-sm text-muted-foreground">Bạn vẫn có thể xem lịch sử nạp tiền bên dưới.</p>
+          </div>
+        )}
 
         {/* Tab bar */}
         <div className="mb-6 flex gap-0 border-b border-border">
@@ -222,7 +236,7 @@ export default function DepositPage() {
         </div>
 
         {/* Deposit form tab */}
-        {activeTab === "deposit" && (
+        {activeTab === "deposit" && !DEPOSIT_MAINTENANCE_ENABLED && (
           <>
             <div className="mb-8 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
@@ -391,11 +405,11 @@ export default function DepositPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  disabled={isResuming}
+                                  disabled={DEPOSIT_MAINTENANCE_ENABLED || isResuming}
                                   onClick={() => handleResume(item)}
                                   className="rounded-lg border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 text-xs px-3 py-1"
                                 >
-                                  {isResuming ? "Đang xử lý..." : "Thanh toán tiếp"}
+                                  {DEPOSIT_MAINTENANCE_ENABLED ? "Đang bảo trì" : isResuming ? "Đang xử lý..." : "Thanh toán tiếp"}
                                 </Button>
                               ) : (
                                 <span className="text-xs text-muted-foreground">—</span>
